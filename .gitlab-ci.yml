@@ -1,0 +1,25 @@
+image: node:14.2.0
+
+stages:
+  - test
+  - publish
+
+before_script:
+  - yarn install
+  
+test:
+  stage: test
+  script:
+  - yarn lint
+  - yarn unit-test
+
+publish:
+  stage: publish
+  when: manual
+  image: node:14.2.0
+  script:
+    - yarn build-dist
+    - npm config set '//code.venom360.com/api/v4/packages/npm/:_authToken' "${CI_JOB_TOKEN}"
+    - npm config set '//code.venom360.com/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken' "${CI_JOB_TOKEN}"
+    - npm config set '@platform:registry' "https://code.venom360.com/api/v4/projects/564/packages/npm/"
+    - npm publish
