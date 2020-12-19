@@ -8,7 +8,7 @@
   "repository": "code.venom360.com/platform/template-js-rethinkdb-mocked",
   "license": "UNLICENSED",
   "publishConfig": {
-      "@platform:registry": "https://code.venom360.com/api/v4/projects/554/packages/npm/"
+      "@platform:registry": "https://code.venom360.com/api/v4/projects/564/packages/npm/"
   },
   "scripts": {
     "test": "yarn lint && yarn unit-test",
@@ -20,6 +20,8 @@
     "unit-test": "ava template-js-rethinkdb-mocked.spec.js"
   },
   "dependencies": {
+    "lodash": "^4.17.20",
+    "casual": "^1.6.0"
   },
   "devDependencies": {
     "ava": "^3.8.1",
