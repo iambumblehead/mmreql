@@ -1,6 +1,6 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "database mocking used by template projects",
   "main": "template-js-rethinkdb-mocked.dist.js",
   "browser": "template-js-rethinkdb-mocked.dist.js",
@@ -16,10 +16,11 @@
     "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
     "lint-fix": "eslint --fix .",
     "unit-test-coverage": "nyc ava",
-    "build-dist": "./node_modules/.bin/babel template-js-rethinkdb-mocked.js --out-file template-js-rethinkdb-mocked.dist.js --presets=@babel/env --source-maps inline --copy-files",
+    "build-dist": "./node_modules/.bin/babel template-js-rethinkdb-mocked.js --out-file template-js-rethinkdb-mocked.dist.js --presets=@babel/env --plugins=@babel/plugin-transform-runtime --source-maps inline --copy-files",
     "unit-test": "ava template-js-rethinkdb-mocked.spec.js"
   },
-  "dependencies": {
+  "dependencies": { 
+    "@babel/plugin-transform-runtime": "^7.12.1",
     "lodash": "^4.17.20",
     "casual": "^1.6.0"
   },
@@ -87,6 +88,9 @@
   ],
   "babel": {
     "plugins": [
+      ["@babel/plugin-transform-runtime", {
+          "regenerator": true
+      }],
       "@babel/plugin-proposal-object-rest-spread",
       "@babel/plugin-proposal-optional-chaining",
       "@babel/plugin-proposal-class-properties"
