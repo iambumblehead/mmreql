@@ -280,21 +280,17 @@ export function unwrap ( val, target, options = {}) {
     return val;
 }
 
-export default function rethinkMock () {
-    const r = {
-        uuid: () => new PseudoQuery().uuid(),
-        now: () => new PseudoQuery().now(),
-        args: x => ({ args: x }),
-        asc: val => ({ sortBy: val, sortDirection: 'asc' }),
-        desc: val => ({ sortBy: val, sortDirection: 'desc' }),
+export default () => ({
+    uuid: () => new PseudoQuery().uuid(),
+    now: () => new PseudoQuery().now(),
+    args: x => ({ args: x }),
+    asc: val => ({ sortBy: val, sortDirection: 'asc' }),
+    desc: val => ({ sortBy: val, sortDirection: 'desc' }),
 
-        and: ( ...values ) => new PseudoQuery( true ).and( ...values ),
-        or: ( ...values ) => new PseudoQuery( false ).or( ...values ),
+    and: ( ...values ) => new PseudoQuery( true ).and( ...values ),
+    or: ( ...values ) => new PseudoQuery( false ).or( ...values ),
 
-        row: field => new PseudoQuery()( field ),
-        expr: val => new PseudoQuery( val ),
-        branch: ( ...args ) => new PseudoQuery().branch( ...args )
-    };
-
-    return r;
-}
+    row: field => new PseudoQuery()( field ),
+    expr: val => new PseudoQuery( val ),
+    branch: ( ...args ) => new PseudoQuery().branch( ...args )
+});
