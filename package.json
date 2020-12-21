@@ -1,10 +1,10 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "database mocking used by template projects",
-  "main": "template-js-rethinkdb-mocked.dist.js",
-  "browser": "template-js-rethinkdb-mocked.dist.js",
-  "module": "template-js-rethinkdb-mocked.js",
+  "main": "dist/template-js-rethinkdb-mocked.js",
+  "browser": "dist/template-js-rethinkdb-mocked.js",
+  "module": "src/template-js-rethinkdb-mocked.js",
   "repository": "code.venom360.com/platform/template-js-rethinkdb-mocked",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -16,13 +16,14 @@
     "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
     "lint-fix": "eslint --fix .",
     "unit-test-coverage": "nyc ava",
-    "build-dist": "./node_modules/.bin/babel template-js-rethinkdb-mocked.js --out-file template-js-rethinkdb-mocked.dist.js --presets=@babel/env --plugins=@babel/plugin-transform-runtime --source-maps inline --copy-files",
-    "unit-test": "ava template-js-rethinkdb-mocked.spec.js"
+    "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env --plugins=@babel/plugin-transform-runtime",
+    "unit-test": "ava"
   },
   "dependencies": { 
     "@babel/plugin-transform-runtime": "^7.12.1",
     "lodash": "^4.17.20",
-    "casual": "^1.6.0"
+    "casual": "^1.6.0",
+    "debug": "^4.1.1"
   },
   "devDependencies": {
     "ava": "^3.8.1",
@@ -67,10 +68,10 @@
   "nyc": {
     "compact": false,
     "include": [
-      "template-js-rethinkdb-mocked.js"
+      "src/*js"
     ],
     "files": [
-      "template-js-rethinkdb-mocked.spec.js"
+      "spec/*.spec.js"
     ],
     "require": [
       "esm"

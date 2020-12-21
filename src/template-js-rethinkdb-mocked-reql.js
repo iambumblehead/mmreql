@@ -174,7 +174,7 @@ export class PseudoQuery {
 
     default ( val ) {
         return this.replace( obj => {
-            if ( obj && obj[internalError]?.type === 'noAttribute' ) {
+            if ( obj && obj[internalError] && obj[internalError].type === 'noAttribute' ) {
                 // row => row('not_exist').default('etc')
                 // Normally row('not_exist') errors, but if you have a '.default' after it,
                 // then the default returns instead.
@@ -206,7 +206,7 @@ export class PseudoQuery {
         // Not quite right but should get the job done for our purposes
         let result = this.toFunction()();
         if ( Array.isArray( result ) ) {
-            result = result.map( r => ( r?.execute ? r.execute() : r ) );
+            result = result.map( r => ( ( r && r.execute ) ? r.execute() : r ) );
             return Promise.all( result );
         }
         return result;
@@ -255,11 +255,11 @@ export function unwrap ( val, target, options = {}) {
         val = val( new PseudoQuery( target ) );
     }
 
-    if ( val?.toFunction )
+    if ( val && val.toFunction )
         val = val.toFunction( target )( target );
 
     // eslint-disable-next-line no-underscore-dangle
-    if ( val?._getResults )
+    if ( val && val._getResults )
         val = val._getResults({ wrap }); // eslint-disable-line no-underscore-dangle
 
     if ( Array.isArray( val ) )
