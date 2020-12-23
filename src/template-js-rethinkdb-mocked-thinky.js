@@ -1509,7 +1509,37 @@ function createModel ( modelStore ) {
     };
 }
 
-export default function thinkyMock ( data = {}) {
+export const thinkyMockedDB = opts => ({
+    ...opts,
+    adminOptions: {}
+});
+
+export const thinkyMockedDBObject = ( table, data ) => {
+    const constructor = ( options = {}) => Object.assign( data(), options );
+
+    constructor.table = table;
+    return constructor;
+};
+
+function gen ( generator, count = 1, options = {}) {
+    return Array( Math.max( count, 0 ) || 0 ).fill().map( () => generator( options ) );
+}
+
+/* eslint-disable no-return-assign */
+export const thinkyMockedDBDocGen = ( mockedDB, constructor ) => (
+    mockedDB[constructor.table] || [
+        constructor(),
+        ...gen( constructor, mockedDB[`add${constructor.table}`] || ( mockedDB[`add${constructor.table}`] = 0 ) )
+    ]);
+/* eslint-enable no-return-assign */
+
+export default function thinkyMock ( tables = {}) {
+    const data = tables;
+
+    // not sure why this is needed yet but tsts break w/out it
+    if ( !tables.tables ) {
+        tables.tables = tables;
+    }
     const modelStore = {
         _idCounter: 0,
         _finishedQueries: [],
