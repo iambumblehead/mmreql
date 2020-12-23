@@ -4,13 +4,20 @@ import rethinkDBMocked, {
     unwrap
 } from './template-js-rethinkdb-mocked-reql.js';
 
-import thinkyMocked from './template-js-rethinkdb-mocked-thinky.js';
+import thinkyMocked, {
+    thinkyMockedDB,
+    thinkyMockedDBObject,
+    thinkyMockedDBDocGen
+} from './template-js-rethinkdb-mocked-thinky.js';
 
 export default rethinkDBMocked;
 
 export {
     PseudoQuery,
     unwrap,
+    rethinkDBMocked,
     thinkyMocked,
-    rethinkDBMocked
+    thinkyMockedDB,
+    thinkyMockedDBObject,
+    thinkyMockedDBDocGen
 };
