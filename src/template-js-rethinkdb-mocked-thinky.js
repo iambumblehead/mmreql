@@ -237,6 +237,32 @@ Object.assign( thinkyType, {
 
 let idCounter = 0;
 
+// eslint-disable-next-line no-unused-vars
+const createFunctionQuery = ( model, options ) => {
+    const query = createQuery( model, options );
+
+    function functionQuery ( /* val */ ) {
+        // const p = unwrap( val );
+        throw new Error( 'not yet implemented' );
+        // return createQuery( model, {
+        //    ...options,
+        //    _filters: [
+        //        ...query._filters,
+        //        // { method: prop, args: val }
+        //        { args: val }
+        //    ]
+        // });
+    }
+
+    Object.keys( query ).reduce( ( prev, key ) => {
+        prev[key] = query[key];
+
+        return prev;
+    }, functionQuery );
+
+    return functionQuery;
+};
+
 function createQuery ( model, options = {}) {
     const id = idCounter;
     idCounter += 1;
@@ -255,6 +281,7 @@ function createQuery ( model, options = {}) {
                 if ( args.some( a => a === undefined ) )
                     throw new Error( `Cannot call ${prop} with an argument of 'undefined'.` );
 
+                // return createFunctionQuery( model, {
                 return createQuery( model, {
                     ...options,
                     _filters: [
@@ -473,6 +500,16 @@ function createQuery ( model, options = {}) {
                     const props = flatten( args.map( unwrap ).map( arg => arg.args || arg ) );
                     return data.map( pick( props ) );
                 }
+                case 'append': {
+                    // const props = flatten( args.map( unwrap ).map( arg => arg.args || arg ) );
+
+                    throw new Error( 'not yet implemented' );
+                    // return {
+                    //     data: [ table[args[0]] ],
+                    //     isSingle: true,
+                    //     wrap: false
+                    // };
+                }
                 case 'getJoin': {
                     const [ joins ] = args;
                     entries( joins ).forEach( ([ join, joinValue ]) => {
@@ -624,10 +661,54 @@ function createQuery ( model, options = {}) {
                         wrap: false
                     };
                 }
+                case 'nth': {
+                    if ( args[0] >= table.length )
+                        throw new Error( `ReqlNonExistanceError: Index out of bounds: ${args[0]}` );
+
+                    return {
+                        data: [ table[args[0]] ],
+                        isSingle: true,
+                        wrap: false
+                    };
+                }
                 case 'insert': {
                     let [ documents ] = args;
                     documents = Array.isArray( documents ) ? documents : [ documents ];
-                    table.push( ...documents );
+
+                    // eslint-disable-next-line security/detect-non-literal-regexp
+                    const regex = new RegExp( `^(${table.map( doc => doc.id ).join( '|' )})$` );
+                    const conflictDoc = documents.find( doc => regex.test( doc.id ) );
+
+                    if ( conflictDoc ) {
+                        const stringify = o => JSON.stringify( o, null, '\t' );
+                        const existingDoc = table.find( doc => doc.id === conflictDoc.id );
+                        const firstError = `Duplicate primary key \`id\`:\n ${stringify( existingDoc )}\n${stringify( conflictDoc )}`;
+                        return {
+                            isSingle: true,
+                            wrap: false,
+                            data: [ {
+                                deleted: 0,
+                                inserted: 0,
+                                replaced: 0,
+                                skipped: 0,
+                                unchanged: 0,
+                                errors: 1,
+                                firstError
+                            } ]
+                        };
+                    }
+
+                    // expand reql expresssions such as r.epochTime( 531360000 )
+                    //
+                    // eslint-disable-next-line arrow-body-style
+                    table.push( ...documents.map( doc => {
+                        return Object.keys( doc ).reduce( ( prev, key ) => {
+                            // other unwrap calls look like: unwrap( a, item )
+                            prev[key] = unwrap( prev[key]);
+
+                            return prev;
+                        }, doc );
+                    }) );
 
                     return {
                         data: [ { inserted: documents.length } ],
@@ -887,6 +968,10 @@ function createQuery ( model, options = {}) {
     if ( query.thinky ) {
         query.execute = async () => query._getResults({ wrap: false });
     }
+
+    // query.delete = async ( ...args ) => {
+    //     not supported
+    // };
 
     query.run = async () => {
         if ( query.thinky ) {

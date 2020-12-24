@@ -114,6 +114,14 @@ export class PseudoQuery {
         }, `(${test.toString()}) ? ${onTrue.toString()} : ${onFalse.toString()}` );
     }
 
+    during ( startTime, endTime ) {
+        // eslint-disable-next-line arrow-body-style
+        return this.replace( obj => {
+            return obj > this.resolve( startTime, null )
+                && obj < this.resolve( endTime, null );
+        });
+    }
+
     contains ( val ) {
         return this.replace( obj => {
             if ( obj.includes ) {
@@ -129,6 +137,26 @@ export class PseudoQuery {
                 throw new Error( `Cannot downcase a non-string ${typeof obj}` );
             return obj.toLowerCase();
         }, `${this.str}.downcase()` );
+    }
+
+    add ( ...vals ) {
+        return this.replace( obj => {
+            if ( Array.isArray( obj ) ) {
+                throw new Error( `Not imlemented, adding arrays ${typeof obj}` );
+            }
+
+            return vals.reduce( ( prev, val ) => prev + val, obj );
+        }, `${this.str}.add()` );
+    }
+
+    append ( val ) {
+        return this.replace( obj => {
+            if ( !Array.isArray( obj ) ) {
+                throw new Error( `Not imlemented, appending non-arrays ${typeof obj}` );
+            }
+
+            return [ ...obj, val ];
+        }, `${this.str}.append() (${unwrapString( val )})` );
     }
 
     merge ( other ) {
@@ -214,6 +242,12 @@ export class PseudoQuery {
 
     now () { return this.replace( () => new Date(), '{now}' ); }
 
+    epochTime ( val ) {
+        return this.replace(
+            () => new Date( val * 1000 ),
+            `${this.str}.epochTime() (${unwrapString( val )})` );
+    }
+
     uuid () { return this.replace( () => casual.uuid, '{uuid}' ); }
 
     hours () {
@@ -283,6 +317,8 @@ export function unwrap ( val, target, options = {}) {
 export default () => ({
     uuid: () => new PseudoQuery().uuid(),
     now: () => new PseudoQuery().now(),
+    epochTime: seconds => new PseudoQuery().epochTime( seconds ),
+    add: ( ...values ) => new PseudoQuery().add( ...values ),
     args: x => ({ args: x }),
     asc: val => ({ sortBy: val, sortDirection: 'asc' }),
     desc: val => ({ sortBy: val, sortDirection: 'desc' }),
