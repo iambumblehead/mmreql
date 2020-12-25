@@ -1,4 +1,3 @@
-// eslint-disable-next-line filenames/match-exported
 import rethinkDBMocked, {
     PseudoQuery,
     unwrap
@@ -10,7 +9,20 @@ import thinkyMocked, {
     thinkyMockedDBDocGen
 } from './template-js-rethinkdb-mocked-thinky.js';
 
-export default rethinkDBMocked;
+export default tables => {
+    const mockedDB = thinkyMockedDB();
+
+    const tableMap = tables.reduce( ( map, tablelist ) => {
+        map[tablelist[0]] = thinkyMockedDBDocGen(
+            mockedDB,
+            thinkyMockedDBObject( tablelist[0], () => tablelist.slice( 1 ) )
+        );
+
+        return map;
+    }, {});
+
+    return thinkyMocked( tableMap );
+};
 
 export {
     PseudoQuery,
