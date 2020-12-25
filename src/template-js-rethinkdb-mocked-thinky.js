@@ -1599,8 +1599,11 @@ export const thinkyMockedDB = opts => ({
     adminOptions: {}
 });
 
-export const thinkyMockedDBObject = ( table, data ) => {
-    const constructor = ( options = {}) => Object.assign( data(), options );
+export const thinkyMockedDBObject = ( table, dataFn ) => {
+    const constructor = ( options = {}, data = dataFn() ) => (
+        Array.isArray( data )
+            ? data.map( d => Object.assign( d, options ) )
+            : [ Object.assign( data, options ) ]);
 
     constructor.table = table;
     return constructor;
@@ -1611,11 +1614,14 @@ function gen ( generator, count = 1, options = {}) {
 }
 
 /* eslint-disable no-return-assign */
-export const thinkyMockedDBDocGen = ( mockedDB, constructor ) => (
-    mockedDB[constructor.table] || [
-        constructor(),
+export const thinkyMockedDBDocGen = ( mockedDB, constructor ) => {
+    const tableData = constructor();
+
+    return mockedDB[constructor.table] || [
+        ...tableData,
         ...gen( constructor, mockedDB[`add${constructor.table}`] || ( mockedDB[`add${constructor.table}`] = 0 ) )
-    ]);
+    ];
+};
 /* eslint-enable no-return-assign */
 
 export default function thinkyMock ( tables = {}) {
