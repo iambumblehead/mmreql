@@ -1,6 +1,4 @@
 # template-js-rethinkdb-mocked
-
-Database mocking used by template projects.
 ```javascript
 import rethinkMocked from 'template-js-rethinkdb-mocked';
 
