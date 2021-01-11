@@ -1723,6 +1723,23 @@ export default function thinkyMock ( tables = {}) {
             }
             return createQuery( model, { thinky: false });
         },
+        connectPool: opts => ({
+            connParam: {
+                db: opts.db,
+                user: opts.user || 'admin',
+                password: opts.password,
+                buffer: 1,
+                max: 1,
+                timeout: 20,
+                pingInterval: -1,
+                timeoutError: 1000,
+                timeoutGb: 3600000,
+                maxExponent: 6,
+                silent: false,
+                log: [ () => {} ]
+            },
+            servers: [ { host: opts.host, port: opts.port } ]
+        }),
         expr ( val ) {
             const model = modelStore.$$null;
             return createQuery( model, { thinky: false }).expr( val );

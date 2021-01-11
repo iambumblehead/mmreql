@@ -1,6 +1,21 @@
 import test from 'ava';
 import rethinkdbMocked from '../src/template-js-rethinkdb-mocked.js';
 
+test( 'provides a faux connectPool function', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'table', { id: 'id-document-1234' } ]
+    ]);
+
+    await r.connectPool({
+        db: 'cmdb',
+        host: 'host',
+        port: 8000,
+        password: ''
+    });
+
+    t.pass();
+});
+
 test( 'returns an app document', async t => {
     const { r } = rethinkdbMocked([
         [ 'Applications', {
