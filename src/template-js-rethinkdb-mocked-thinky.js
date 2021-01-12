@@ -711,7 +711,7 @@ function createQuery ( model, options = {}) {
                     }) );
 
                     return {
-                        data: [ { inserted: documents.length } ],
+                        data: [ { inserted: documents.length, generated_keys: Array( documents.length ).fill().map( () => casual.uuid ) } ],
                         isSingle: true,
                         wrap: false
                     };
