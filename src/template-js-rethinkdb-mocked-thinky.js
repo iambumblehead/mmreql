@@ -24,6 +24,18 @@ import {
     groupBy,
     uniqBy
 } from 'lodash/fp.js';
+
+import {
+    mockdbStateCreate,
+    mockdbStateTableIndexExists
+} from './mockdbState.js';
+
+import {
+    indexCreate,
+    indexList,
+    indexWait
+} from './mockdbTableQuery.js';
+
 import rethinkDBMocked, {
     PseudoQuery,
     unwrap
@@ -139,6 +151,8 @@ class Typedef {
         });
     }
 }
+
+const mockdb = mockdbStateCreate();
 
 const types = {
     string: {
@@ -430,8 +444,30 @@ function createQuery ( model, options = {}) {
                     data = data.filter( item => {
                         const itemValues = values.map( a => unwrap( a, item ) );
 
-                        if ( !model._indexes[index])
+                        if ( !model._indexes[index] && !mockdbStateTableIndexExists( mockdb, model.getTableName(), index ) ) {
                             throw new Error( `There is no index ${index} for table ${model._tableName}` );
+                        }
+
+                        if ( args[1] && args[1].index && mockdbStateTableIndexExists( mockdb, model.getTableName(), index ) ) {
+                            const tableDocs  = model._modelStore._data[model.getTableName()];
+                            return {
+                                data: tableDocs.filter( doc => doc[args[1].index] === args[0]),
+                                wrap: true,
+                                isSingle: false
+                            };
+
+                            return itemValues.some( value => {
+                                const indexValue = model._getIndexValue( item, index );
+                                return indexValue.some( isEqualWith(
+                                    ( a, b ) => {
+                                        if ( unwrap( a, item ) === unwrap( b, item ) )
+                                            return true;
+                                        return undefined;
+                                    },
+                                    value
+                                ) );
+                            });
+                        }
 
                         if ( model._indexes[index].multi ) {
                             // Multi-index
@@ -852,6 +888,16 @@ function createQuery ( model, options = {}) {
                         ), data[0]) ],
                         isSingle: true
                     };
+
+                case 'indexCreate':
+                    return indexCreate( mockdb, model.getTableName(), args );
+
+                case 'indexWait':
+                    return indexWait( mockdb, model.getTableName(), args );
+
+                case 'indexList':
+                    return indexList( mockdb, model.getTableName(), args );
+
                 default:
                     console.warn( `Unimplemented rethink method ${method} - query results are likely inaccurate.` );
                     return data;

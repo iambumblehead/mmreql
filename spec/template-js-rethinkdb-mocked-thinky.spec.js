@@ -16,6 +16,33 @@ test( 'provides a faux connectPool function', async t => {
     t.pass();
 });
 
+test( 'provides secondary index methods and lookups', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'AppUserDevices', {
+            id: 'id-document-1234',
+            device_id: 'device-1234',
+            app_user_id: 'appuser-1234',
+            application_id: 'application-1234'
+        } ]
+    ]);
+
+    const indexList = await r.table( 'AppUserDevices' ).indexList().run();
+
+    if ( !indexList.includes( 'app_user_id' ) ) {
+        await r.table( 'AppUserDevices' ).indexCreate( 'app_user_id' ).run();
+        await r.table( 'AppUserDevices' ).indexWait( 'app_user_id' ).run();
+    }
+
+    const AppUserDevice = await r
+        .table( 'AppUserDevices' )
+        .getAll( 'appuser-1234', { index: 'app_user_id' })
+        .filter({ device_id: 'device-1234' })
+        .limit( 1 )
+        .run();
+
+    t.is( AppUserDevice[0].id, 'id-document-1234' );
+});
+
 test( 'returns an app document', async t => {
     const { r } = rethinkdbMocked([
         [ 'Applications', {
