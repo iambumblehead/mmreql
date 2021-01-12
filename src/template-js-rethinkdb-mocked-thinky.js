@@ -449,24 +449,12 @@ function createQuery ( model, options = {}) {
                         }
 
                         if ( args[1] && args[1].index && mockdbStateTableIndexExists( mockdb, model.getTableName(), index ) ) {
-                            const tableDocs  = model._modelStore._data[model.getTableName()];
+                            const tableDocs = model._modelStore._data[model.getTableName()];
                             return {
                                 data: tableDocs.filter( doc => doc[args[1].index] === args[0]),
                                 wrap: true,
                                 isSingle: false
                             };
-
-                            return itemValues.some( value => {
-                                const indexValue = model._getIndexValue( item, index );
-                                return indexValue.some( isEqualWith(
-                                    ( a, b ) => {
-                                        if ( unwrap( a, item ) === unwrap( b, item ) )
-                                            return true;
-                                        return undefined;
-                                    },
-                                    value
-                                ) );
-                            });
                         }
 
                         if ( model._indexes[index].multi ) {
