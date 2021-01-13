@@ -1,13 +1,13 @@
 import rethinkDBMocked, {
     PseudoQuery,
     unwrap
-} from './template-js-rethinkdb-mocked-reql.js';
+} from './mockdbReql.js';
 
 import thinkyMocked, {
     thinkyMockedDB,
     thinkyMockedDBObject,
     thinkyMockedDBDocGen
-} from './template-js-rethinkdb-mocked-thinky.js';
+} from './mockdbThinky.js';
 
 export default tables => {
     const mockedDB = thinkyMockedDB();

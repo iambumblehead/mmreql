@@ -1,5 +1,6 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/template-js-rethinkdb-mocked.js';
+import rethinkdbMocked from '../src/mockdb.js';
+import { mockdbResErrorDuplicatePrimaryKey } from '../src/mockdbRes.js';
 
 test( 'provides a faux connectPool function', async t => {
     const { r } = rethinkdbMocked([
@@ -168,4 +169,98 @@ test( 'supports .append()', async t => {
     const ironman = await r.table( 'marvel' ).get( 'IronMan' ).run();
 
     t.true( Array.isArray( ironman.equipment ) );
+});
+
+test( 'supports .insert(, {})', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'posts', {
+            id: 'post-1234',
+            title: 'post title',
+            content: 'post content'
+        } ]
+    ]);
+
+    const insertRes = await r.table( 'posts' ).insert({
+        title: 'Lorem ipsum',
+        content: 'Dolor sit amet'
+    }).run();
+
+    const [ generatedKey ] = insertRes.generated_keys;
+
+    t.deepEqual( insertRes, {
+        deleted: 0,
+        errors: 0,
+        generated_keys: [ generatedKey ],
+        inserted: 1,
+        replaced: 0,
+        skipped: 0,
+        unchanged: 0
+    });
+});
+
+test( 'supports .insert(, { returnChanges: true })', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'posts', {
+            id: 'post-1234',
+            title: 'post title',
+            content: 'post content'
+        } ]
+    ]);
+
+    const insertRes = await r.table( 'posts' ).insert({
+        title: 'Lorem ipsum',
+        content: 'Dolor sit amet'
+    }, {
+        returnChanges: true
+    }).run();
+
+    const [ generatedKey ] = insertRes.generated_keys;
+
+    t.deepEqual( insertRes, {
+        deleted: 0,
+        errors: 0,
+        generated_keys: [ generatedKey ],
+        inserted: 1,
+        replaced: 0,
+        skipped: 0,
+        unchanged: 0,
+        changes: [ {
+            old_val: null,
+            new_val: {
+                id: generatedKey,
+                title: 'Lorem ipsum',
+                content: 'Dolor sit amet'
+            }
+        } ]
+    });
+});
+
+test( '.insert(, {}) returns error if inserted document is found', async t => {
+    const existingDoc = {
+        id: 'post-1234',
+        title: 'post title',
+        content: 'post content'
+    };
+
+    const conflictDoc = {
+        id: 'post-1234',
+        title: 'Conflict Lorem ipsum',
+        content: 'Conflict Dolor sit amet'
+    };
+
+    const { r } = rethinkdbMocked([
+        [ 'posts', existingDoc ]
+    ]);
+
+    const insertRes = await r.table( 'posts' ).insert( conflictDoc ).run();
+
+    t.deepEqual( insertRes, {
+        unchanged: 0,
+        skipped: 0,
+        replaced: 0,
+        inserted: 0,
+        errors: 1,
+        deleted: 0,
+        firstError: mockdbResErrorDuplicatePrimaryKey( existingDoc, conflictDoc )
+    });
 });

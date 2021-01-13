@@ -33,13 +33,14 @@ import {
 import {
     indexCreate,
     indexList,
-    indexWait
+    indexWait,
+    insert
 } from './mockdbTableQuery.js';
 
 import rethinkDBMocked, {
     PseudoQuery,
     unwrap
-} from './template-js-rethinkdb-mocked-reql.js';
+} from './mockdbReql.js';
 
 export const inspectStripSinon = obj => {
     if ( typeof obj !== 'object' )
@@ -696,50 +697,9 @@ function createQuery ( model, options = {}) {
                     };
                 }
                 case 'insert': {
-                    let [ documents ] = args;
-                    documents = Array.isArray( documents ) ? documents : [ documents ];
-
-                    // eslint-disable-next-line security/detect-non-literal-regexp
-                    const regex = new RegExp( `^(${table.map( doc => doc.id ).join( '|' )})$` );
-                    const conflictDoc = documents.find( doc => regex.test( doc.id ) );
-
-                    if ( conflictDoc ) {
-                        const stringify = o => JSON.stringify( o, null, '\t' );
-                        const existingDoc = table.find( doc => doc.id === conflictDoc.id );
-                        const firstError = `Duplicate primary key \`id\`:\n ${stringify( existingDoc )}\n${stringify( conflictDoc )}`;
-                        return {
-                            isSingle: true,
-                            wrap: false,
-                            data: [ {
-                                deleted: 0,
-                                inserted: 0,
-                                replaced: 0,
-                                skipped: 0,
-                                unchanged: 0,
-                                errors: 1,
-                                firstError
-                            } ]
-                        };
-                    }
-
-                    // expand reql expresssions such as r.epochTime( 531360000 )
-                    //
-                    // eslint-disable-next-line arrow-body-style
-                    table.push( ...documents.map( doc => {
-                        return Object.keys( doc ).reduce( ( prev, key ) => {
-                            // other unwrap calls look like: unwrap( a, item )
-                            prev[key] = unwrap( prev[key]);
-
-                            return prev;
-                        }, doc );
-                    }) );
-
-                    return {
-                        data: [ { inserted: documents.length, generated_keys: Array( documents.length ).fill().map( () => casual.uuid ) } ],
-                        isSingle: true,
-                        wrap: false
-                    };
+                    return insert( mockdb, model.getTableName(), args, table );
                 }
+
                 case 'contains': {
                     if ( !args.length ) throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
 
