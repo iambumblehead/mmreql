@@ -1,5 +1,5 @@
 import test from 'ava';
-import mockedReql from '../src/template-js-rethinkdb-mocked-reql.js';
+import mockedReql from '../src/mockdbReql.js';
 
 test( 'supports add()', async t => {
     const r = mockedReql();

@@ -2,10 +2,10 @@
   "name": "@platform/template-js-rethinkdb-mocked",
   "version": "0.2.4",
   "description": "database mocking used by template projects",
-  "main": "dist/template-js-rethinkdb-mocked.js",
-  "browser": "dist/template-js-rethinkdb-mocked.js",
-  "module": "src/template-js-rethinkdb-mocked.js",
-  "repository": "code.venom360.com/platform/template-js-rethinkdb-mocked",
+  "main": "dist/mockdb.js",
+  "browser": "dist/mockdb.js",
+  "module": "src/mockdb.js",
+  "repository": "code.venom360.com/platform/mockdb",
   "license": "UNLICENSED",
   "publishConfig": {
       "@platform:registry": "https://code.venom360.com/api/v4/projects/564/packages/npm/"
@@ -23,7 +23,8 @@
     "@babel/plugin-transform-runtime": "^7.12.1",
     "lodash": "^4.17.20",
     "casual": "^1.6.0",
-    "debug": "^4.1.1"
+    "debug": "^4.1.1",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "ava": "^3.8.1",

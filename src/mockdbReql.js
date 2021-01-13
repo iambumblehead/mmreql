@@ -3,7 +3,7 @@ import casual from 'casual';
 
 const internalError = Symbol( 'internalError' );
 
-export class PseudoQuery {
+class PseudoQuery {
     constructor ( finalObj ) {
         this.target = finalObj;
         this.currentTarget = this.target;
@@ -275,7 +275,7 @@ function notUndefined ( value ) {
 }
 
 // Unwraps a PseudoQuery or sub-query into a concrete value or series of values.
-export function unwrap ( val, target, options = {}) {
+function unwrap ( val, target, options = {}) {
     const {
         wrap = false,
         allowFunction = true,
@@ -313,6 +313,19 @@ export function unwrap ( val, target, options = {}) {
 
     return val;
 }
+
+const unwrapObject = obj => Object.keys( obj ).reduce( ( prev, key ) => {
+    // other unwrap calls look like: unwrap( a, item )
+    prev[key] = unwrap( prev[key]);
+
+    return prev;
+}, obj );
+
+export {
+    unwrap,
+    unwrapObject,
+    PseudoQuery
+};
 
 export default () => ({
     uuid: () => new PseudoQuery().uuid(),
