@@ -4,6 +4,8 @@ import {
 } from './mockdbState.js';
 
 import {
+    mockdbTableGetDocument,
+    mockdbTableSetDocument,
     mockdbTableGetDocuments,
     mockdbTableSetDocuments
 } from './mockdbTable.js';
@@ -101,9 +103,36 @@ const insert = ( mockdb, tableName, args, table, documents ) => {
     };
 };
 
+const update = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const updateProps = args[0];
+    const updatedDocuments = targetDocuments.reduce( ( updated, targetDoc ) => {
+        let tableDoc = mockdbTableGetDocument( table, targetDoc.id );
+
+        if ( tableDoc ) {
+            Object.assign( tableDoc, updateProps || {});
+            [ table, tableDoc ] = mockdbTableSetDocument( table, tableDoc );
+
+            updated.push( tableDoc );
+        }
+
+        return updated;
+    }, []);
+
+    return {
+        isSingle: true,
+        wrap: false,
+        data: [
+            mockdbResChangesFieldCreate({
+                replaced: updatedDocuments.length
+            })
+        ]
+    };
+};
+
 export {
     indexCreate,
     indexWait,
     indexList,
-    insert
+    insert,
+    update
 };

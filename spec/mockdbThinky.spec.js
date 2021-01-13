@@ -264,3 +264,37 @@ test( '.insert(, {}) returns error if inserted document is found', async t => {
         firstError: mockdbResErrorDuplicatePrimaryKey( existingDoc, conflictDoc )
     });
 });
+
+test( '.update(, { prop: val }) should update a document', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'AppUserTest', {
+            id: 'appuser-1234',
+            name: 'appusername-1234'
+        }, {
+            id: 'appuser-5678',
+            name: 'appusername-5678'
+        } ]
+    ]);
+
+    const updateRes = await r
+        .table( 'AppUserTest' )
+        .get( 'appuser-1234' )
+        .update({ user_social_id: 'userSocial-1234' })
+        .run();
+
+    t.deepEqual( updateRes, {
+        deleted: 0,
+        errors: 0,
+        inserted: 0,
+        replaced: 1,
+        skipped: 0,
+        unchanged: 0
+    });
+
+    const queriedAppUser = await r
+        .table( 'AppUserTest' )
+        .get( 'appuser-1234' )
+        .run();
+
+    t.is( queriedAppUser.user_social_id, 'userSocial-1234' );
+});
