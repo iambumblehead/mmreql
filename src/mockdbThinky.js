@@ -19,7 +19,6 @@ import {
     cloneDeep,
     mapValues,
     map,
-    merge,
     shuffle,
     groupBy,
     uniqBy
@@ -34,7 +33,8 @@ import {
     indexCreate,
     indexList,
     indexWait,
-    insert
+    insert,
+    update
 } from './mockdbTableQuery.js';
 
 import rethinkDBMocked, {
@@ -762,25 +762,7 @@ function createQuery ( model, options = {}) {
                 case 'context':
                     return data;
                 case 'update': {
-                    const [ setData ] = args;
-                    let replaced = 0;
-                    for ( const item of data.filter( i => !!i[model._pk]) ) {
-                        const storedItem = storedData.find( s => s[model._pk] === item[model._pk]);
-                        if ( storedItem ) {
-                            Object.assign( storedItem, merge( storedItem, setData ) );
-                            replaced += 1;
-                        }
-                    }
-                    return {
-                        isSingle: true,
-                        wrap: false,
-                        data: [ {
-                            replaced,
-                            unchanged: 0,
-                            skipped: 0,
-                            errors: 0
-                        } ]
-                    };
+                    return update( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'isEmpty': {
                     return {
