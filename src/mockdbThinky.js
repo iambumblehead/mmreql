@@ -12,21 +12,18 @@ import {
     flatten,
     orderBy,
     pick,
-    isEqualWith,
     pipe,
     filter,
     fromPairs,
     cloneDeep,
     mapValues,
     map,
-    shuffle,
     groupBy,
     uniqBy
 } from 'lodash/fp.js';
 
 import {
-    mockdbStateCreate,
-    mockdbStateTableIndexExists
+    mockdbStateCreate
 } from './mockdbState.js';
 
 import {
@@ -34,7 +31,8 @@ import {
     indexList,
     indexWait,
     insert,
-    update
+    update,
+    getAll
 } from './mockdbTableQuery.js';
 
 import rethinkDBMocked, {
@@ -430,64 +428,7 @@ function createQuery ( model, options = {}) {
                     };
                 }
                 case 'getAll': {
-                    let index = model._pk;
-                    let values = Array.from( args );
-
-                    // Last argument can be { index: 'some-index' } to override default of the primary key
-                    if ( typeof values[values.length - 1] === 'object' && values[values.length - 1].index )
-                        ({ index } = values.pop() );
-
-                    // r.args() mocked return { args: [ the-passed-in-args ] } so expand it
-                    values = values.reduce(
-                        ( arr, val ) => ( val.args ? arr.concat( val.args ) : [ ...arr, val ]),
-                        []);
-
-                    data = data.filter( item => {
-                        const itemValues = values.map( a => unwrap( a, item ) );
-
-                        if ( !model._indexes[index] && !mockdbStateTableIndexExists( mockdb, model.getTableName(), index ) ) {
-                            throw new Error( `There is no index ${index} for table ${model._tableName}` );
-                        }
-
-                        if ( args[1] && args[1].index && mockdbStateTableIndexExists( mockdb, model.getTableName(), index ) ) {
-                            const tableDocs = model._modelStore._data[model.getTableName()];
-                            return {
-                                data: tableDocs.filter( doc => doc[args[1].index] === args[0]),
-                                wrap: true,
-                                isSingle: false
-                            };
-                        }
-
-                        if ( model._indexes[index].multi ) {
-                            // Multi-index
-                            return itemValues.some( value => {
-                                const indexValue = model._getIndexValue( item, index );
-                                return indexValue.some( isEqualWith(
-                                    ( a, b ) => {
-                                        if ( unwrap( a, item ) === unwrap( b, item ) )
-                                            return true;
-                                        return undefined;
-                                    },
-                                    value
-                                ) );
-                            });
-                        }
-
-                        // May be r.getAll([ r.row( 'a' ), 'some-fixed-value' ], { index: 'a-compound-index' })
-                        return itemValues.some( value => isEqualWith(
-                            ( a, b ) => {
-                                if ( unwrap( a, item ) === unwrap( b, item ) )
-                                    return true;
-                                return undefined;
-                            },
-                            value,
-                            model._getIndexValue( item, index )
-                        ) );
-                    });
-
-                    // when using getAll, the input array does not map to the output array,
-                    // so shuffle so that we can be sure we're handling this correctly!
-                    return shuffle( data );
+                    return getAll( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'filter': {
                     const [ predicate ] = args;

@@ -1,13 +1,15 @@
 import {
     mockdbStateTableIndexAdd,
-    mockdbStateTableIndexList
+    mockdbStateTableIndexList,
+    mockdbStateTableGetIndexTuple
 } from './mockdbState.js';
 
 import {
     mockdbTableGetDocument,
     mockdbTableSetDocument,
     mockdbTableGetDocuments,
-    mockdbTableSetDocuments
+    mockdbTableSetDocuments,
+    mockdbTableDocGetIndexValue
 } from './mockdbTable.js';
 
 import {
@@ -22,8 +24,23 @@ import {
 const queryValueAsList = value => (
     Array.isArray( value ) ? value : [ value ]);
 
+// return last query argument (optionally) provides query configurations
+const queryArgsOptions = ( queryArgs, queryOptionsDefault = {}) => {
+    const queryOptions = queryArgs.slice( -1 )[0] || {};
+
+    return ( queryOptions && typeof queryOptions === 'object' )
+        ? queryOptions
+        : queryOptionsDefault;
+};
+
+// r.table('comments')
+//    .indexCreate('postAndDate', [r.row("postId"), r.row("date")]).run()
+//
 const indexCreate = ( mockdb, tableName, args ) => {
-    mockdbStateTableIndexAdd( mockdb, tableName, args[0]);
+    const fields = Array.isArray( args[1]) ? args[1] : [];
+    const config = queryArgsOptions( args );
+
+    mockdbStateTableIndexAdd( mockdb, tableName, args[0], fields, config );
 
     // should throw ReqlRuntimeError if index exits already
     return {
@@ -129,7 +146,26 @@ const update = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
+const getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const queryOptions = queryArgsOptions( args );
+    const indexName = queryOptions.index || 'id';
+    const indexTargetValue = Array.isArray( args[0]) ? args[0].join() : args[0];
+    const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
+
+    table = table.filter( doc => (
+        mockdbTableDocGetIndexValue( doc, tableIndexTuple ) === indexTargetValue
+    ) );
+
+    // rethink output array is not in-order
+    return {
+        isSingle: false,
+        wrap: true,
+        data: table.sort( () => 0.5 - Math.random() )
+    };
+};
+
 export {
+    getAll,
     indexCreate,
     indexWait,
     indexList,
