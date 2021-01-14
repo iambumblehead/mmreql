@@ -17,6 +17,26 @@ test( 'provides a faux connectPool function', async t => {
     t.pass();
 });
 
+test( 'provides primaryIndex (id) lookups', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'AppUserDevices', {
+            id: 'id-document-1234',
+            device_id: 'device-1234',
+            app_user_id: 'appuser-1234',
+            application_id: 'application-1234'
+        } ]
+    ]);
+
+    const AppUserDevice = await r
+        .table( 'AppUserDevices' )
+        .getAll( 'id-document-1234' )
+        .filter({ device_id: 'device-1234' })
+        .limit( 1 )
+        .run();
+
+    t.is( AppUserDevice[0].id, 'id-document-1234' );
+});
+
 test( 'provides secondary index methods and lookups', async t => {
     const { r } = rethinkdbMocked([
         [ 'AppUserDevices', {
@@ -42,6 +62,37 @@ test( 'provides secondary index methods and lookups', async t => {
         .run();
 
     t.is( AppUserDevice[0].id, 'id-document-1234' );
+});
+
+test( 'provides compound index methods and lookups', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        }, {
+            id: 'userSocialId-5678',
+            numeric_id: 9457,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    const indexList = await r.table( 'UserSocial' ).indexList().run();
+
+    if ( !indexList.includes( 'app_user_id' ) ) {
+        await r.table( 'UserSocial' ).indexCreate( 'screenname_numeric_cid', [
+            r.row( 'name_screenname' ),
+            r.row( 'numeric_id' )
+        ]).run();
+        await r.table( 'UserSocial' ).indexWait( 'screenname_numeric_cid' ).run();
+    }
+
+    const userSocialDocs = await r
+        .table( 'UserSocial' )
+        .getAll([ 'screenname', 5848 ], { index: 'screenname_numeric_cid' })
+        .run();
+
+    t.is( userSocialDocs.length, 1 );
 });
 
 test( 'returns an app document', async t => {
