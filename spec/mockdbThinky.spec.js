@@ -133,6 +133,32 @@ test( 'supports .nth()', async t => {
     t.is( ironman.id, 'IronMan' );
 });
 
+test( 'supports .nth(), non-trivial guery', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    await r.table( 'UserSocial' ).indexCreate( 'screenname_numeric_cid', [
+        r.row( 'name_screenname' ),
+        r.row( 'numeric_id' )
+    ]).run();
+    await r.table( 'UserSocial' ).indexWait( 'screenname_numeric_cid' ).run();
+
+    await t.throwsAsync( () => (
+        r.table( 'UserSocial' )
+            .getAll([ 'notfound', 7575 ], { index: 'screenname_numeric_cid' })
+            .limit( 1 )
+            .nth( 0 )
+            .run()
+    ), {
+        message: 'ReqlNonExistanceError: Index out of bounds: 0'
+    });
+});
+
 test( 'supports .epochTime()', async t => {
     const { r } = rethinkdbMocked([
         [ 'user', {
