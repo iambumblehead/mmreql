@@ -164,11 +164,23 @@ const getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
+const nth = ( mockdb, tableName, targetDocuments, table, args ) => {
+    if ( args[0] >= targetDocuments )
+        throw new Error( `ReqlNonExistanceError: Index out of bounds: ${args[0]}` );
+
+    return {
+        data: [ targetDocuments[args[0]] ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
 export {
     getAll,
     indexCreate,
     indexWait,
     indexList,
     insert,
-    update
+    update,
+    nth
 };

@@ -32,6 +32,7 @@ import {
     indexWait,
     insert,
     update,
+    nth,
     getAll
 } from './mockdbTableQuery.js';
 
@@ -627,16 +628,12 @@ function createQuery ( model, options = {}) {
                         wrap: false
                     };
                 }
-                case 'nth': {
-                    if ( args[0] >= table.length )
-                        throw new Error( `ReqlNonExistanceError: Index out of bounds: ${args[0]}` );
+                case 'nth':
+                    return nth( mockdb, model.getTableName(), data, table, args );
 
-                    return {
-                        data: [ table[args[0]] ],
-                        isSingle: true,
-                        wrap: false
-                    };
-                }
+                case 'first':
+                    return nth( mockdb, model.getTableName(), data, table, [ 0 ]);
+
                 case 'insert': {
                     return insert( mockdb, model.getTableName(), args, table );
                 }
