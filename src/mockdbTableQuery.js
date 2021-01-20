@@ -146,6 +146,21 @@ const update = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
+const get = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const primaryKeyValue = unwrapObject( args[0]);
+    const tableDoc = mockdbTableGetDocument( table, primaryKeyValue );
+    if ( !tableDoc ) {
+        return {
+            error: 'DocumentNotFound'
+        };
+    }
+
+    return {
+        data: [ tableDoc ],
+        isSingle: true
+    };
+};
+
 const getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
     const queryOptions = queryArgsOptions( args );
     const indexName = queryOptions.index || 'id';
@@ -166,7 +181,9 @@ const getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
 
 const nth = ( mockdb, tableName, targetDocuments, table, args ) => {
     if ( args[0] >= targetDocuments )
-        throw new Error( `ReqlNonExistanceError: Index out of bounds: ${args[0]}` );
+        return {
+            error: `ReqlNonExistanceError: Index out of bounds: ${args[0]}`
+        };
 
     return {
         data: [ targetDocuments[args[0]] ],
@@ -175,12 +192,23 @@ const nth = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
+const mockDefault = ( mockdb, tableName, targetDocuments, table, args ) => ({
+    data: [
+        args.reduce( ( current, value ) => (
+            ( typeof current === 'undefined' ? unwrapObject( value ) : current )
+        ), targetDocuments[0])
+    ],
+    isSingle: true
+});
+
 export {
+    get,
     getAll,
     indexCreate,
     indexWait,
     indexList,
     insert,
     update,
-    nth
+    nth,
+    mockDefault
 };
