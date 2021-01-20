@@ -314,12 +314,18 @@ function unwrap ( val, target, options = {}) {
     return val;
 }
 
-const unwrapObject = obj => Object.keys( obj ).reduce( ( prev, key ) => {
-    // other unwrap calls look like: unwrap( a, item )
-    prev[key] = unwrap( prev[key]);
+const unwrapObject = obj => {
+    if ( !isPlainObject( obj ) ) {
+        return obj;
+    }
 
-    return prev;
-}, obj );
+    return Object.keys( obj ).reduce( ( prev, key ) => {
+        // other unwrap calls look like: unwrap( a, item )
+        prev[key] = unwrap( prev[key]);
+
+        return prev;
+    }, obj );
+};
 
 export {
     unwrap,

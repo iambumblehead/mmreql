@@ -33,8 +33,14 @@ import {
     insert,
     update,
     nth,
-    getAll
+    get,
+    getAll,
+    mockDefault
 } from './mockdbTableQuery.js';
+
+import {
+    queryFilterIsDefault
+} from './mockdbQueryFilter.js';
 
 import rethinkDBMocked, {
     PseudoQuery,
@@ -419,14 +425,7 @@ function createQuery ( model, options = {}) {
 
                 switch ( method ) {
                 case 'get': {
-                    const pk = unwrap( args[0]);
-                    const obj = data.find( item => item[model._pk] === pk );
-                    if ( !obj && resultsThinky )
-                        throw new DocumentNotFound();
-                    return {
-                        data: [ obj ],
-                        isSingle: true
-                    };
+                    return get( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'getAll': {
                     return getAll( mockdb, model.getTableName(), data, table, args );
@@ -750,12 +749,7 @@ function createQuery ( model, options = {}) {
                     return uniqBy( 'id', data );
 
                 case 'default':
-                    return {
-                        data: [ args.reduce( ( current, value ) => (
-                            typeof current === 'undefined' ? unwrap( value ) : current
-                        ), data[0]) ],
-                        isSingle: true
-                    };
+                    return mockDefault( mockdb, model.getTableName(), data, table, args );
 
                 case 'indexCreate':
                     return indexCreate( mockdb, model.getTableName(), args );
@@ -772,11 +766,15 @@ function createQuery ( model, options = {}) {
                 }
             };
 
-            for ( const oneFilter of query._filters ) {
+            // filters ex,
+            //  [{ method: 'getAll', args: [Array] },
+            //   { method: 'limit', args: [Array] },
+            //   { method: 'nth', args: [Array] },
+            //   { method: 'default', args: [Array] }]
+            query._filters.forEach( ( oneFilter, i ) => {
                 debugDetailed( '-------------------' );
                 debugDetailed( `enter: ${oneFilter.method}` );
 
-                /* eslint-disable no-loop-func */
                 const checkToggles = results => {
                     if ( Array.isArray( results ) )
                         return;
@@ -790,7 +788,6 @@ function createQuery ( model, options = {}) {
                     if ( results.isGrouped !== undefined )
                         ({ isGrouped } = results );
                 };
-                /* eslint-enable no-loop-func */
 
                 if ( isGrouped ) { // If we're grouped, then subsequent commands run once for each group
                     const results = filteredData.map( group => ({
@@ -808,13 +805,28 @@ function createQuery ( model, options = {}) {
                     }) );
                 } else {
                     const filterResults = runOneFilter( oneFilter, filteredData );
+
+                    if ( filterResults.error ) {
+                        const defaultFilter = queryFilterIsDefault( query._filters[i + 1]);
+
+                        // not sure how this should ideally work
+                        // for now, carry on if error result and expect
+                        // 'default' filter to return its value next iteration
+                        if ( defaultFilter ) {
+                            filteredData = [ undefined ];
+                            return;
+                        }
+
+                        throw new Error( filterResults.error );
+                    }
+
                     checkToggles( filterResults );
                     filteredData = Array.isArray( filterResults ) ? filterResults : filterResults.data;
                 }
 
                 debugDetailed( `results: ${oneFilter.method}` );
                 debugDir( filteredData );
-            }
+            });
 
             if ( debug.enabled )
                 debug( `Executed ${query.toString()} - ${filteredData.length} result${filteredData.length === 1 ? '' : 's'}.` );

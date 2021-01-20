@@ -120,6 +120,35 @@ test( 'returns an app document', async t => {
     t.is( usersDoc.length, 2 );
 });
 
+test( 'supports .get()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    const res = await r.table( 'UserSocial' )
+        .get( 'userSocialId-1234' )
+        .default({ defaultValue: true })
+        .run();
+
+    t.deepEqual( res, {
+        id: 'userSocialId-1234',
+        numeric_id: 5848,
+        name_screenname: 'screenname'
+    });
+
+    await t.throwsAsync( () => (
+        r.table( 'UserSocial' )
+            .get( 'userSocialId-7575' )
+            .run()
+    ), {
+        message: 'DocumentNotFound'
+    });
+});
+
 test( 'supports .nth()', async t => {
     const { r } = rethinkdbMocked([
         [ 'marvel', {
@@ -157,6 +186,50 @@ test( 'supports .nth(), non-trivial guery', async t => {
     ), {
         message: 'ReqlNonExistanceError: Index out of bounds: 0'
     });
+});
+
+test( 'supports .default()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    const res = await r.table( 'UserSocial' )
+        .get( 'userSocialId-7575' )
+        .default({ defaultValue: true })
+        .run();
+
+    t.true( res.defaultValue );
+});
+
+test( 'supports .default(), non-trivial guery', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    await r.table( 'UserSocial' ).indexCreate( 'screenname_numeric_cid', [
+        r.row( 'name_screenname' ),
+        r.row( 'numeric_id' )
+    ]).run();
+    await r.table( 'UserSocial' ).indexWait( 'screenname_numeric_cid' ).run();
+
+    const result = (
+        await r.table( 'UserSocial' )
+            .getAll([ 'notfound', 7575 ], { index: 'screenname_numeric_cid' })
+            .limit( 1 )
+            .nth( 0 )
+            .default( null )
+            .run()
+    );
+
+    t.is( result, null );
 });
 
 test( 'supports .epochTime()', async t => {
