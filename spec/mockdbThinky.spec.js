@@ -64,6 +64,28 @@ test( 'provides secondary index methods and lookups', async t => {
     t.is( AppUserDevice[0].id, 'id-document-1234' );
 });
 
+test( 'provides secondary index methods and lookups, numeric', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'Rooms', {
+            id: 'roomAId-1234',
+            numeric_id: 755090
+        }, {
+            id: 'roomBId-1234',
+            numeric_id: 123321
+        } ]
+    ]);
+
+    await r.table( 'Rooms' ).indexCreate( 'numeric_id' ).run();
+    await r.table( 'Rooms' ).indexWait( 'numeric_id' ).run();
+    const room = await r
+        .table( 'Rooms' )
+        .getAll( 755090, { index: 'numeric_id' })
+        .nth( 0 )
+        .run();
+
+    t.is( room.id, 'roomAId-1234' );
+});
+
 test( 'provides compound index methods and lookups', async t => {
     const { r } = rethinkdbMocked([
         [ 'UserSocial', {

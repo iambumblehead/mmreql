@@ -1,9 +1,9 @@
-/* eslint-disable max-classes-per-file */
 /* eslint-disable filenames/match-exported */
 import casual from 'casual';
 import createDebug from 'debug';
 import { inspect } from 'util';
 import { stub as baseStub, spy as baseSpy } from 'sinon';
+
 import {
     isEqual,
     isPlainObject,
@@ -21,6 +21,12 @@ import {
     groupBy,
     uniqBy
 } from 'lodash/fp.js';
+
+import {
+    thinkyTypeDefs,
+    getTypedef_default, // eslint-disable-line camelcase
+    getTypedef_schema // eslint-disable-line camelcase
+} from './mockdbThinkyTypes.js';
 
 import {
     mockdbStateCreate
@@ -104,156 +110,7 @@ function proxyIgnore ( prop ) {
     ].includes( prop );
 }
 
-// thinky.type.number().default(3).min(2).max(4)
-class Typedef {
-    constructor ( typeName, funcs, options = {}) {
-        const onAllTypes = {
-            required: val => val !== undefined,
-            optional: () => true,
-            allowNull: ( val, [ allow ]) => val !== null || allow,
-            validator: ( val, [ validator ]) => validator.call( val, val ),
-            default: () => true
-        };
-
-        this.validators = [];
-        this.type = typeName;
-        this.options = options;
-
-        Object.entries({ ...funcs, ...onAllTypes }).forEach( ([ funcName, validator ]) => {
-            this[funcName] = ( ...args ) => {
-                this[`_${funcName}`] = args.length < 2 ? args[0] : args;
-                const check = val => {
-                    if ( !validator( val, args, this ) )
-                        throw new Error( `Validator "${funcName}" failed for type ${typeName}, value was ${inspect( val, { depth: 0 })}` );
-                };
-                this[`_${funcName}Check`] = check;
-                this.validators.push({ name: funcName, func: validator, args, check });
-                return this;
-            };
-        });
-
-        if ( this._check && !options.ignoreTypeCheck )
-            this._check(); // Add type check
-
-        if ( funcs._init )
-            funcs._init( this );
-    }
-
-    _checkType ( val ) {
-        if ( val === undefined ) {
-            if ( this._required )
-                this._requiredCheck();
-            return;
-        }
-
-        if ( val === null ) {
-            if ( this._allowNull )
-                this._allowNullCheck();
-            return;
-        }
-
-        this.validators.forEach( ({ check }) => {
-            check( val );
-        });
-    }
-}
-
 const mockdb = mockdbStateCreate();
-
-const types = {
-    string: {
-        _check: val => typeof val === 'string',
-        min: ( val, [ min ]) => val.length >= min,
-        max: ( val, [ max ]) => val.length <= max,
-        length: ( val, [ length ]) => val.length === length,
-        alphanum: val => /^[a-zA-Z0-9]+$/.test( val ),
-        regex: ( val, [ re ]) => re.test( val ),
-        lowercase: val => val.toLowerCase() === val,
-        uppercase: val => val.toUpperCase() === val,
-        enum: ( val, [ validValues ]) => validValues.includes( val ),
-        uuid: val => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test( val )
-    },
-    boolean: {
-        _check: val => typeof val === 'boolean'
-    },
-    number: {
-        _check: val => typeof val === 'number',
-        min: ( val, [ min ]) => val >= min,
-        max: ( val, [ max ]) => val <= max,
-        integer: val => Number.isInteger( val )
-    },
-    date: {
-        _check: val => typeof val === 'number'
-            || ( typeof val === 'function' && val.$mustInterpret )
-            || (
-                val instanceof Date
-                && typeof val.valueOf() === 'number' // on-change error check
-                && Object.prototype.toString.call( val ) === '[object Date]' // on-change error check
-            ),
-        min: ( val, [ min ]) => val.valueOf() >= min.valueOf(),
-        max: ( val, [ max ]) => val.valueOf() <= max.valueOf()
-    },
-    buffer: { _check: val => Buffer.isBuffer( val ) },
-    object: {
-        _check: val => isPlainObject( val ),
-        _init: typedef => {
-            // This is how thinky works :/
-            typedef._schema = {};
-        },
-        schema: ( val, [ schema ]) => {
-            Object.entries( schema ).forEach( ([ key, typedef ]) => {
-                if ( isPlainObject( typedef ) )
-                    typedef = new Typedef( 'object', types.object ).schema( typedef );
-                try {
-                    typedef._checkType( val[key]);
-                } catch ( err ) {
-                    throw new Error( `Schema validation failed for ${key}: ${err.message}` );
-                }
-            });
-            return true; // Will throw
-        }
-    },
-    array: {
-        _check: val => Array.isArray( val ),
-        _init: typedef => {
-            typedef._schema = new Typedef( 'any', types.any );
-        },
-        schema: ( val, [ schema ]) => {
-            val.forEach( ( inner, i ) => {
-                try {
-                    schema._checkType( inner );
-                } catch ( err ) {
-                    throw new Error( `Schema validation failed for element ${i}: ${err.message}` );
-                }
-            });
-            return true; // Will throw
-        }
-    },
-    point: {},
-    virtual: {},
-    any: {}
-};
-
-const thinkyType = Object.entries( types ).reduce( ( obj, [ typeName, funcs ]) => Object.assign( obj, {
-    [typeName]: options => new Typedef( typeName, funcs, options )
-}), {});
-
-const getTypedefInstance = typedef => typedef && typedef.type;
-
-// eslint-disable-next-line camelcase
-const getTypedef_default = ( typedef, def = null ) => (
-    typedef && typedef._default ) || def;
-
-// eslint-disable-next-line camelcase
-const getTypedef_schema = ( typedef, def = null ) => (
-    typedef && typedef._schema ) || def;
-
-Object.assign( thinkyType, {
-    isVirtual: typedefInstance => getTypedefInstance( typedefInstance ) === 'virtual',
-    isArray: typedefInstance => getTypedefInstance( typedefInstance ) === 'array',
-    isObject: typedefInstance => getTypedefInstance( typedefInstance ) === 'object',
-    isDate: typedefInstance => getTypedefInstance( typedefInstance ) === 'date'
-});
 
 let idCounter = 0;
 
@@ -1269,7 +1126,7 @@ function createModel ( modelStore ) {
             // Wrap bare objects in schema
             Object.keys( innerSchema ).forEach( key => {
                 if ( isPlainObject( innerSchema[key]) )
-                    innerSchema[key] = thinkyType.object().schema( innerSchema[key]);
+                    innerSchema[key] = thinkyTypeDefs.object().schema( innerSchema[key]);
 
                 const typedefSchema = getTypedef_schema( innerSchema[key]);
                 if ( typedefSchema && typedefSchema._schema ) {
@@ -1380,9 +1237,9 @@ function createModel ( modelStore ) {
 
                 if ( !joinModel ) {
                     joinModel = createModel( modelStore )( `${model._tableName}_${OtherModel._tableName}`, {
-                        id: thinkyType.string().uuid( 4 ),
-                        [`${model._tableName}_${model._pk}`]: thinkyType.string().uuid( 4 ),
-                        [`${OtherModel._tableName}_${OtherModel._pk}`]: thinkyType.string().uuid( 4 )
+                        id: thinkyTypeDefs.string().uuid( 4 ),
+                        [`${model._tableName}_${model._pk}`]: thinkyTypeDefs.string().uuid( 4 ),
+                        [`${OtherModel._tableName}_${OtherModel._pk}`]: thinkyTypeDefs.string().uuid( 4 )
                     });
                     joinModel.ensureIndex( `${model._tableName}_${model._pk}` );
                     joinModel.ensureIndex( `${OtherModel._tableName}_${OtherModel._pk}` );
@@ -1432,7 +1289,7 @@ function createModel ( modelStore ) {
 
             _checkSchema: instance => {
                 try {
-                    thinkyType.object({ ignoreTypeCheck: true }).schema( schema )._checkType( instance );
+                    thinkyTypeDefs.object({ ignoreTypeCheck: true }).schema( schema )._checkType( instance );
                 } catch ( err ) {
                     throw new Error( `Schema validation failed for ${tableName}: ${err.message}` );
                 }
@@ -1467,7 +1324,7 @@ function createModel ( modelStore ) {
                     }
                     return obj;
                 };
-                const rootTypedef = thinkyType.object({ ignoreTypeCheck: true }).schema( schema );
+                const rootTypedef = thinkyTypeDefs.object({ ignoreTypeCheck: true }).schema( schema );
                 interpretValues( instance, rootTypedef );
             },
 
@@ -1680,10 +1537,9 @@ export default function thinkyMock ( tables = {}) {
     // A null model which has no data, for example r.expr() uses the null table, and then adds the values passed into expr
     createModel( modelStore )( '$$null', {});
 
-    // require( 'thinky' )
     const mockInstance = {
         createModel: createModel( modelStore ),
-        type: thinkyType,
+        type: thinkyTypeDefs,
         r,
         Errors: { DocumentNotFound },
         _setTableReturnValue: setTableReturnValue,
@@ -1702,5 +1558,4 @@ export default function thinkyMock ( tables = {}) {
 }
 
 /* eslint-enable no-underscore-dangle */
-/* eslint-enable max-classes-per-file */
 /* eslint-enable filenames/match-exported */
