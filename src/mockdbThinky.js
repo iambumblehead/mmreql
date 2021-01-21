@@ -844,7 +844,11 @@ function createQuery ( model, options = {}) {
 
                 return isSingle ? make( filteredData[0]) : filteredData.map( make );
             }
-            return isSingle ? filteredData[0] : filteredData;
+
+            const response = isSingle ? filteredData[0] : filteredData;
+
+            // undefined values are handled by default() and/or are null
+            return typeof response === 'undefined' ? null : response;
         }
 
         // Fall back to mocking
