@@ -139,14 +139,22 @@ test( 'supports .get()', async t => {
         numeric_id: 5848,
         name_screenname: 'screenname'
     });
+});
 
-    await t.throwsAsync( () => (
-        r.table( 'UserSocial' )
-            .get( 'userSocialId-7575' )
-            .run()
-    ), {
-        message: 'DocumentNotFound'
-    });
+test( 'supports .get(), returns null if document not found', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    const resNoDoc = await r.table( 'UserSocial' )
+        .get( 'userSocialId-7575' )
+        .run();
+
+    t.is( resNoDoc, null );
 });
 
 test( 'supports .nth()', async t => {

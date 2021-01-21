@@ -149,12 +149,11 @@ const update = ( mockdb, tableName, targetDocuments, table, args ) => {
 const get = ( mockdb, tableName, targetDocuments, table, args ) => {
     const primaryKeyValue = unwrapObject( args[0]);
     const tableDoc = mockdbTableGetDocument( table, primaryKeyValue );
-    if ( !tableDoc ) {
-        return {
-            error: 'DocumentNotFound'
-        };
-    }
-
+    // if ( !tableDoc ) {
+    //     return {
+    //         error: 'DocumentNotFound'
+    //     };
+    // }
     return {
         data: [ tableDoc ],
         isSingle: true
