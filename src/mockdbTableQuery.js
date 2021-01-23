@@ -1,6 +1,8 @@
 import {
     isPlainObject,
-    isMatch
+    isMatch,
+    flatten,
+    pick
 } from 'lodash/fp.js';
 
 import {
@@ -19,6 +21,7 @@ import {
 } from './mockdbTable.js';
 
 import {
+    PseudoQuery,
     unwrapObject,
     unwrap
 } from './mockdbReql.js';
@@ -34,16 +37,19 @@ const queryValueAsList = value => (
 // return last query argument (optionally) provides query configurations
 const queryArgsOptions = ( queryArgs, queryOptionsDefault = {}) => {
     const queryOptions = queryArgs.slice( -1 )[0] || {};
+    const queryOptionsType = typeof queryOptions;
 
-    return ( queryOptions && typeof queryOptions === 'object' )
+    return ( queryOptions && /object|function/.test( queryOptionsType ) )
         ? queryOptions
         : queryOptionsDefault;
 };
 
+const reql = {};
+
 // r.table('comments')
 //    .indexCreate('postAndDate', [r.row("postId"), r.row("date")]).run()
 //
-const indexCreate = ( mockdb, tableName, args ) => {
+reql.indexCreate = ( mockdb, tableName, targetDocuments, table, args ) => {
     const fields = Array.isArray( args[1]) ? args[1] : [];
     const config = queryArgsOptions( args );
 
@@ -57,7 +63,7 @@ const indexCreate = ( mockdb, tableName, args ) => {
     };
 };
 
-const indexWait = ( mockdb, tableName ) => {
+reql.indexWait = ( mockdb, tableName ) => {
     const tableIndexList = mockdbStateTableIndexList( mockdb, tableName );
 
     return {
@@ -74,7 +80,7 @@ const indexWait = ( mockdb, tableName ) => {
     };
 };
 
-const indexList = ( mockdb, tableName ) => {
+reql.indexList = ( mockdb, tableName ) => {
     const tableIndexList = mockdbStateTableIndexList( mockdb, tableName );
 
     return {
@@ -84,8 +90,8 @@ const indexList = ( mockdb, tableName ) => {
     };
 };
 
-const insert = ( mockdb, tableName, args, table, documents ) => {
-    documents = queryValueAsList( args[0]);
+reql.insert = ( mockdb, tableName, targetDocuments, table, args ) => {
+    let documents = queryValueAsList( args[0]);
     const options = args[1] || {};
     const [ existingDoc ] = mockdbTableGetDocuments(
         table, documents.map( doc => doc.id ) );
@@ -127,7 +133,7 @@ const insert = ( mockdb, tableName, args, table, documents ) => {
     };
 };
 
-const update = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.update = ( mockdb, tableName, targetDocuments, table, args ) => {
     const updateProps = args[0];
     const updatedDocuments = targetDocuments.reduce( ( updated, targetDoc ) => {
         let tableDoc = mockdbTableGetDocument( table, targetDoc.id );
@@ -153,7 +159,7 @@ const update = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
-const get = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.get = ( mockdb, tableName, targetDocuments, table, args ) => {
     const primaryKeyValue = unwrapObject( args[0]);
     const tableDoc = mockdbTableGetDocument( table, primaryKeyValue );
     // if ( !tableDoc ) {
@@ -167,7 +173,7 @@ const get = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
-const getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
     const queryOptions = queryArgsOptions( args );
     const indexName = queryOptions.index || 'id';
     const indexTargetValue = Array.isArray( args[0]) ? args[0].join() : args[0];
@@ -185,7 +191,7 @@ const getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
-const nth = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.nth = ( mockdb, tableName, targetDocuments, table, args ) => {
     if ( args[0] >= targetDocuments )
         return {
             error: `ReqlNonExistanceError: Index out of bounds: ${args[0]}`
@@ -198,7 +204,7 @@ const nth = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
-const mockDefault = ( mockdb, tableName, targetDocuments, table, args ) => ({
+reql.default = ( mockdb, tableName, targetDocuments, table, args ) => ({
     data: [
         args.reduce( ( current, value ) => (
             ( typeof current === 'undefined' ? unwrapObject( value ) : current )
@@ -207,11 +213,11 @@ const mockDefault = ( mockdb, tableName, targetDocuments, table, args ) => ({
     isSingle: true
 });
 
-const append = () => {
+reql.append = () => {
     throw new Error( 'not yet implemented' );
 };
 
-const mockDelete = ( mockdb, tableName, targetDocuments, table ) => {
+reql.delete = ( mockdb, tableName, targetDocuments, table ) => {
     const indexName = 'id';
     const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
     const targetIds = targetDocuments
@@ -235,7 +241,7 @@ const mockDelete = ( mockdb, tableName, targetDocuments, table ) => {
     };
 };
 
-const contains = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.contains = ( mockdb, tableName, targetDocuments, table, args ) => {
     if ( !args.length ) {
         throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
     }
@@ -254,13 +260,13 @@ const contains = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
-const getField = ( mockdb, tableName, targetDocuments, table, args ) => ({
+reql.getField = ( mockdb, tableName, targetDocuments, table, args ) => ({
     data: [ targetDocuments[0][args[0]] ],
     isSingle: true,
     wrap: false
 });
 
-const mockFilter = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.filter = ( mockdb, tableName, targetDocuments, table, args ) => {
     const [ predicate ] = args;
     return targetDocuments.filter( item => {
         const itemPredicate = unwrap( predicate, item );
@@ -270,19 +276,86 @@ const mockFilter = ( mockdb, tableName, targetDocuments, table, args ) => {
     });
 };
 
-export {
-    get,
-    getAll,
-    indexCreate,
-    indexWait,
-    indexList,
-    insert,
-    update,
-    nth,
-    mockDefault,
-    mockDelete,
-    contains,
-    mockFilter,
-    append,
-    getField
+reql.count = ( mockdb, tableName, targetDocuments ) => ({
+    isSingle: true,
+    wrap: false,
+    data: [ targetDocuments.length ]
+});
+
+reql.pluck = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const props = flatten( args.map( unwrap ).map( arg => arg.args || arg ) );
+    return targetDocuments.map( pick( props ) );
 };
+
+reql.slice = ( mockdb, tableName, targetDocuments, table, args ) => {
+    let [ begin, end ] = args;
+    begin = unwrap( begin );
+    end = unwrap( end );
+    return targetDocuments.slice( begin, end ); // Don't support changing bounds yet
+};
+
+reql.skip = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const count = unwrap( args[0]);
+    return targetDocuments.slice( count );
+};
+
+reql.eqJoin = ( mockdb, tableName, targetDocuments, table, args ) => {
+    let [ leftKey, otherSequence ] = args; // eslint-disable-line prefer-const
+    leftKey = unwrap( leftKey );
+
+    // eslint-disable-next-line no-underscore-dangle
+    const otherData = otherSequence._getResults({ wrap: false });
+    return targetDocuments.map( item => ({
+        left: item,
+        right: otherData.find( other => other.id === item[leftKey])
+    }) ).filter( ({ right }) => right );
+};
+
+reql.innerJoin = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ otherSequence, joinFunc ] = args;
+    const otherItems = unwrap( otherSequence );
+
+    return flatten( targetDocuments.map( item => otherItems.map( otherItem => {
+        const resultFunc = joinFunc( new PseudoQuery( item ), new PseudoQuery( otherItem ) );
+        const match = resultFunc.toFunction()();
+        return match ? {
+            left: item,
+            right: otherItem
+        } : null;
+    }) ) ).filter( x => x !== null );
+};
+
+reql.merge = ( mockdb, tableName, targetDocuments, table, args ) => (
+    targetDocuments.map( item => {
+        const merges = args.map( arg => unwrap( arg, item ) );
+
+        return Object.assign({}, item, ...merges );
+    })
+);
+
+reql.orderBy = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const queryOptions = queryArgsOptions( args );
+    const queryOptionsIndex = queryOptions.index;
+    const indexSortBy = typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortBy;
+    const indexSortDirection = ( typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortDirection ) || 'asc';
+    const indexString = typeof queryOptionsIndex === 'string' && queryOptionsIndex;
+    const indexName = indexSortBy || indexString || 'id';
+    const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
+    const sortDirection = isAscending => (
+        isAscending * ( indexSortDirection === 'asc' ? 1 : -1 ) );
+
+    return targetDocuments.sort( ( doca, docb ) => {
+        const sortFieldValue = doc => (
+            typeof queryOptions === 'function'
+                ? unwrap( queryOptions, doc )
+                : mockdbTableDocGetIndexValue( doc, tableIndexTuple )
+        );
+
+        const docaField = sortFieldValue( doca, tableIndexTuple );
+        const docbField = sortFieldValue( docb, tableIndexTuple );
+
+        return sortDirection( docaField < docbField ? -1 : 1 );
+    });
+};
+
+export default reql;
