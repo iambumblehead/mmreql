@@ -145,6 +145,14 @@ class PseudoQuery {
                 throw new Error( `Not imlemented, adding arrays ${typeof obj}` );
             }
 
+            if ( typeof obj === 'undefined' ) {
+                vals = vals[0].args;
+                const starttype = typeof vals[0];
+
+                if ( starttype === 'number' ) obj = 0;
+                if ( starttype === 'string' ) obj = '';
+            }
+
             return vals.reduce( ( prev, val ) => prev + val, obj );
         }, `${this.str}.add()` );
     }

@@ -7,7 +7,6 @@ import { stub as baseStub, spy as baseSpy } from 'sinon';
 import {
     isEqual,
     isPlainObject,
-    isMatch,
     entries,
     flatten,
     orderBy,
@@ -38,10 +37,15 @@ import {
     indexWait,
     insert,
     update,
+    contains,
     nth,
     get,
     getAll,
-    mockDefault
+    mockDefault,
+    mockDelete,
+    mockFilter,
+    getField,
+    append
 } from './mockdbTableQuery.js';
 
 import {
@@ -143,14 +147,18 @@ const createFunctionQuery = ( model, options ) => {
 function createQuery ( model, options = {}) {
     const id = idCounter;
     idCounter += 1;
+
+    const querySequence = options._filters || [];
+
     const query = new Proxy({
-        _filters: options._filters || [],
+        _filters: querySequence,
         id
     }, {
         get ( target, prop, receiver ) {
             const existing = Reflect.get( target, prop, receiver );
-            if ( existing !== undefined )
+            if ( existing !== undefined ) {
                 return existing;
+            }
 
             if ( proxyIgnore( prop ) ) return undefined;
 
@@ -158,7 +166,7 @@ function createQuery ( model, options = {}) {
                 if ( args.some( a => a === undefined ) )
                     throw new Error( `Cannot call ${prop} with an argument of 'undefined'.` );
 
-                // return createFunctionQuery( model, {
+                // follow-up: findField, brackets impl
                 return createQuery( model, {
                     ...options,
                     _filters: [
@@ -244,7 +252,10 @@ function createQuery ( model, options = {}) {
 
     query.thinky = thinky;
 
-    model._staticMethods.forEach( method => { query[method] = stub().returns( query ); });
+    if ( Array.isArray( model._staticMethods ) )
+        model._staticMethods.forEach( method => {
+            query[method] = stub().returns( query );
+        });
 
     query._getResults = ({ wrap, thinky: resultsThinky = thinky }) => {
         if ( debugDetailed.enabled ) {
@@ -288,13 +299,7 @@ function createQuery ( model, options = {}) {
                     return getAll( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'filter': {
-                    const [ predicate ] = args;
-                    return data.filter( item => {
-                        const itemPredicate = unwrap( predicate, item );
-                        if ( isPlainObject( itemPredicate ) )
-                            return isMatch( itemPredicate, item );
-                        return itemPredicate;
-                    });
+                    return mockFilter( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'slice': {
                     let [ begin, end ] = args;
@@ -324,14 +329,7 @@ function createQuery ( model, options = {}) {
                     return data.map( pick( props ) );
                 }
                 case 'append': {
-                    // const props = flatten( args.map( unwrap ).map( arg => arg.args || arg ) );
-
-                    throw new Error( 'not yet implemented' );
-                    // return {
-                    //     data: [ table[args[0]] ],
-                    //     isSingle: true,
-                    //     wrap: false
-                    // };
+                    return append( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'getJoin': {
                     const [ joins ] = args;
@@ -469,45 +467,17 @@ function createQuery ( model, options = {}) {
                     }) ).filter( x => x !== null ) );
                 }
                 case 'delete': {
-                    let deleted = 0;
-                    data.forEach( doc => {
-                        const index = table.findIndex( item => item[model._pk] === doc[model._pk] || isEqual( item, doc ) );
-                        if ( index !== -1 ) {
-                            table.splice( index, 1 );
-                            deleted += 1;
-                        }
-                    });
-
-                    return {
-                        data: [ { deleted } ],
-                        isSingle: true,
-                        wrap: false
-                    };
+                    return mockDelete( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'nth':
                     return nth( mockdb, model.getTableName(), data, table, args );
-
-                case 'first':
-                    return nth( mockdb, model.getTableName(), data, table, [ 0 ]);
 
                 case 'insert': {
                     return insert( mockdb, model.getTableName(), args, table );
                 }
 
                 case 'contains': {
-                    if ( !args.length ) throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
-
-                    return {
-                        data: [ args.every( predicate => {
-                            // A PseudoQuery argument is treated as a scalar argument,
-                            // and a direct function argument is treated as a predicate
-                            if ( typeof predicate === 'function' && !predicate.toFunction )
-                                return data.some( item => unwrap( predicate, item ) );
-                            return data.includes( unwrap( predicate ) );
-                        }) ],
-                        isSingle: true,
-                        wrap: false
-                    };
+                    return contains( mockdb, model.getTableName(), data, table, args );
                 }
                 case 'not': {
                     if ( isSingle && typeof data[0] === 'boolean' )
@@ -607,6 +577,9 @@ function createQuery ( model, options = {}) {
 
                 case 'default':
                     return mockDefault( mockdb, model.getTableName(), data, table, args );
+
+                case 'getField':
+                    return getField( mockdb, model.getTableName(), data, table, args );
 
                 case 'indexCreate':
                     return indexCreate( mockdb, model.getTableName(), args );
@@ -766,7 +739,7 @@ function createQuery ( model, options = {}) {
             if ( lastFilter && lastFilter.method === 'delete' )
                 throw new Error( 'You are calling .run() after .delete() in a thinky query. This will throw a ValidationError.' );
         }
-
+        // follow-up findField
         return query._getResults({ wrap: query.thinky });
     };
     query.runAndCheckErrors = query.run;
@@ -1358,12 +1331,16 @@ function createModel ( modelStore ) {
         model = new Proxy( model, {
             get ( target, prop, receiver ) {
                 const existing = Reflect.get( target, prop, receiver );
-                if ( existing )
+                if ( existing ) {
                     return existing;
+                }
 
                 if ( proxyIgnore( prop ) ) return undefined;
 
-                return ( ...args ) => createQuery( model )[prop]( ...args );
+                // eslint-disable-next-line arrow-body-style
+                return ( ...args ) => {
+                    return createQuery( model )[prop]( ...args );
+                };
             }
         });
 
@@ -1377,6 +1354,7 @@ function createModel ( modelStore ) {
         });
 
         modelStore[tableName] = model;
+
         return model;
     };
 }
@@ -1508,6 +1486,8 @@ export default function thinkyMock ( tables = {}) {
                 createModel( modelStore )( tableName, {});
                 model = modelStore[tableName];
             }
+
+            // follow-up getFiled bracket
             return createQuery( model, { thinky: false });
         },
         connectPool: opts => ({
