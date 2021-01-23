@@ -157,7 +157,7 @@
          "error",
          "^([A-Za-z0-9-]+)([\\.A-Z][A-Za-z0-9]+)*$"
       ],
-      "filenames/match-exported": "error",
+      "filenames/match-exported": "off",
       "filenames/no-index": "error",
       "security/detect-non-literal-fs-filename": "off",
       "security/detect-child-process": "off"

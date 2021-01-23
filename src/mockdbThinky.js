@@ -1,4 +1,3 @@
-/* eslint-disable filenames/match-exported */
 import casual from 'casual';
 import createDebug from 'debug';
 import { inspect } from 'util';
@@ -9,8 +8,6 @@ import {
     isPlainObject,
     entries,
     flatten,
-    orderBy,
-    pick,
     pipe,
     filter,
     fromPairs,
@@ -31,22 +28,8 @@ import {
     mockdbStateCreate
 } from './mockdbState.js';
 
-import {
-    indexCreate,
-    indexList,
-    indexWait,
-    insert,
-    update,
-    contains,
-    nth,
-    get,
-    getAll,
-    mockDefault,
-    mockDelete,
-    mockFilter,
-    getField,
-    append
-} from './mockdbTableQuery.js';
+import queryReql from './mockdbTableQuery.js';
+import queryThinky from './mockdbQueryThinky.js';
 
 import {
     queryFilterIsDefault
@@ -186,27 +169,16 @@ function createQuery ( model, options = {}) {
                     // combination of reflection and promises used for
                     // surrounding parts makes this necessary
                     //
-                    // if all query methods are exported
-                    // from a file, the resulting list could be mapped
-                    // here and used to replace the case statment
-                    [
-                        'run',
-                        'get',
-                        'getAll',
-                        'indexCreate',
-                        'indexWait',
-                        'indexList',
-                        'insert',
-                        'update',
-                        'nth',
-                        'mockdefault',
-                        'mockdelete',
-                        'contains',
-                        'mockfilter',
-                        'append',
-                        'getField',
-                        'delete'
-                    ].forEach( queryname => {
+                    // the reflections makes it passible to call
+                    // any method of any name, defined or not,
+                    // on the returned object -- returning a function
+                    // and function does not have this
+                    Object.keys( queryReql ).forEach( queryname => {
+                        queryname = queryname.replace( /mock/, '' );
+                        doc[queryname] = results[queryname];
+                    });
+
+                    Object.keys( queryThinky ).forEach( queryname => {
                         queryname = queryname.replace( /mock/, '' );
                         doc[queryname] = results[queryname];
                     });
@@ -331,125 +303,17 @@ function createQuery ( model, options = {}) {
             const runOneFilter = ( oneFilter, data ) => {
                 const { args, method } = oneFilter;
 
+                if ( queryReql[method]) {
+                    return queryReql[method](
+                        mockdb, model.getTableName(), data, table, args );
+                }
+
+                if ( queryThinky[method]) {
+                    return queryThinky[method](
+                        mockdb, model.getTableName(), data, table, args, wrap, model, createQuery, r );
+                }
+
                 switch ( method ) {
-                case 'get': {
-                    return get( mockdb, model.getTableName(), data, table, args );
-                }
-                case 'getAll': {
-                    return getAll( mockdb, model.getTableName(), data, table, args );
-                }
-                case 'filter': {
-                    return mockFilter( mockdb, model.getTableName(), data, table, args );
-                }
-                case 'slice': {
-                    let [ begin, end ] = args;
-                    begin = unwrap( begin );
-                    end = unwrap( end );
-                    return data.slice( begin, end ); // Don't support changing bounds yet
-                }
-                case 'skip': {
-                    const count = unwrap( args[0]);
-                    return data.slice( count );
-                }
-                case 'merge': {
-                    return data.map( item => {
-                        const merges = args.map( arg => unwrap( arg, item ) );
-                        return Object.assign({}, item, ...merges );
-                    });
-                }
-                case 'count': {
-                    return {
-                        isSingle: true,
-                        wrap: false,
-                        data: [ data.length ]
-                    };
-                }
-                case 'pluck': {
-                    const props = flatten( args.map( unwrap ).map( arg => arg.args || arg ) );
-                    return data.map( pick( props ) );
-                }
-                case 'append': {
-                    return append( mockdb, model.getTableName(), data, table, args );
-                }
-                case 'getJoin': {
-                    const [ joins ] = args;
-                    entries( joins ).forEach( ([ join, joinValue ]) => {
-                        // model._joins[fieldName] = { model, leftKey, rightKey, belongs: true, many: true };
-                        const joinInfo = model._joins[join];
-                        if ( !joinInfo ) return;
-
-                        data.forEach( item => {
-                            if ( joinInfo.many && joinInfo.belongs ) { // hasAndBelongsToMany
-                                const otherIds = []
-                                    .concat( item[`$${joinInfo.model.getTableName()}_ids`] || [])
-                                    .concat( createQuery( joinInfo.joinModel )
-                                        .filter({ [`${model._tableName}_${model._pk}`]: item[model._pk] })
-                                        .map( row => row( `${joinInfo.model._tableName}_${joinInfo.model._pk}` ) )
-                                        ._getResults({ wrap: false }) );
-
-                                if ( !otherIds.length )
-                                    item[join] = [];
-
-                                let innerQuery = createQuery( joinInfo.model )
-                                    .filter( other => r.expr( otherIds ).contains( other( joinInfo.rightKey ) ) );
-
-                                if ( typeof joinValue === 'object' )
-                                    innerQuery = innerQuery.getJoin( joinValue );
-
-                                if ( typeof joinValue._apply === 'function' )
-                                    innerQuery = joinValue._apply( innerQuery );
-
-                                item[join] = innerQuery._getResults({ wrap });
-                            } else if ( joinInfo.many ) { // hasMany
-                                let innerQuery = createQuery( joinInfo.model )
-                                    .filter({ [joinInfo.rightKey]: item[joinInfo.leftKey] });
-
-                                if ( typeof joinValue === 'object' )
-                                    innerQuery = innerQuery.getJoin( joinValue );
-
-                                if ( typeof joinValue._apply === 'function' )
-                                    innerQuery = joinValue._apply( innerQuery );
-
-                                item[join] = innerQuery._getResults({ wrap });
-                            } else if ( joinInfo.belongs ) { // belongsTo
-                                let innerQuery = createQuery( joinInfo.model )
-                                    .filter({ [joinInfo.rightKey]: item[joinInfo.leftKey] });
-
-                                if ( typeof joinValue === 'object' )
-                                    innerQuery = innerQuery.getJoin( joinValue );
-
-                                if ( typeof joinValue._apply === 'function' )
-                                    innerQuery = joinValue._apply( innerQuery );
-
-                                item[join] = innerQuery._getResults({ wrap })[0] || null;
-                            } else { // hasOne
-                                let innerQuery = createQuery( joinInfo.model )
-                                    .filter({ [joinInfo.rightKey]: item[joinInfo.leftKey] });
-
-                                if ( typeof joinValue === 'object' )
-                                    innerQuery = innerQuery.getJoin( joinValue );
-
-                                if ( typeof joinValue._apply === 'function' )
-                                    innerQuery = joinValue._apply( innerQuery );
-
-                                item[join] = innerQuery._getResults({ wrap })[0] || null;
-                            }
-                        });
-                    });
-                    return data;
-                }
-                case 'eqJoin': {
-                    wrap = false;
-
-                    let [ leftKey, otherSequence ] = args; // eslint-disable-line prefer-const
-                    leftKey = unwrap( leftKey );
-
-                    const otherData = otherSequence._getResults({ wrap });
-                    return data.map( item => ({
-                        left: item,
-                        right: otherData.find( other => other.id === item[leftKey])
-                    }) ).filter( ({ right }) => right );
-                }
                 case 'concatMap': {
                     const [ func ] = args;
                     const mapped = rethinkMap( data, func );
@@ -460,21 +324,6 @@ function createQuery ( model, options = {}) {
                     const values = args.map( unwrap );
                     // Only array supported right now
                     return [ ...data, ...values ];
-                }
-                case 'orderBy': {
-                    let [ arg ] = args;
-                    if ( !isPlainObject( arg ) )
-                        arg = { sortBy: arg, sortDirection: 'asc' };
-
-                    const { sortBy, sortDirection } = arg;
-
-                    return orderBy( obj => {
-                        const val = typeof sortBy === 'function' && !sortBy.toFunction
-                            ? unwrap( sortBy, obj )
-                            : obj[unwrap( sortBy, obj )];
-
-                        return val instanceof Date ? val.valueOf() : val;
-                    }, sortDirection, data );
                 }
                 case 'limit': {
                     const limit = unwrap( args[0]);
@@ -492,33 +341,7 @@ function createQuery ( model, options = {}) {
                         return args.every( name => Object.prototype.hasOwnProperty.call( item, name ) );
                     });
                 }
-                case 'innerJoin': {
-                    // Nested loop inner join
-                    const [ otherSequence, joinFunc ] = args;
-                    const otherItems = unwrap( otherSequence );
 
-                    return flatten( data.map( item => otherItems.map( otherItem => {
-                        const resultFunc = joinFunc( new PseudoQuery( item ), new PseudoQuery( otherItem ) );
-                        const match = resultFunc.toFunction()();
-                        return match ? {
-                            left: item,
-                            right: otherItem
-                        } : null;
-                    }) ).filter( x => x !== null ) );
-                }
-                case 'delete': {
-                    return mockDelete( mockdb, model.getTableName(), data, table, args );
-                }
-                case 'nth':
-                    return nth( mockdb, model.getTableName(), data, table, args );
-
-                case 'insert': {
-                    return insert( mockdb, model.getTableName(), args, table );
-                }
-
-                case 'contains': {
-                    return contains( mockdb, model.getTableName(), data, table, args );
-                }
                 case 'not': {
                     if ( isSingle && typeof data[0] === 'boolean' )
                         return [ !data[0] ];
@@ -565,9 +388,7 @@ function createQuery ( model, options = {}) {
                 }
                 case 'context':
                     return data;
-                case 'update': {
-                    return update( mockdb, model.getTableName(), data, table, args );
-                }
+
                 case 'isEmpty': {
                     return {
                         data: [ data.length === 0 ],
@@ -614,21 +435,6 @@ function createQuery ( model, options = {}) {
                 case 'distinct':
                     // Rethink has its own alg for finding distinct, but unique by ID should be sufficient here.
                     return uniqBy( 'id', data );
-
-                case 'default':
-                    return mockDefault( mockdb, model.getTableName(), data, table, args );
-
-                case 'getField':
-                    return getField( mockdb, model.getTableName(), data, table, args );
-
-                case 'indexCreate':
-                    return indexCreate( mockdb, model.getTableName(), args );
-
-                case 'indexWait':
-                    return indexWait( mockdb, model.getTableName(), args );
-
-                case 'indexList':
-                    return indexList( mockdb, model.getTableName(), args );
 
                 case 'upcase':
                     return {
@@ -1584,4 +1390,3 @@ export default function thinkyMock ( tables = {}) {
 }
 
 /* eslint-enable no-underscore-dangle */
-/* eslint-enable filenames/match-exported */
