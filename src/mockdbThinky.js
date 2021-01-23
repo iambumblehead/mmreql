@@ -167,13 +167,53 @@ function createQuery ( model, options = {}) {
                     throw new Error( `Cannot call ${prop} with an argument of 'undefined'.` );
 
                 // follow-up: findField, brackets impl
-                return createQuery( model, {
+                const results = createQuery( model, {
                     ...options,
                     _filters: [
                         ...query._filters,
                         { method: prop, args }
                     ]
                 });
+
+                if ( prop === 'get' && isPlainObject( results ) ) {
+                    const doc = be => {
+                        const { r } = model._modelStore;
+
+                        return r.expr( results ).getField( be );
+                    };
+                    Object.assign( doc, results );
+
+                    // combination of reflection and promises used for
+                    // surrounding parts makes this necessary
+                    //
+                    // if all query methods are exported
+                    // from a file, the resulting list could be mapped
+                    // here and used to replace the case statment
+                    [
+                        'run',
+                        'get',
+                        'getAll',
+                        'indexCreate',
+                        'indexWait',
+                        'indexList',
+                        'insert',
+                        'update',
+                        'nth',
+                        'mockdefault',
+                        'mockdelete',
+                        'contains',
+                        'mockfilter',
+                        'append',
+                        'getField',
+                        'delete'
+                    ].forEach( queryname => {
+                        queryname = queryname.replace( /mock/, '' );
+                        doc[queryname] = results[queryname];
+                    });
+
+                    return doc;
+                }
+                return results;
             };
         },
         set ( target, prop, value, receiver ) {
@@ -590,6 +630,12 @@ function createQuery ( model, options = {}) {
                 case 'indexList':
                     return indexList( mockdb, model.getTableName(), args );
 
+                case 'upcase':
+                    return {
+                        data: [ String( data[0]).toUpperCase() ],
+                        isSingle: true
+                    };
+
                 default:
                     console.warn( `Unimplemented rethink method ${method} - query results are likely inaccurate.` );
                     return data;
@@ -734,12 +780,12 @@ function createQuery ( model, options = {}) {
     // };
 
     query.run = async () => {
+        const lastFilter = ( query._filters || []).slice( -1 )[0] || {};
         if ( query.thinky ) {
-            const lastFilter = query._filters && query._filters[query._filters.length - 1];
             if ( lastFilter && lastFilter.method === 'delete' )
                 throw new Error( 'You are calling .run() after .delete() in a thinky query. This will throw a ValidationError.' );
         }
-        // follow-up findField
+
         return query._getResults({ wrap: query.thinky });
     };
     query.runAndCheckErrors = query.run;

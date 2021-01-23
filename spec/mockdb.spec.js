@@ -383,6 +383,22 @@ test( 'supports .getField()', async t => {
     t.is( ironManEquipment[0], 'boots' );
 });
 
+test( 'supports brackets lookup ()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'IronMan',
+            equipment: [ 'boots' ]
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .get( 'IronMan' )( 'equipment' )
+        .upcase().run();
+
+    t.is( res, 'BOOTS' );
+});
+
 /*
 test( 'supports .append()', async t => {
     const { r } = rethinkdbMocked([
