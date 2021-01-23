@@ -139,6 +139,23 @@ class PseudoQuery {
         }, `${this.str}.downcase()` );
     }
 
+    upcase () {
+        return this.replace( obj => {
+            if ( typeof obj !== 'string' )
+                throw new Error( `Cannot upcase a non-string ${typeof obj}` );
+            return obj.toUpperCase();
+        }, `${this.str}.upcase()` );
+    }
+
+    getField ( field ) {
+        return this.replace( obj => {
+            if ( !isPlainObject( obj ) ) {
+                throw new Error( `Cannot getField non-object ${typeof obj}` );
+            }
+            return obj[field];
+        });
+    }
+
     add ( ...vals ) {
         return this.replace( obj => {
             if ( Array.isArray( obj ) ) {
