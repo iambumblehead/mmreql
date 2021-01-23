@@ -30,6 +30,21 @@ const mockdbTableSetDocuments = ( table, docs ) => {
     return [ table, docs ];
 };
 
+const mockdbTableRmDocumentsAll = table => {
+    table.length = 0;
+
+    return [ table ];
+};
+
+// set the entire table, replace existing documents
+const mockdbTableSet = ( table, docs ) => {
+    table.length = 0;
+
+    docs.forEach( doc => table.push( doc ) );
+
+    return [ table ];
+};
+
 const mockdbTableDocGetIndexValue = ( doc, indexTuple, indexValueDefault ) => {
     const [ indexName, fields /* , options */ ] = indexTuple;
 
@@ -49,5 +64,7 @@ export {
     mockdbTableGetDocuments,
     mockdbTableSetDocument,
     mockdbTableSetDocuments,
-    mockdbTableDocGetIndexValue
+    mockdbTableDocGetIndexValue,
+    mockdbTableRmDocumentsAll,
+    mockdbTableSet
 };

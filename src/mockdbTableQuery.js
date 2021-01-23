@@ -1,4 +1,9 @@
 import {
+    isPlainObject,
+    isMatch
+} from 'lodash/fp.js';
+
+import {
     mockdbStateTableIndexAdd,
     mockdbStateTableIndexList,
     mockdbStateTableGetIndexTuple
@@ -9,11 +14,13 @@ import {
     mockdbTableSetDocument,
     mockdbTableGetDocuments,
     mockdbTableSetDocuments,
-    mockdbTableDocGetIndexValue
+    mockdbTableDocGetIndexValue,
+    mockdbTableSet
 } from './mockdbTable.js';
 
 import {
-    unwrapObject
+    unwrapObject,
+    unwrap
 } from './mockdbReql.js';
 
 import {
@@ -200,6 +207,69 @@ const mockDefault = ( mockdb, tableName, targetDocuments, table, args ) => ({
     isSingle: true
 });
 
+const append = () => {
+    throw new Error( 'not yet implemented' );
+};
+
+const mockDelete = ( mockdb, tableName, targetDocuments, table ) => {
+    const indexName = 'id';
+    const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
+    const targetIds = targetDocuments
+        .map( doc => mockdbTableDocGetIndexValue( doc, tableIndexTuple ) );
+    // eslint-disable-next-line security/detect-non-literal-regexp
+    const targetIdRe = new RegExp( `^(${targetIds.join( '|' )})$` );
+    const tableFiltered = table.filter( doc => !targetIdRe.test(
+        mockdbTableDocGetIndexValue( doc, tableIndexTuple ) ) );
+    const deleted = table.length - tableFiltered.length;
+
+    mockdbTableSet( table, tableFiltered );
+
+    return {
+        data: [
+            mockdbResChangesFieldCreate({
+                deleted
+            })
+        ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
+const contains = ( mockdb, tableName, targetDocuments, table, args ) => {
+    if ( !args.length ) {
+        throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
+    }
+
+    return {
+        data: [ args.every( predicate => {
+            // A PseudoQuery argument is treated as a scalar argument,
+            // and a direct function argument is treated as a predicate
+            if ( typeof predicate === 'function' && !predicate.toFunction ) {
+                return targetDocuments.some( item => unwrap( predicate, item ) );
+            }
+            return targetDocuments.includes( unwrap( predicate ) );
+        }) ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
+const getField = ( mockdb, tableName, targetDocuments, table, args ) => ({
+    data: [ targetDocuments[0][args[0]] ],
+    isSingle: true,
+    wrap: false
+});
+
+const mockFilter = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ predicate ] = args;
+    return targetDocuments.filter( item => {
+        const itemPredicate = unwrap( predicate, item );
+        if ( isPlainObject( itemPredicate ) )
+            return isMatch( itemPredicate, item );
+        return itemPredicate;
+    });
+};
+
 export {
     get,
     getAll,
@@ -209,5 +279,10 @@ export {
     insert,
     update,
     nth,
-    mockDefault
+    mockDefault,
+    mockDelete,
+    contains,
+    mockFilter,
+    append,
+    getField
 };
