@@ -14,7 +14,6 @@ import {
     cloneDeep,
     mapValues,
     map,
-    groupBy,
     uniqBy
 } from 'lodash/fp.js';
 
@@ -158,6 +157,8 @@ function createQuery ( model, options = {}) {
                     ]
                 });
 
+                // follow up add max support
+                // if ( /get/.test( prop ) && isPlainObject( results ) ) {
                 if ( prop === 'get' && isPlainObject( results ) ) {
                     const doc = be => {
                         const { r } = model._modelStore;
@@ -305,7 +306,10 @@ function createQuery ( model, options = {}) {
 
                 if ( queryReql[method]) {
                     return queryReql[method](
-                        mockdb, model.getTableName(), data, table, args );
+                        mockdb, model.getTableName(), data, table, args, {
+                            isSingle,
+                            isGrouped
+                        });
                 }
 
                 if ( queryThinky[method]) {
@@ -342,35 +346,6 @@ function createQuery ( model, options = {}) {
                     });
                 }
 
-                case 'not': {
-                    if ( isSingle && typeof data[0] === 'boolean' )
-                        return [ !data[0] ];
-                    throw new Error( 'Cannot call not() on non-boolean value.' );
-                }
-                case 'gt': {
-                    if ( !isSingle ) throw new Error( 'Cannot gt on sequence.' );
-                    let [ val ] = args;
-                    val = unwrap( val, data[0]);
-                    return [ data[0] > val ];
-                }
-                case 'lt': {
-                    if ( !isSingle ) throw new Error( 'Cannot lt on sequence.' );
-                    let [ val ] = args;
-                    val = unwrap( val, data[0]);
-                    return [ data[0] < val ];
-                }
-                case 'eq': {
-                    if ( !isSingle ) throw new Error( 'Cannot eq on sequence.' );
-                    let [ val ] = args;
-                    val = unwrap( val, data[0]);
-                    return [ data[0] === val ];
-                }
-                case 'ne': {
-                    if ( !isSingle ) throw new Error( 'Cannot ne on sequence.' );
-                    let [ val ] = args;
-                    val = unwrap( val, data[0]);
-                    return [ data[0] !== val ];
-                }
                 case 'expr': {
                     wrap = false;
                     const [ value ] = args;
@@ -410,18 +385,7 @@ function createQuery ( model, options = {}) {
                         wrap: false
                     };
                 }
-                case 'group': {
-                    const [ func ] = args;
-                    const groupedData = groupBy( item => rethinkMap( item, func ), data );
-                    const rethinkFormat = Object.entries( groupedData )
-                        .map( ([ group, reduction ]) => ({ group, reduction }) );
-                    return {
-                        isGrouped: true,
-                        data: rethinkFormat
-                    };
-                }
-                case 'ungroup':
-                    return { isGrouped: false, data };
+
                 case 'or':
                     return {
                         data: [ args.reduce( ( current, value ) => !!( current || unwrap( value ) ), !!data[0]) ],
@@ -471,7 +435,8 @@ function createQuery ( model, options = {}) {
                         ({ isGrouped } = results );
                 };
 
-                if ( isGrouped ) { // If we're grouped, then subsequent commands run once for each group
+                // eslint-disable-next-line no-constant-condition
+                if ( false && isGrouped ) { // If we're grouped, then subsequent commands run once for each group
                     const results = filteredData.map( group => ({
                         group: group.group,
                         result: runOneFilter( oneFilter, group.reduction )
