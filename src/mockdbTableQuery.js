@@ -3,7 +3,8 @@ import {
     groupBy,
     isMatch,
     flatten,
-    pick
+    pick,
+    uniqBy
 } from 'lodash/fp.js';
 
 import {
@@ -56,6 +57,13 @@ const rethinkMap = ( data, func ) => {
         return data.map( item => rethinkMap( item, func ) );
 
     return unwrap( func, data );
+};
+
+// use when order not important and sorting helps verify a list
+const compare = ( a, b, prop ) => {
+    if ( a[prop] < b[prop]) return -1;
+    if ( a[prop] > b[prop]) return 1;
+    return 0;
 };
 
 const reql = {};
@@ -305,6 +313,15 @@ reql.pluck = ( mockdb, tableName, targetDocuments, table, args ) => {
     return targetDocuments.map( pick( props ) );
 };
 
+reql.hasFields = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const res = targetDocuments.filter( item => {
+        if ( !item ) return false;
+        return args.every( name => Object.prototype.hasOwnProperty.call( item, name ) );
+    });
+
+    return res;
+};
+
 reql.slice = ( mockdb, tableName, targetDocuments, table, args ) => {
     let [ begin, end ] = args;
     begin = unwrap( begin );
@@ -315,6 +332,11 @@ reql.slice = ( mockdb, tableName, targetDocuments, table, args ) => {
 reql.skip = ( mockdb, tableName, targetDocuments, table, args ) => {
     const count = unwrap( args[0]);
     return targetDocuments.slice( count );
+};
+
+reql.limit = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const limit = unwrap( args[0]);
+    return targetDocuments.slice( 0, limit );
 };
 
 reql.eqJoin = ( mockdb, tableName, targetDocuments, table, args ) => {
@@ -440,6 +462,36 @@ reql.merge = ( mockdb, tableName, targetDocuments, table, args ) => (
     })
 );
 
+reql.concatMap = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ func ] = args;
+    const mapped = rethinkMap( targetDocuments, func );
+    const flattened = flatten( mapped );
+    return flattened.map( unwrap );
+};
+
+reql.isEmpty = ( mockdb, tableName, targetDocuments ) => ({
+    data: [ targetDocuments.length === 0 ],
+    isSingle: true,
+    wrap: false
+});
+
+reql.add = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ target ] = targetDocuments;
+    const values = args.map( unwrap );
+    let result;
+
+    if ( /number|string/.test( typeof target ) )
+        result = values.reduce( ( prev, val ) => prev + val, target );
+    if ( Array.isArray( target ) )
+        result = [ ...target, ...values ];
+
+    return {
+        data: [ result ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
 reql.group = ( mockdb, tableName, targetDocuments, table, args ) => {
     const [ func ] = args;
     const groupedData = groupBy( item => rethinkMap( item, func ), targetDocuments );
@@ -460,28 +512,156 @@ reql.ungroup = ( mockdb, tableName, targetDocuments ) => ({
 });
 
 reql.orderBy = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const queryOptions = queryArgsOptions( args );
+    const queryOptions = typeof args[0] === 'function'
+        ? args[0]
+        : queryArgsOptions( args );
     const queryOptionsIndex = queryOptions.index;
     const indexSortBy = typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortBy;
     const indexSortDirection = ( typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortDirection ) || 'asc';
     const indexString = typeof queryOptionsIndex === 'string' && queryOptionsIndex;
+    const argsSortPropValue = typeof args[0] === 'string' && args[0];
     const indexName = indexSortBy || indexString || 'id';
     const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
     const sortDirection = isAscending => (
         isAscending * ( indexSortDirection === 'asc' ? 1 : -1 ) );
 
-    return targetDocuments.sort( ( doca, docb ) => {
-        const sortFieldValue = doc => (
-            typeof queryOptions === 'function'
-                ? unwrap( queryOptions, doc )
-                : mockdbTableDocGetIndexValue( doc, tableIndexTuple )
-        );
+    const getSortFieldValue = doc => {
+        let value;
 
-        const docaField = sortFieldValue( doca, tableIndexTuple );
-        const docbField = sortFieldValue( docb, tableIndexTuple );
+        if ( typeof queryOptions === 'function' ) {
+            value = unwrap( queryOptions, doc );
+        } else if ( argsSortPropValue ) {
+            value = doc[argsSortPropValue];
+        } else {
+            value = mockdbTableDocGetIndexValue( doc, tableIndexTuple );
+        }
+
+        return value;
+    };
+
+    return targetDocuments.sort( ( doca, docb ) => {
+        const docaField = getSortFieldValue( doca, tableIndexTuple );
+        const docbField = getSortFieldValue( docb, tableIndexTuple );
 
         return sortDirection( docaField < docbField ? -1 : 1 );
     });
+};
+
+// Return the hour in a time object as a number between 0 and 23.
+reql.hours = ( mockdb, tableName, targetDocuments ) => {
+    const val = new Date( targetDocuments[0]).getHours();
+
+    return {
+        data: [ val ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
+reql.minutes = ( mockdb, tableName, targetDocuments ) => {
+    const val = new Date( targetDocuments[0]).getMinutes();
+
+    return {
+        data: [ val ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
+reql.expr = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ value ] = args;
+    const resolved = unwrap( value );
+
+    if ( Array.isArray( resolved ) ) {
+        return { isSingle: false, data: resolved };
+    }
+
+    return {
+        isSingle: true,
+        data: [ resolved ],
+        wrap: false
+    };
+};
+
+reql.coerceTo = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ coerceType ] = args;
+    let resolved = unwrap( targetDocuments[0]);
+
+    if ( coerceType === 'string' )
+        resolved = String( resolved );
+
+    return {
+        data: [ resolved ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
+reql.upcase = ( mockdb, tableName, targetDocuments ) => ({
+    data: [ String( targetDocuments[0]).toUpperCase() ],
+    isSingle: true
+});
+
+reql.map = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ func ] = args;
+    return rethinkMap( targetDocuments, func );
+};
+
+reql.or = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const res = args.reduce(
+        ( current, value ) => !!( current || unwrap( value ) ),
+        !!targetDocuments[0]);
+
+    return {
+        data: [ res ],
+        isSingle: true
+    };
+};
+
+reql.and = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const res = args.reduce(
+        ( current, value ) => !!( current && unwrap( value ) ),
+        !!targetDocuments[0]);
+
+    return {
+        data: [ res ],
+        isSingle: true
+    };
+};
+
+// Rethink has its own alg for finding distinct,
+// but unique by ID should be sufficient here.
+reql.distinct = ( mockdb, tableName, targetDocuments ) => {
+    const res = Array.isArray( targetDocuments )
+        ? targetDocuments.filter(
+            ( item, pos, self ) => self.indexOf( item ) === pos )
+        : uniqBy( 'id', targetDocuments );
+
+    return res;
+};
+
+reql.context = ( mockdb, tableName, targetDocuments ) => (
+    targetDocuments
+);
+
+reql.union = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const queryOptions = queryArgsOptions( args );
+
+    if ( queryOptions )
+        args.splice( -1, 1 );
+
+    let res = args.reduce( ( argData, value ) => {
+        value = unwrap( value );
+        return argData.concat( value );
+    }, targetDocuments );
+
+    if ( queryOptions && queryOptions.interleave ) {
+        res = res.sort(
+            ( a, b ) => compare( a, b, queryOptions.interleave )
+        );
+    }
+
+    return res;
 };
 
 export default reql;

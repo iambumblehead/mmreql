@@ -13,8 +13,7 @@ import {
     fromPairs,
     cloneDeep,
     mapValues,
-    map,
-    uniqBy
+    map
 } from 'lodash/fp.js';
 
 import {
@@ -283,19 +282,6 @@ function createQuery ( model, options = {}) {
         if ( !table )
             throw new Error( `No data for ${model.getTableName()}` );
 
-        const rethinkMap = ( data, func ) => {
-            // .map( 'someProperty' )
-            if ( typeof func === 'string' ) {
-                const property = func;
-                func = obj => obj( property );
-            }
-
-            if ( Array.isArray( data ) )
-                return data.map( item => rethinkMap( item, func ) );
-
-            return unwrap( func, data );
-        };
-
         if ( table ) { // Try to find it in mocked table.
             let filteredData = table.map( cloneDeep );
             let isSingle = false;
@@ -317,99 +303,8 @@ function createQuery ( model, options = {}) {
                         mockdb, model.getTableName(), data, table, args, wrap, model, createQuery, r );
                 }
 
-                switch ( method ) {
-                case 'concatMap': {
-                    const [ func ] = args;
-                    const mapped = rethinkMap( data, func );
-                    const flattened = flatten( mapped );
-                    return flattened.map( unwrap );
-                }
-                case 'add': {
-                    const values = args.map( unwrap );
-                    // Only array supported right now
-                    return [ ...data, ...values ];
-                }
-                case 'limit': {
-                    const limit = unwrap( args[0]);
-                    return data.slice( 0, limit );
-                }
-                case 'coerceTo':
-                    return data; // We don't care
-                case 'map': {
-                    const [ func ] = args;
-                    return rethinkMap( data, func );
-                }
-                case 'hasFields': {
-                    return data.filter( item => {
-                        if ( !item ) return false;
-                        return args.every( name => Object.prototype.hasOwnProperty.call( item, name ) );
-                    });
-                }
-
-                case 'expr': {
-                    wrap = false;
-                    const [ value ] = args;
-                    const resolved = unwrap( value );
-                    if ( Array.isArray( resolved ) ) {
-                        return { isSingle: false, data: resolved };
-                    }
-                    return { isSingle: true, data: [ resolved ] };
-                }
-                case 'union': {
-                    return args.reduce( ( argData, value ) => {
-                        value = unwrap( value );
-                        return argData.concat( value );
-                    }, data );
-                }
-                case 'context':
-                    return data;
-
-                case 'isEmpty': {
-                    return {
-                        data: [ data.length === 0 ],
-                        isSingle: true,
-                        wrap: false
-                    };
-                }
-                case 'hours': {
-                    return {
-                        data: new Date( data[0]).getHours(),
-                        isSingle: true,
-                        wrap: false
-                    };
-                }
-                case 'minutes': {
-                    return {
-                        data: new Date( data[0]).getMinutes(),
-                        isSingle: true,
-                        wrap: false
-                    };
-                }
-
-                case 'or':
-                    return {
-                        data: [ args.reduce( ( current, value ) => !!( current || unwrap( value ) ), !!data[0]) ],
-                        isSingle: true
-                    };
-                case 'and':
-                    return {
-                        data: [ args.reduce( ( current, value ) => !!( current && unwrap( value ) ), !!data[0]) ],
-                        isSingle: true
-                    };
-                case 'distinct':
-                    // Rethink has its own alg for finding distinct, but unique by ID should be sufficient here.
-                    return uniqBy( 'id', data );
-
-                case 'upcase':
-                    return {
-                        data: [ String( data[0]).toUpperCase() ],
-                        isSingle: true
-                    };
-
-                default:
-                    console.warn( `Unimplemented rethink method ${method} - query results are likely inaccurate.` );
-                    return data;
-                }
+                console.warn( `Unimplemented rethink method ${method} - query results are likely inaccurate.` );
+                return data;
             };
 
             // filters ex,
