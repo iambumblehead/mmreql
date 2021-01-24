@@ -1,5 +1,6 @@
 import {
     isPlainObject,
+    groupBy,
     isMatch,
     flatten,
     pick
@@ -42,6 +43,19 @@ const queryArgsOptions = ( queryArgs, queryOptionsDefault = {}) => {
     return ( queryOptions && /object|function/.test( queryOptionsType ) )
         ? queryOptions
         : queryOptionsDefault;
+};
+
+const rethinkMap = ( data, func ) => {
+    // .map( 'someProperty' )
+    if ( typeof func === 'string' ) {
+        const property = func;
+        func = obj => obj( property );
+    }
+
+    if ( Array.isArray( data ) )
+        return data.map( item => rethinkMap( item, func ) );
+
+    return unwrap( func, data );
 };
 
 const reql = {};
@@ -260,11 +274,15 @@ reql.contains = ( mockdb, tableName, targetDocuments, table, args ) => {
     };
 };
 
-reql.getField = ( mockdb, tableName, targetDocuments, table, args ) => ({
-    data: [ targetDocuments[0][args[0]] ],
-    isSingle: true,
-    wrap: false
-});
+reql.getField = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const data = targetDocuments[0][args[0]];
+
+    return {
+        data: [ data ],
+        isSingle: true,
+        wrap: false
+    };
+};
 
 reql.filter = ( mockdb, tableName, targetDocuments, table, args ) => {
     const [ predicate ] = args;
@@ -325,6 +343,95 @@ reql.innerJoin = ( mockdb, tableName, targetDocuments, table, args ) => {
     }) ) ).filter( x => x !== null );
 };
 
+reql.not = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    if ( opts.isSingle && typeof targetDocuments[0] !== 'boolean' )
+        throw new Error( 'Cannot call not() on non-boolean value.' );
+
+    return [ !targetDocuments[0] ];
+};
+
+reql.gt = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    if ( !opts.isSingle )
+        throw new Error( 'Cannot gt on sequence.' );
+
+    return [ targetDocuments[0] > unwrap( args[0], targetDocuments[0]) ];
+};
+
+reql.lt = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    if ( !opts.isSingle )
+        throw new Error( 'Cannot lt on sequence.' );
+
+    return [ targetDocuments[0] < unwrap( args[0], targetDocuments[0]) ];
+};
+
+reql.eq = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    if ( !opts.isSingle )
+        throw new Error( 'Cannot eq on sequence.' );
+
+    return [ targetDocuments[0] === unwrap( args[0], targetDocuments[0]) ];
+};
+
+reql.ne = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    if ( !opts.isSingle )
+        throw new Error( 'Cannot ne on sequence.' );
+
+    return [ targetDocuments[0] !== unwrap( args[0], targetDocuments[0]) ];
+};
+
+reql.max = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    const getListMax = ( list, prop ) => list.reduce( ( maxDoc, doc ) => (
+        maxDoc[prop] > doc[prop] ? maxDoc : doc
+    ), targetDocuments[0]);
+
+    const getListMaxGroups = ( groups, prop ) => (
+        groups.reduce( ( prev, target ) => {
+            prev.push({
+                ...target,
+                reduction: getListMax( target.reduction, prop )
+            });
+
+            return prev;
+        }, [])
+    );
+
+    return {
+        data: [
+            opts.isGrouped
+                ? getListMaxGroups( targetDocuments[0], args[0])
+                : getListMax( targetDocuments, args[0])
+        ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
+reql.min = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+    const getListMin = ( list, prop ) => list.reduce( ( maxDoc, doc ) => (
+        maxDoc[prop] < doc[prop] ? maxDoc : doc
+    ), targetDocuments[0]);
+
+    const getListMinGroups = ( groups, prop ) => (
+        groups.reduce( ( prev, target ) => {
+            prev.push({
+                ...target,
+                reduction: getListMin( target.reduction, prop )
+            });
+
+            return prev;
+        }, [])
+    );
+
+    return {
+        data: [
+            opts.isGrouped
+                ? getListMinGroups( targetDocuments[0], args[0])
+                : getListMin( targetDocuments, args[0])
+        ],
+        isSingle: true,
+        wrap: false
+    };
+};
+
 reql.merge = ( mockdb, tableName, targetDocuments, table, args ) => (
     targetDocuments.map( item => {
         const merges = args.map( arg => unwrap( arg, item ) );
@@ -332,6 +439,25 @@ reql.merge = ( mockdb, tableName, targetDocuments, table, args ) => (
         return Object.assign({}, item, ...merges );
     })
 );
+
+reql.group = ( mockdb, tableName, targetDocuments, table, args ) => {
+    const [ func ] = args;
+    const groupedData = groupBy( item => rethinkMap( item, func ), targetDocuments );
+    const rethinkFormat = Object.entries( groupedData )
+        .map( ([ group, reduction ]) => ({ group, reduction }) );
+
+    return {
+        isGrouped: true,
+        isSingle: true,
+        data: [ rethinkFormat ]
+    };
+};
+
+reql.ungroup = ( mockdb, tableName, targetDocuments ) => ({
+    isGrouped: false,
+    isSingle: true,
+    data: targetDocuments
+});
 
 reql.orderBy = ( mockdb, tableName, targetDocuments, table, args ) => {
     const queryOptions = queryArgsOptions( args );

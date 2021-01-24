@@ -3,6 +3,13 @@ import rethinkdbMocked from '../src/mockdb.js';
 import mockedReql from '../src/mockdbReql.js';
 import { mockdbResErrorDuplicatePrimaryKey } from '../src/mockdbRes.js';
 
+// use when order not important and sorting helps verify a list
+const compare = ( a, b, prop ) => {
+    if ( a[prop] < b[prop]) return -1;
+    if ( a[prop] > b[prop]) return 1;
+    return 0;
+};
+
 test( 'supports add()', async t => {
     const r = mockedReql();
     const start = Date.now();
@@ -222,6 +229,38 @@ test( 'supports .count()', async t => {
     t.is( res, 2 );
 });
 
+test( 'supports .max()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r.table( 'games' ).max( 'points' ).run();
+
+    t.deepEqual( res, {
+        id: 2, player: 'Bob', points: 15, type: 'ranked'
+    });
+});
+
+test( 'supports .min()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r.table( 'games' ).min( 'points' ).run();
+
+    t.deepEqual( res, {
+        id: 12, player: 'Alice', points: 2, type: 'free'
+    });
+});
+
 test( 'supports .pluck() from document', async t => {
     const { r } = rethinkdbMocked([
         [ 'UserSocial', {
@@ -344,6 +383,127 @@ test( 'supports .skip(1)', async t => {
         id: 'userSocialId-9012',
         numeric_id: 5555,
         name_screenname: 'screenname'
+    } ]);
+});
+
+test( 'supports .group() (basic)', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r.table( 'games' ).group( 'player' ).run();
+
+    t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+        group: 'Alice',
+        reduction: [
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' }
+        ]
+    }, {
+        group: 'Bob',
+        reduction: [
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' }
+        ]
+    } ]);
+});
+
+test( 'supports .group().max() query', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r.table( 'games' ).group( 'player' ).max( 'points' ).run();
+
+    t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+        group: 'Alice',
+        reduction: { id: 5, player: 'Alice', points: 7, type: 'free' }
+    }, {
+        group: 'Bob',
+        reduction: { id: 2, player: 'Bob', points: 15, type: 'ranked' }
+    } ]);
+});
+
+test( 'supports .group().min() query', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r.table( 'games' ).group( 'player' ).min( 'points' ).run();
+
+    t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+        group: 'Alice',
+        reduction: { id: 12, player: 'Alice', points: 2, type: 'free' }
+    }, {
+        group: 'Bob',
+        reduction: { id: 11, player: 'Bob', points: 10, type: 'free' }
+    } ]);
+});
+
+test( 'supports .ungroup() query', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r
+        .table( 'games' )
+        .group( 'player' )
+        .ungroup()
+        .run();
+
+    t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+        group: 'Alice',
+        reduction: [
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' }
+        ]
+    }, {
+        group: 'Bob',
+        reduction: [
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' }
+        ]
+    } ]);
+});
+
+// eslint-disable-next-line ava/no-skip-test
+test.skip( 'supports .ungroup() complex query', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r
+        .table( 'games' )
+        .group( 'player' ).max( 'points' )( 'points' )
+        .ungroup().orderBy( r.desc( 'reduction' ) )
+        .run();
+
+    t.deepEqual( res, [ {
+        group: 'Bob',
+        reduction: 15
+    }, {
+        group: 'Alice',
+        reduction: 7
     } ]);
 });
 
@@ -532,6 +692,118 @@ test( 'supports .orderBy(), dynamic function', async t => {
         { id: 1, name: 'ryu', upvotes: 6, downvotes: 30 },
         { id: 3, name: 'chun-li', upvotes: 7, downvotes: 3 }
     ]);
+});
+
+test( 'supports .gt(), applied to row', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'player', {
+            id: 'playerId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            score: 6
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'player' )
+        .filter( row => row( 'score' ).gt( 8 ) )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'playerId-1234',
+        score: 10
+    } ]);
+});
+
+test( 'supports .lt(), applied to row', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'player', {
+            id: 'playerId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            score: 6
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'player' )
+        .filter( row => row( 'score' ).lt( 8 ) )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'playerId-5678',
+        score: 6
+    } ]);
+});
+
+test( 'supports .eq(), applied to row', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'player', {
+            id: 'playerId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            score: 6
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'player' )
+        .filter( row => row( 'score' ).eq( 6 ) )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'playerId-5678',
+        score: 6
+    } ]);
+});
+
+test( 'supports .ne(), applied to row', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'player', {
+            id: 'playerId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            score: 6
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'player' )
+        .filter( row => row( 'score' ).ne( 6 ) )
+        .run();
+
+    // r function not yet supported
+    // t.is( await r( true ).not().run(), false );
+    t.deepEqual( res, [ {
+        id: 'playerId-1234',
+        score: 10
+    } ]);
+});
+
+test( 'supports .not(), applied to row', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'player', {
+            id: 'playerId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            score: 6
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'player' )
+        .filter( row => row( 'score' ).eq( 6 ).not() )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'playerId-1234',
+        score: 10
+    } ]);
 });
 
 test( 'supports .nth()', async t => {
