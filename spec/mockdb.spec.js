@@ -1,7 +1,10 @@
 import test from 'ava';
+import timezonemock from 'timezone-mock';
 import rethinkdbMocked from '../src/mockdb.js';
 import mockedReql from '../src/mockdbReql.js';
 import { mockdbResErrorDuplicatePrimaryKey } from '../src/mockdbRes.js';
+
+timezonemock.register( 'US/Pacific' );
 
 // use when order not important and sorting helps verify a list
 const compare = ( a, b, prop ) => {
@@ -10,14 +13,46 @@ const compare = ( a, b, prop ) => {
     return 0;
 };
 
-test( 'supports add()', async t => {
+test( 'supports add(), no table', async t => {
     const r = mockedReql();
-    const start = Date.now();
+    // const start = Date.now();
 
     t.is( await r.expr( 2 ).add( 2 ).run(), 4 );
     t.is( await r.expr( 'foo' ).add( 'bar', 'baz' ).run(), 'foobarbaz' );
     t.is( await r.add( r.args([ 'bar', 'baz' ]) ).run(), 'barbaz' );
-    t.true( ( new Date( await r.now().add( 365 ).run() ) ).getTime() <= start + 365 );
+    // t.true( ( new Date( await r.now().add( 363 ).run() ) ).getTime() <= start + 365 );
+});
+
+test( 'supports add()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'IronMan',
+            name: 'iron'
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .get( 'IronMan' )( 'name' )
+        .add( 'bar', 'baz' ).run();
+
+    t.is( res, 'ironbarbaz' );
+});
+
+test( 'supports add(), array', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'IronMan',
+            names: [ 'iron' ]
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .get( 'IronMan' )( 'names' )
+        .add( 'bar', 'baz' ).run();
+
+    t.deepEqual( res, [ 'iron', 'bar', 'baz' ]);
 });
 
 test( 'supports r.args()', async t => {
@@ -229,6 +264,19 @@ test( 'supports .count()', async t => {
     t.is( res, 2 );
 });
 
+test( 'supports .isEmpty()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel',
+            { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
+            { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] },
+            { id: 'xavier', defeatedMonsters: [ 'jiggly puff' ] } ],
+        [ 'emptytable' ]
+    ]);
+
+    t.is( await r.table( 'marvel' ).isEmpty().run(), false );
+    t.is( await r.table( 'emptytable' ).isEmpty().run(), true );
+});
+
 test( 'supports .max()', async t => {
     const { r } = rethinkdbMocked([
         [ 'games',
@@ -384,6 +432,27 @@ test( 'supports .skip(1)', async t => {
         numeric_id: 5555,
         name_screenname: 'screenname'
     } ]);
+});
+
+test( 'supports .concatMap()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel',
+            { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
+            { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] },
+            { id: 'xavier', defeatedMonsters: [ 'jiggly puff' ] } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .concatMap( hero => hero( 'defeatedMonsters' ) )
+        .run();
+
+    t.deepEqual( res, [
+        'squirtle',
+        'charzar',
+        'fiery',
+        'jiggly puff'
+    ]);
 });
 
 test( 'supports .group() (basic)', async t => {
@@ -617,6 +686,26 @@ test( 'supports .orderBy()', async t => {
         { id: 2, name: 'balrog', strength: 5 },
         { id: 1, name: 'ryu', strength: 6 },
         { id: 3, name: 'chun-li', strength: 7 }
+    ]);
+});
+
+test( 'supports .orderBy property', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'streetfighter',
+            { id: 1, name: 'ryu', strength: 6 },
+            { id: 2, name: 'balrog', strength: 5 },
+            { id: 3, name: 'chun-li', strength: 7 } ]
+    ]);
+
+    const res = await r
+        .table( 'streetfighter' )
+        .orderBy( 'name' )
+        .run();
+
+    t.deepEqual( res, [
+        { id: 2, name: 'balrog', strength: 5 },
+        { id: 3, name: 'chun-li', strength: 7 },
+        { id: 1, name: 'ryu', strength: 6 }
     ]);
 });
 
@@ -1009,6 +1098,22 @@ test( 'supports brackets lookup ()', async t => {
     t.is( res, 'BOOTS' );
 });
 
+test( 'supports brackets upcase()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'IronMan',
+            equipment: [ 'boots' ]
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .get( 'IronMan' )( 'equipment' )
+        .upcase().run();
+
+    t.is( res, 'BOOTS' );
+});
+
 /*
 test( 'supports .append()', async t => {
     const { r } = rethinkdbMocked([
@@ -1268,4 +1373,293 @@ test( '.contains() should return containing documents', async t => {
         name: 'Wolverine',
         city: 'Chicago'
     } ]);
+});
+
+test( '.limit() should return limited documents', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'appuser-1234',
+            name: 'Siren',
+            city: 'Los Angeles'
+        }, {
+            id: 'appuser-5678',
+            name: 'Xavier',
+            city: 'Detroit'
+        }, {
+            id: 'appuser-9012',
+            name: 'Wolverine',
+            city: 'Chicago'
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .limit( 2 )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'appuser-1234',
+        name: 'Siren',
+        city: 'Los Angeles'
+    }, {
+        id: 'appuser-5678',
+        name: 'Xavier',
+        city: 'Detroit'
+    } ]);
+});
+
+test( '.hasFields() should return documents with fields', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'appuser-1234',
+            name: 'Siren',
+            city: 'Los Angeles',
+            nick: 'la'
+        }, {
+            id: 'appuser-5678',
+            name: 'Xavier',
+            city: 'Detroit',
+            nick: 'moore'
+        }, {
+            id: 'appuser-9012',
+            name: 'Wolverine',
+            city: 'Chicago'
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .hasFields( 'nick' )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'appuser-1234',
+        name: 'Siren',
+        city: 'Los Angeles',
+        nick: 'la'
+    }, {
+        id: 'appuser-5678',
+        name: 'Xavier',
+        city: 'Detroit',
+        nick: 'moore'
+    } ]);
+});
+
+test( 'supports .hours()', async t => {
+    // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
+    const date = new Date( 1365222221485 );
+
+    const { r } = rethinkdbMocked([
+        [ 'posts',
+            { id: 1, author: 'ryu', date } ]
+    ]);
+
+    const res = await r
+        .table( 'posts' )
+        .get( 1 )
+        .getField( 'date' )
+        .hours()
+        .run();
+
+    t.is( res, 21 );
+});
+
+test( 'supports .minutes()', async t => {
+    // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
+    const date = new Date( 1365222221485 );
+
+    const { r } = rethinkdbMocked([
+        [ 'posts',
+            { id: 1, author: 'ryu', date } ]
+    ]);
+
+    const res = await r
+        .table( 'posts' )
+        .get( 1 )
+        .getField( 'date' )
+        .minutes()
+        .run();
+
+    t.is( res, 23 );
+});
+
+// eslint-disable-next-line ava/no-skip-test
+test.skip( 'supports .hours(), filter', async t => {
+    // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
+    const date = new Date( 1365222221485 );
+
+    const { r } = rethinkdbMocked([
+        [ 'posts',
+            { id: 1, author: 'ryu', date } ]
+    ]);
+
+    const res = await r
+        .table( 'posts' )
+        .filter( post => post( 'date' ).hours().gt( 4 ) )
+        .run();
+
+    t.deepEqual( res, [ { id: 1, author: 'ryu', date } ]);
+});
+
+test( 'expr()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'posts',
+            { id: 1, author: 'ryu' } ]
+    ]);
+
+    const res = await r
+        .expr({ a: 'b' })
+        .merge({ b: [ 1, 2, 3 ] })
+        .run();
+
+    t.deepEqual( res, {
+        a: 'b',
+        b: [ 1, 2, 3 ]
+    });
+});
+
+test( 'supports .coerceTo()', async t => {
+    // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
+    const date = new Date( 1365222221485 );
+
+    const { r } = rethinkdbMocked([
+        [ 'posts',
+            { id: 1, author: 'ryu', date } ]
+    ]);
+
+    const res = await r
+        .table( 'posts' )
+        .get( 1 )
+        .getField( 'date' )
+        .minutes()
+        .coerceTo( 'string' )
+        .run();
+
+    t.is( res, '23' );
+});
+
+test( 'map()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'users', {
+            id: 'userid-fred-1234',
+            name: 'fred'
+        }, {
+            id: 'userid-jane-1234',
+            name: 'jane'
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'users' )
+        .map( doc => doc.merge({ userId: doc( 'id' ) }) )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'userid-fred-1234',
+        userId: 'userid-fred-1234',
+        name: 'fred'
+    }, {
+        id: 'userid-jane-1234',
+        userId: 'userid-jane-1234',
+        name: 'jane'
+    } ]);
+});
+
+test( 'or()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'users', {
+            id: 'userid-fred-1234',
+            first: 1,
+            second: 0
+        }, {
+            id: 'userid-jane-1234',
+            first: 0,
+            second: 0
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'users' )
+        .filter( row => row( 'first' ).eq( 1 ).or( row( 'second' ).eq( 1 ) ) )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'userid-fred-1234',
+        first: 1,
+        second: 0
+    } ]);
+});
+
+test( 'and()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'users', {
+            id: 'userid-fred-1234',
+            first: 1,
+            second: 0
+        }, {
+            id: 'userid-jane-1234',
+            first: 0,
+            second: 0
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'users' )
+        .filter( row => row( 'first' ).eq( 0 ).and( row( 'second' ).eq( 0 ) ) )
+        .run();
+
+    t.deepEqual( res, [ {
+        id: 'userid-jane-1234',
+        first: 0,
+        second: 0
+    } ]);
+});
+
+test( 'supports .distinct()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel',
+            { id: 'wolverine', defeatedMonsters: [ 'squirtle', 'fiery' ] },
+            { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery', 'squirtle' ] },
+            { id: 'xavier', defeatedMonsters: [ 'jiggly puff' ] } ],
+        [ 'emptytable' ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .concatMap( hero => hero( 'defeatedMonsters' ) )
+        .distinct()
+        .run();
+
+    t.deepEqual( res, [ 'squirtle', 'fiery', 'charzar', 'jiggly puff' ]);
+});
+
+test( 'supports .union', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'streetfighter',
+            { id: 1, name: 'ryu', strength: 6 },
+            { id: 2, name: 'balrog', strength: 5 },
+            { id: 3, name: 'chun-li', strength: 7 } ],
+        [ 'pokemon',
+            { id: 1, name: 'squirtle', strength: 3 },
+            { id: 2, name: 'charmander', strength: 8 },
+            { id: 3, name: 'fiery', strength: 5 } ]
+    ]);
+
+    const res = await r
+        .table( 'streetfighter' )
+        .orderBy( 'name' )
+        .union(
+            await r.table( 'pokemon' ).orderBy( 'name' ), {
+                interleave: 'name'
+            }
+        ).run();
+
+    t.deepEqual( res, [
+        { id: 2, name: 'balrog', strength: 5 },
+        { id: 2, name: 'charmander', strength: 8 },
+        { id: 3, name: 'chun-li', strength: 7 },
+        { id: 3, name: 'fiery', strength: 5 },
+        { id: 1, name: 'ryu', strength: 6 },
+        { id: 1, name: 'squirtle', strength: 3 }
+    ]);
 });
