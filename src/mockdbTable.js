@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { unwrap } from './mockdbReql.js';
+// import { unwrap } from './mockdbReql.js';
 
 const mockdbTableGetDocument = ( table, id ) => table
     .find( doc => doc.id === id );
@@ -45,12 +45,12 @@ const mockdbTableSet = ( table, docs ) => {
     return [ table ];
 };
 
-const mockdbTableDocGetIndexValue = ( doc, indexTuple, indexValueDefault ) => {
+const mockdbTableDocGetIndexValue = ( doc, indexTuple, spend, indexValueDefault, reqlChain ) => {
     const [ indexName, fields /* , options */ ] = indexTuple;
 
     if ( fields.length ) {
         indexValueDefault = fields
-            .map( field => unwrap( field, doc ) )
+            .map( field => spend( field, reqlChain, doc ) )
             .join( ',' );
     } else {
         indexValueDefault = doc[indexName];

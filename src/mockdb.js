@@ -1,35 +1,20 @@
-import rethinkDBMocked, {
-    PseudoQuery,
-    unwrap
-} from './mockdbReql.js';
+import thinkyMocked from './mockdbThinky.js';
 
-import thinkyMocked, {
-    thinkyMockedDB,
-    thinkyMockedDBObject,
-    thinkyMockedDBDocGen
-} from './mockdbThinky.js';
+import {
+    mockdbStateTableCreate
+} from './mockdbState.js';
 
-export default tables => {
-    const mockedDB = thinkyMockedDB();
-
-    const tableMap = tables.reduce( ( map, tablelist ) => {
-        map[tablelist[0]] = thinkyMockedDBDocGen(
-            mockedDB,
-            thinkyMockedDBObject( tablelist[0], () => tablelist.slice( 1 ) )
-        );
+export default startTables => {
+    const tables = Array.isArray( startTables ) ? startTables : [];
+    const { tableMap, dbState } = tables.reduce( ( map, tablelist ) => {
+        map.tableMap[tablelist[0]] = tablelist.slice( 1 );
+        map.dbState = mockdbStateTableCreate( map.dbState, tablelist[0]);
 
         return map;
-    }, {});
+    }, {
+        tableMap: {},
+        dbState: {}
+    });
 
-    return thinkyMocked( tableMap );
-};
-
-export {
-    PseudoQuery,
-    unwrap,
-    rethinkDBMocked,
-    thinkyMocked,
-    thinkyMockedDB,
-    thinkyMockedDBObject,
-    thinkyMockedDBDocGen
+    return thinkyMocked( tableMap, dbState );
 };

@@ -1,10 +1,8 @@
+import { v4 as uuidv4 } from 'uuid';
+
 import {
     isPlainObject,
-    groupBy,
-    isMatch,
-    flatten,
-    pick,
-    uniqBy
+    isMatch
 } from 'lodash/fp.js';
 
 import {
@@ -23,40 +21,28 @@ import {
 } from './mockdbTable.js';
 
 import {
-    PseudoQuery,
-    unwrapObject,
-    unwrap
-} from './mockdbReql.js';
-
-import {
     mockdbResChangesFieldCreate,
     mockdbResErrorDuplicatePrimaryKey
 } from './mockdbRes.js';
 
-const queryValueAsList = value => (
-    Array.isArray( value ) ? value : [ value ]);
+// const queryValueAsList = value => (
+//     Array.isArray( value ) ? value : [ value ]);
+
+const isReqlObj = obj => Boolean(
+    obj && /object|function/.test( typeof obj ) && obj.isReql );
+
+const isConfigObj = ( obj, objType = typeof obj ) => obj
+      && /object|function/.test( objType )
+      && !isReqlObj( obj )
+      && !Array.isArray( obj );
 
 // return last query argument (optionally) provides query configurations
 const queryArgsOptions = ( queryArgs, queryOptionsDefault = {}) => {
     const queryOptions = queryArgs.slice( -1 )[0] || {};
-    const queryOptionsType = typeof queryOptions;
 
-    return ( queryOptions && /object|function/.test( queryOptionsType ) )
+    return ( isConfigObj( queryOptions ) )
         ? queryOptions
         : queryOptionsDefault;
-};
-
-const rethinkMap = ( data, func ) => {
-    // .map( 'someProperty' )
-    if ( typeof func === 'string' ) {
-        const property = func;
-        func = obj => obj( property );
-    }
-
-    if ( Array.isArray( data ) )
-        return data.map( item => rethinkMap( item, func ) );
-
-    return unwrap( func, data );
 };
 
 // use when order not important and sorting helps verify a list
@@ -66,344 +52,532 @@ const compare = ( a, b, prop ) => {
     return 0;
 };
 
+const isReqlArgs = value => (
+    value && typeof value === 'object' && value.queryName === 'args' );
+
+export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) => {
+    if ( value === f ) {
+        f = value;
+    } else if ( isReqlObj( value ) ) {
+        if ( value.record ) {
+            f = value.play( doc );
+        } else {
+            f = value.run();
+        }
+    } else if ( /string|boolean|number|undefined/.test( type ) ) {
+        f = value;
+        if ( doc && !doc.playbackStub ) {
+            f = doc[value];
+        }
+    } else if ( Array.isArray( value ) ) {
+        // detach if value is has args
+        if ( isReqlArgs( value.slice( -1 )[0]) ) {
+            f = value.slice( -1 )[0].run();
+        } else {
+            f = value.map( v => spend( v, reqlChain ) );
+        }
+    } else if ( type === 'function' ) {
+        if ( doc ) {
+            f = value( reqlChain().expr( doc ) ).run();
+        } else {
+            f = value().run();
+        }
+    } else if ( value instanceof Date ) {
+        f = value;
+    } else {
+        f = Object.keys( value ).reduce( ( prev, key ) => {
+            prev[key] = spend( value[key], reqlChain );
+
+            return prev;
+        }, {});
+    }
+
+    return f;
+};
+
 const reql = {};
 
-// r.table('comments')
-//    .indexCreate('postAndDate', [r.row("postId"), r.row("date")]).run()
-//
-reql.indexCreate = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const fields = Array.isArray( args[1]) ? args[1] : [];
+reql.connectPool = opts => ({
+    connParam: {
+        db: opts.db,
+        user: opts.user || 'admin',
+        password: opts.password,
+        buffer: 1,
+        max: 1,
+        timeout: 20,
+        pingInterval: -1,
+        timeoutError: 1000,
+        timeoutGb: 3600000,
+        maxExponent: 6,
+        silent: false,
+        log: [ () => {} ]
+    },
+    servers: [ {
+        host: opts.host,
+        port: opts.port
+    } ]
+});
+
+reql.indexCreate = ( queryState, args, reqlChain, dbState ) => {
+    const indexName = args[0];
+    const fields = spend( Array.isArray( args[1]) ? args[1] : [], reqlChain );
     const config = queryArgsOptions( args );
 
-    mockdbStateTableIndexAdd( mockdb, tableName, args[0], fields, config );
+    mockdbStateTableIndexAdd(
+        dbState, queryState.tablename, indexName, fields, config );
 
     // should throw ReqlRuntimeError if index exits already
-    return {
-        data: [ { created: 1 } ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = { created: 1 };
+
+    return queryState;
 };
 
-reql.indexWait = ( mockdb, tableName ) => {
-    const tableIndexList = mockdbStateTableIndexList( mockdb, tableName );
+reql.indexWait = ( queryState, args, reqlChain, dbState ) => {
+    const tableIndexList = mockdbStateTableIndexList(
+        dbState, queryState.tablename );
 
-    return {
-        data: tableIndexList.map( indexName => ({
-            index: indexName,
-            ready: true,
-            function: 1234,
-            multi: false,
-            geo: false,
-            outdated: false
-        }) ),
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = tableIndexList.map( indexName => ({
+        index: indexName,
+        ready: true,
+        function: 1234,
+        multi: false,
+        geo: false,
+        outdated: false
+    }) );
+
+    return queryState;
 };
 
-reql.indexList = ( mockdb, tableName ) => {
-    const tableIndexList = mockdbStateTableIndexList( mockdb, tableName );
+reql.indexList = ( queryState, args, reqlChain, dbState ) => {
+    queryState.target = mockdbStateTableIndexList(
+        dbState, queryState.tablename );
 
-    return {
-        data: [ tableIndexList ],
-        isSingle: true,
-        wrap: false
-    };
+    return queryState;
 };
 
-reql.insert = ( mockdb, tableName, targetDocuments, table, args ) => {
-    let documents = queryValueAsList( args[0]);
+reql.insert = ( queryState, args, reqlChain ) => {
+    let documents = spend( args.slice( 0, 1 ), reqlChain );
+    let table = queryState.tablelist;
     const options = args[1] || {};
     const [ existingDoc ] = mockdbTableGetDocuments(
-        table, documents.map( doc => doc.id ) );
+        queryState.tablelist, documents.map( doc => doc.id ) );
 
     if ( existingDoc ) {
-        return {
-            isSingle: true,
-            wrap: false,
-            data: [
-                mockdbResChangesFieldCreate({
-                    errors: 1,
-                    firstError: mockdbResErrorDuplicatePrimaryKey(
-                        existingDoc,
-                        documents.find( doc => doc.id === existingDoc.id )
-                    )
-                })
-            ]
-        };
+        queryState.target = mockdbResChangesFieldCreate({
+            errors: 1,
+            firstError: mockdbResErrorDuplicatePrimaryKey(
+                existingDoc,
+                documents.find( doc => doc.id === existingDoc.id )
+            )
+        });
+
+        return queryState;
     }
 
     [ table, documents ] = mockdbTableSetDocuments(
-        table, documents.map( doc => unwrapObject( doc ) ) );
+        table, documents.map( doc => spend( doc, reqlChain ) ) );
 
-    return {
-        data: [
-            mockdbResChangesFieldCreate({
-                inserted: documents.length,
-                generated_keys: documents.map( doc => doc.id ),
-                changes: options.returnChanges === true
-                    ? documents.map( doc => ({
-                        old_val: null,
-                        new_val: doc
-                    }) )
-                    : undefined
-            })
-        ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = mockdbResChangesFieldCreate({
+        inserted: documents.length,
+        generated_keys: documents.map( doc => doc.id ),
+        changes: options.returnChanges === true
+            ? documents.map( doc => ({
+                old_val: null,
+                new_val: doc
+            }) )
+            : undefined
+    });
+
+    return queryState;
 };
 
-reql.update = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const updateProps = args[0];
-    const updatedDocuments = targetDocuments.reduce( ( updated, targetDoc ) => {
-        let tableDoc = mockdbTableGetDocument( table, targetDoc.id );
+reql.update = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+    const queryTable = queryState.tablelist;
+    const updateProps = spend( args[0], reqlChain );
+
+    const updateTarget = targetDoc => {
+        let tableDoc = mockdbTableGetDocument( queryTable, targetDoc.id );
 
         if ( tableDoc ) {
             Object.assign( tableDoc, updateProps || {});
-            [ table, tableDoc ] = mockdbTableSetDocument( table, tableDoc );
-
-            updated.push( tableDoc );
+            [ , tableDoc ] = mockdbTableSetDocument( queryTable, tableDoc );
         }
+
+        return tableDoc;
+    };
+
+    const updatedDocs = (
+        Array.isArray( queryTarget )
+            ? queryTarget
+            : [ queryTarget ]
+    ).reduce( ( updated, targetDoc ) => {
+        const tableDoc = updateTarget( targetDoc );
+
+        if ( tableDoc )
+            updated.push( tableDoc );
 
         return updated;
     }, []);
 
-    return {
-        isSingle: true,
-        wrap: false,
-        data: [
-            mockdbResChangesFieldCreate({
-                replaced: updatedDocuments.length
-            })
-        ]
-    };
+    queryState.target = mockdbResChangesFieldCreate({
+        replaced: updatedDocs.length
+    });
+
+    return queryState;
 };
 
-reql.get = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const primaryKeyValue = unwrapObject( args[0]);
-    const tableDoc = mockdbTableGetDocument( table, primaryKeyValue );
-    // if ( !tableDoc ) {
-    //     return {
-    //         error: 'DocumentNotFound'
-    //     };
-    // }
-    return {
-        data: [ tableDoc ],
-        isSingle: true
-    };
+reql.get = ( queryState, args, reqlChain ) => {
+    const primaryKeyValue = spend( args[0], reqlChain );
+    const tableDoc = mockdbTableGetDocument( queryState.target, primaryKeyValue );
+
+    if ( tableDoc ) {
+        queryState.target = tableDoc;
+    } else {
+        queryState.target = null;
+    }
+
+    return queryState;
 };
 
-reql.getAll = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.get.fn = ( queryState, args, reqlChain ) => (
+    reqlChain().expr( queryState.target ).getField( args[0]) );
+
+reql.getAll = ( queryState, args, reqlChain, dbState ) => {
     const queryOptions = queryArgsOptions( args );
+    const { tablename } = queryState;
     const indexName = queryOptions.index || 'id';
     const indexTargetValue = Array.isArray( args[0]) ? args[0].join() : args[0];
-    const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
+    const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, tablename, indexName );
 
-    table = table.filter( doc => (
-        mockdbTableDocGetIndexValue( doc, tableIndexTuple ) === indexTargetValue
-    ) );
-
+    queryState.target = queryState.target.filter( doc => (
+        mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend, reqlChain ) === indexTargetValue
+    ) ).sort( () => 0.5 - Math.random() );
     // rethink output array is not in-order
-    return {
-        isSingle: false,
-        wrap: true,
-        data: table.sort( () => 0.5 - Math.random() )
-    };
+
+    return queryState;
 };
 
-reql.nth = ( mockdb, tableName, targetDocuments, table, args ) => {
-    if ( args[0] >= targetDocuments )
-        return {
-            error: `ReqlNonExistanceError: Index out of bounds: ${args[0]}`
-        };
+reql.replace = ( queryState, args, reqlChain ) => {
+    let replaced = 0;
+    const replacement = spend( args[0], reqlChain );
+    const targetIndexName = 'id';
+    const targetIndex = queryState.tablelist
+        .findIndex( doc => doc[targetIndexName] === replacement[targetIndexName]);
 
-    return {
-        data: [ targetDocuments[args[0]] ],
-        isSingle: true,
-        wrap: false
-    };
+    if ( targetIndex > -1 ) {
+        replaced += 1;
+        queryState.tablelist[targetIndex] = replacement;
+    }
+
+    queryState.target = mockdbResChangesFieldCreate({
+        replaced
+    });
+
+    return queryState;
 };
 
-reql.default = ( mockdb, tableName, targetDocuments, table, args ) => ({
-    data: [
-        args.reduce( ( current, value ) => (
-            ( typeof current === 'undefined' ? unwrapObject( value ) : current )
-        ), targetDocuments[0])
-    ],
-    isSingle: true
-});
+reql.nth = ( queryState, args, reqlChain ) => {
+    const nthIndex = spend( args[0], reqlChain );
 
-reql.append = () => {
-    throw new Error( 'not yet implemented' );
+    if ( nthIndex >= queryState.target.length ) {
+        queryState.error = `ReqlNonExistanceError: Index out of bounds: ${nthIndex}`;
+        queryState.target = null;
+    } else {
+        queryState.target = queryState.target[args[0]];
+    }
+
+    return queryState;
 };
 
-reql.delete = ( mockdb, tableName, targetDocuments, table ) => {
+// r.row → value
+reql.row = {};
+reql.rowPlayback = ( queryState, args, reqlChain ) => (
+    reql.getField( queryState, args, reqlChain ) );
+
+// reql.row.fn = ( queryState, args, reqlChain, dbState, tables ) => (
+//     reqlChain().expr( queryState.target ).getField( args[0]) );
+
+reql.default = ( queryState, args, reqlChain ) => {
+    if ( queryState.target === null ) {
+        queryState.error = null;
+        queryState.target = spend( args[0], reqlChain );
+    }
+
+    return queryState;
+};
+
+// time.during(startTime, endTime[, {leftBound: "closed", rightBound: "open"}]) → bool
+reql.during = ( queryState, args, reqlChain ) => {
+    const [ start, end ] = args;
+    const startTime = spend( start, reqlChain );
+    const endTime = spend( end, reqlChain );
+
+    queryState.target = (
+        queryState.target.getTime() > startTime.getTime()
+            && queryState.target.getTime() < endTime.getTime()
+    );
+
+    return queryState;
+};
+
+reql.append = ( queryState, args, reqlChain ) => {
+    queryState.target = spend( args, reqlChain ).reduce( ( list, val ) => {
+        list.push( val );
+
+        return list;
+    }, queryState.target );
+
+    return queryState;
+};
+
+// NOTE rethinkdb uses re2 syntax
+// re using re2-specific syntax will fail
+reql.match = ( queryState, args, reqlChain ) => {
+    let regexString = spend( args[0], reqlChain );
+
+    let flags = '';
+    if ( regexString.startsWith( '(?i)' ) ) {
+        flags = 'i';
+        regexString = regexString.slice( '(?i)'.length );
+    }
+
+    // eslint-disable-next-line security/detect-non-literal-regexp
+    const regex = new RegExp( regexString, flags );
+
+    queryState.target = regex.test( queryState.target );
+
+    return queryState;
+};
+
+reql.delete = ( queryState, args, reqlChain, dbState ) => {
+    const queryTarget = queryState.target;
+    const queryTable = queryState.tablelist;
     const indexName = 'id';
-    const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
-    const targetIds = targetDocuments
-        .map( doc => mockdbTableDocGetIndexValue( doc, tableIndexTuple ) );
+    const tableIndexTuple = mockdbStateTableGetIndexTuple(
+        dbState, queryState.tablename, indexName );
+    const targetIds = ( Array.isArray( queryTarget ) ? queryTarget : [ queryTarget ])
+        .map( doc => mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend ) );
     // eslint-disable-next-line security/detect-non-literal-regexp
     const targetIdRe = new RegExp( `^(${targetIds.join( '|' )})$` );
-    const tableFiltered = table.filter( doc => !targetIdRe.test(
-        mockdbTableDocGetIndexValue( doc, tableIndexTuple ) ) );
-    const deleted = table.length - tableFiltered.length;
+    const tableFiltered = queryTable.filter( doc => !targetIdRe.test(
+        mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend ) ) );
+    const deleted = queryTable.length - tableFiltered.length;
 
-    mockdbTableSet( table, tableFiltered );
+    mockdbTableSet( queryTable, tableFiltered );
 
-    return {
-        data: [
-            mockdbResChangesFieldCreate({
-                deleted
-            })
-        ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = mockdbResChangesFieldCreate({
+        deleted
+    });
+
+    return queryState;
 };
 
-reql.contains = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.contains = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+
     if ( !args.length ) {
         throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
     }
 
-    return {
-        data: [ args.every( predicate => {
-            // A PseudoQuery argument is treated as a scalar argument,
-            // and a direct function argument is treated as a predicate
-            if ( typeof predicate === 'function' && !predicate.toFunction ) {
-                return targetDocuments.some( item => unwrap( predicate, item ) );
-            }
-            return targetDocuments.includes( unwrap( predicate ) );
-        }) ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = args.every( predicate => (
+        queryTarget.includes( spend( predicate, reqlChain ) ) ) );
+
+    return queryState;
 };
 
-reql.getField = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const data = targetDocuments[0][args[0]];
+reql.getField = ( queryState, args, reqlChain ) => {
+    const fieldName = spend( args, reqlChain )[0];
 
-    return {
-        data: [ data ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = queryState.target[fieldName];
+
+    return queryState;
 };
 
-reql.filter = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.filter = ( queryState, args, reqlChain ) => {
     const [ predicate ] = args;
-    return targetDocuments.filter( item => {
-        const itemPredicate = unwrap( predicate, item );
+
+    queryState.target = queryState.target.filter( item => {
+        const itemPredicate = spend( predicate, reqlChain, item );
+
         if ( isPlainObject( itemPredicate ) )
             return isMatch( itemPredicate, item );
         return itemPredicate;
     });
+
+    return queryState;
 };
 
-reql.count = ( mockdb, tableName, targetDocuments ) => ({
-    isSingle: true,
-    wrap: false,
-    data: [ targetDocuments.length ]
-});
+reql.count = queryState => {
+    queryState.target = queryState.target.length;
 
-reql.pluck = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const props = flatten( args.map( unwrap ).map( arg => arg.args || arg ) );
-    return targetDocuments.map( pick( props ) );
+    return queryState;
 };
 
-reql.hasFields = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const res = targetDocuments.filter( item => {
+reql.pluck = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+    const pluckObj = ( obj, props ) => props.reduce( ( plucked, prop ) => {
+        plucked[prop] = obj[prop];
+        return plucked;
+    }, {});
+
+    args = spend( args, reqlChain );
+
+    queryState.target = Array.isArray( queryTarget )
+        ? queryTarget.map( t => pluckObj( t, args ) )
+        : pluckObj( queryTarget, args );
+
+    return queryState;
+};
+
+reql.hasFields = ( queryState, args ) => {
+    const queryTarget = queryState.target;
+
+    queryState.target = queryTarget.filter( item => {
         if ( !item ) return false;
         return args.every( name => Object.prototype.hasOwnProperty.call( item, name ) );
     });
 
-    return res;
+    return queryState;
 };
 
-reql.slice = ( mockdb, tableName, targetDocuments, table, args ) => {
-    let [ begin, end ] = args;
-    begin = unwrap( begin );
-    end = unwrap( end );
-    return targetDocuments.slice( begin, end ); // Don't support changing bounds yet
+reql.slice = ( queryState, args, reqlChain ) => {
+    const [ begin, end ] = spend( args.slice( 0, 2 ), reqlChain );
+
+    queryState.target = queryState.target.slice( begin, end );
+
+    return queryState;
 };
 
-reql.skip = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const count = unwrap( args[0]);
-    return targetDocuments.slice( count );
+reql.skip = ( queryState, args, reqlChain ) => {
+    const count = spend( args[0], reqlChain );
+
+    queryState.target = queryState.target.slice( count );
+
+    return queryState;
 };
 
-reql.limit = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const limit = unwrap( args[0]);
-    return targetDocuments.slice( 0, limit );
+reql.limit = ( queryState, args ) => {
+    queryState.target = queryState.target.slice( 0, args[0]);
+
+    return queryState;
 };
 
-reql.eqJoin = ( mockdb, tableName, targetDocuments, table, args ) => {
-    let [ leftKey, otherSequence ] = args; // eslint-disable-line prefer-const
-    leftKey = unwrap( leftKey );
+reql.eqJoin = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+    const [ leftKey, otherSequence ] = spend( args.slice( 0, 2 ), reqlChain );
 
-    // eslint-disable-next-line no-underscore-dangle
-    const otherData = otherSequence._getResults({ wrap: false });
-    return targetDocuments.map( item => ({
+    queryState.target = queryTarget.map( item => ({
         left: item,
-        right: otherData.find( other => other.id === item[leftKey])
+        right: otherSequence.find( other => other.id === item[leftKey])
     }) ).filter( ({ right }) => right );
+
+    return queryState;
 };
 
-reql.innerJoin = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.innerJoin = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
     const [ otherSequence, joinFunc ] = args;
-    const otherItems = unwrap( otherSequence );
+    const otherTable = spend( otherSequence, reqlChain );
 
-    return flatten( targetDocuments.map( item => otherItems.map( otherItem => {
-        const resultFunc = joinFunc( new PseudoQuery( item ), new PseudoQuery( otherItem ) );
-        const match = resultFunc.toFunction()();
-        return match ? {
+    queryState.target = queryTarget.map( item => otherTable.map( otherItem => {
+        const isJoined = spend( first => {
+            const second = reqlChain().expr( otherItem );
+
+            return joinFunc( first, second );
+        }, reqlChain, item );
+
+        return {
             left: item,
-            right: otherItem
-        } : null;
-    }) ) ).filter( x => x !== null );
+            right: isJoined ? otherItem : null
+        };
+    }) ).flat().filter( ({ right }) => right );
+
+    return queryState;
 };
 
-reql.not = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
-    if ( opts.isSingle && typeof targetDocuments[0] !== 'boolean' )
+reql.now = queryState => {
+    queryState.target = new Date();
+
+    return queryState;
+};
+
+reql.toEpochTime = queryState => {
+    queryState.target = ( new Date( queryState.target ) ).getTime() / 1000;
+
+    return queryState;
+};
+
+reql.epochTime = ( queryState, args ) => {
+    queryState.target = new Date( args[0] * 1000 );
+
+    return queryState;
+};
+
+reql.not = queryState => {
+    const queryTarget = queryState.target;
+
+    if ( typeof queryTarget !== 'boolean' )
         throw new Error( 'Cannot call not() on non-boolean value.' );
 
-    return [ !targetDocuments[0] ];
+    queryState.target = !queryTarget;
+
+    return queryState;
 };
 
-reql.gt = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
-    if ( !opts.isSingle )
-        throw new Error( 'Cannot gt on sequence.' );
+reql.gt = ( queryState, args, reqlChain ) => {
+    const argTarget = spend( args[0], reqlChain );
 
-    return [ targetDocuments[0] > unwrap( args[0], targetDocuments[0]) ];
+    queryState.target = queryState.target > argTarget;
+
+    return queryState;
 };
 
-reql.lt = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
-    if ( !opts.isSingle )
-        throw new Error( 'Cannot lt on sequence.' );
+reql.ge = ( queryState, args, reqlChain ) => {
+    const argTarget = spend( args[0], reqlChain );
 
-    return [ targetDocuments[0] < unwrap( args[0], targetDocuments[0]) ];
+    queryState.target = queryState.target >= argTarget;
+
+    return queryState;
 };
 
-reql.eq = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
-    if ( !opts.isSingle )
-        throw new Error( 'Cannot eq on sequence.' );
+reql.lt = ( queryState, args, reqlChain ) => {
+    const argTarget = spend( args[0], reqlChain );
 
-    return [ targetDocuments[0] === unwrap( args[0], targetDocuments[0]) ];
+    queryState.target = queryState.target < argTarget;
+
+    return queryState;
 };
 
-reql.ne = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
-    if ( !opts.isSingle )
-        throw new Error( 'Cannot ne on sequence.' );
+reql.le = ( queryState, args, reqlChain ) => {
+    const argTarget = spend( args[0], reqlChain );
 
-    return [ targetDocuments[0] !== unwrap( args[0], targetDocuments[0]) ];
+    queryState.target = queryState.target <= argTarget;
+
+    return queryState;
 };
 
-reql.max = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+reql.eq = ( queryState, args, reqlChain ) => {
+    const argTarget = spend( args[0], reqlChain );
+
+    queryState.target = queryState.target === argTarget;
+
+    return queryState;
+};
+
+reql.ne = ( queryState, args, reqlChain ) => {
+    const argTarget = spend( args[0], reqlChain );
+
+    queryState.target = queryState.target !== argTarget;
+
+    return queryState;
+};
+
+reql.max = ( queryState, args ) => {
+    const targetList = queryState.target;
     const getListMax = ( list, prop ) => list.reduce( ( maxDoc, doc ) => (
         maxDoc[prop] > doc[prop] ? maxDoc : doc
-    ), targetDocuments[0]);
+    ), targetList );
 
     const getListMaxGroups = ( groups, prop ) => (
         groups.reduce( ( prev, target ) => {
@@ -416,21 +590,27 @@ reql.max = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
         }, [])
     );
 
-    return {
-        data: [
-            opts.isGrouped
-                ? getListMaxGroups( targetDocuments[0], args[0])
-                : getListMax( targetDocuments, args[0])
-        ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = queryState.isGrouped
+        ? getListMaxGroups( targetList, args[0])
+        : getListMax( targetList, args[0]);
+
+    return queryState;
 };
 
-reql.min = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
+reql.max.fn = ( queryState, args ) => {
+    console.log({
+        target: queryState.target[0],
+        args
+    });
+
+    return queryState;
+};
+
+reql.min = ( queryState, args ) => {
+    const targetList = queryState.target;
     const getListMin = ( list, prop ) => list.reduce( ( maxDoc, doc ) => (
         maxDoc[prop] < doc[prop] ? maxDoc : doc
-    ), targetDocuments[0]);
+    ), targetList );
 
     const getListMinGroups = ( groups, prop ) => (
         groups.reduce( ( prev, target ) => {
@@ -443,85 +623,100 @@ reql.min = ( mockdb, tableName, targetDocuments, table, args, opts ) => {
         }, [])
     );
 
-    return {
-        data: [
-            opts.isGrouped
-                ? getListMinGroups( targetDocuments[0], args[0])
-                : getListMin( targetDocuments, args[0])
-        ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = queryState.isGrouped
+        ? getListMinGroups( targetList, args[0])
+        : getListMin( targetList, args[0]);
+
+    return queryState;
 };
 
-reql.merge = ( mockdb, tableName, targetDocuments, table, args ) => (
-    targetDocuments.map( item => {
-        const merges = args.map( arg => unwrap( arg, item ) );
+reql.merge = ( queryState, args, reqlChain ) => {
+    const merges = args.map( arg => spend( arg, reqlChain ) );
 
-        return Object.assign({}, item, ...merges );
-    })
-);
+    queryState.target = merges
+        .reduce( ( p, next ) => Object.assign( p, next ), queryState.target );
 
-reql.concatMap = ( mockdb, tableName, targetDocuments, table, args ) => {
+    return queryState;
+};
+
+reql.concatMap = ( queryState, args, reqlChain ) => {
     const [ func ] = args;
-    const mapped = rethinkMap( targetDocuments, func );
-    const flattened = flatten( mapped );
-    return flattened.map( unwrap );
+
+    queryState.target = queryState
+        .target.map( t => spend( func, reqlChain, t ) ).flat();
+
+    return queryState;
 };
 
-reql.isEmpty = ( mockdb, tableName, targetDocuments ) => ({
-    data: [ targetDocuments.length === 0 ],
-    isSingle: true,
-    wrap: false
-});
+reql.isEmpty = queryState => {
+    queryState.target = queryState.target.length === 0;
 
-reql.add = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const [ target ] = targetDocuments;
-    const values = args.map( unwrap );
+    return queryState;
+};
+
+reql.add = ( queryState, args, reqlChain ) => {
+    const { target } = queryState;
+    const values = spend( args, reqlChain );
+
     let result;
 
-    if ( /number|string/.test( typeof target ) )
+    if ( typeof target === 'undefined' ) {
+        if ( Array.isArray( values ) ) {
+            result = values.slice( 1 ).reduce( ( prev, val ) => prev + val, values[0]);
+        } else {
+            result = values;
+        }
+    } else if ( /number|string/.test( typeof target ) ) {
         result = values.reduce( ( prev, val ) => prev + val, target );
-    if ( Array.isArray( target ) )
+    } else if ( Array.isArray( target ) ) {
         result = [ ...target, ...values ];
+    }
 
-    return {
-        data: [ result ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = result;
+
+    return queryState;
 };
 
-reql.group = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const [ func ] = args;
-    const groupedData = groupBy( item => rethinkMap( item, func ), targetDocuments );
+reql.group = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+    const [ arg ] = args;
+    const groupedData = queryTarget.reduce( ( group, item ) => {
+        const key = spend( arg, reqlChain );
+        const groupKey = item[key];
+
+        group[groupKey] = group[groupKey] || [];
+        group[groupKey].push( item );
+
+        return group;
+    }, {});
     const rethinkFormat = Object.entries( groupedData )
         .map( ([ group, reduction ]) => ({ group, reduction }) );
 
-    return {
-        isGrouped: true,
-        isSingle: true,
-        data: [ rethinkFormat ]
-    };
+    queryState.isGrouped = true;
+    queryState.target = rethinkFormat;
+
+    return queryState;
 };
 
-reql.ungroup = ( mockdb, tableName, targetDocuments ) => ({
-    isGrouped: false,
-    isSingle: true,
-    data: targetDocuments
-});
+reql.ungroup = queryState => {
+    queryState.isGrouped = false;
 
-reql.orderBy = ( mockdb, tableName, targetDocuments, table, args ) => {
+    return queryState;
+};
+
+reql.orderBy = ( queryState, args, reqlChain, dbState ) => {
+    const queryTarget = queryState.target;
     const queryOptions = typeof args[0] === 'function'
         ? args[0]
         : queryArgsOptions( args );
-    const queryOptionsIndex = queryOptions.index;
+
+    const queryOptionsIndex = spend( queryOptions.index, reqlChain );
     const indexSortBy = typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortBy;
     const indexSortDirection = ( typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortDirection ) || 'asc';
     const indexString = typeof queryOptionsIndex === 'string' && queryOptionsIndex;
     const argsSortPropValue = typeof args[0] === 'string' && args[0];
     const indexName = indexSortBy || indexString || 'id';
-    const tableIndexTuple = mockdbStateTableGetIndexTuple( mockdb, tableName, indexName );
+    const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, queryState.tablename, indexName );
     const sortDirection = isAscending => (
         isAscending * ( indexSortDirection === 'asc' ? 1 : -1 ) );
 
@@ -529,131 +724,165 @@ reql.orderBy = ( mockdb, tableName, targetDocuments, table, args ) => {
         let value;
 
         if ( typeof queryOptions === 'function' ) {
-            value = unwrap( queryOptions, doc );
+            value = spend( queryOptions, reqlChain, doc );
         } else if ( argsSortPropValue ) {
             value = doc[argsSortPropValue];
         } else {
-            value = mockdbTableDocGetIndexValue( doc, tableIndexTuple );
+            value = mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend );
         }
 
         return value;
     };
 
-    return targetDocuments.sort( ( doca, docb ) => {
+    queryState.target = queryTarget.sort( ( doca, docb ) => {
         const docaField = getSortFieldValue( doca, tableIndexTuple );
         const docbField = getSortFieldValue( docb, tableIndexTuple );
 
         return sortDirection( docaField < docbField ? -1 : 1 );
     });
+
+    return queryState;
 };
 
 // Return the hour in a time object as a number between 0 and 23.
-reql.hours = ( mockdb, tableName, targetDocuments ) => {
-    const val = new Date( targetDocuments[0]).getHours();
+reql.hours = queryState => {
+    queryState.target = new Date( queryState.target ).getHours();
 
-    return {
-        data: [ val ],
-        isSingle: true,
-        wrap: false
-    };
+    return queryState;
 };
 
-reql.minutes = ( mockdb, tableName, targetDocuments ) => {
-    const val = new Date( targetDocuments[0]).getMinutes();
+reql.minutes = queryState => {
+    queryState.target = new Date( queryState.target ).getMinutes();
 
-    return {
-        data: [ val ],
-        isSingle: true,
-        wrap: false
-    };
+    return queryState;
 };
 
-reql.expr = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.uuid = queryState => {
+    queryState.target = uuidv4();
+
+    return queryState;
+};
+
+reql.expr = ( queryState, args ) => {
     const [ value ] = args;
-    const resolved = unwrap( value );
+    const resolved = spend( value );
 
-    if ( Array.isArray( resolved ) ) {
-        return { isSingle: false, data: resolved };
-    }
+    queryState.targetOriginal = resolved;
+    queryState.target = resolved;
 
-    return {
-        isSingle: true,
-        data: [ resolved ],
-        wrap: false
-    };
+    return queryState;
 };
 
-reql.coerceTo = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.expr.fn = ( queryState, args, reqlChain ) => (
+    reqlChain().expr( queryState.target ).getField( args[0]) );
+
+reql.coerceTo = ( queryState, args, reqlChain ) => {
     const [ coerceType ] = args;
-    let resolved = unwrap( targetDocuments[0]);
+    let resolved = spend( queryState.target, reqlChain );
 
     if ( coerceType === 'string' )
         resolved = String( resolved );
 
-    return {
-        data: [ resolved ],
-        isSingle: true,
-        wrap: false
-    };
+    queryState.target = resolved;
+
+    return queryState;
 };
 
-reql.upcase = ( mockdb, tableName, targetDocuments ) => ({
-    data: [ String( targetDocuments[0]).toUpperCase() ],
-    isSingle: true
-});
+reql.upcase = queryState => {
+    queryState.target = String( queryState.target ).toUpperCase();
 
-reql.map = ( mockdb, tableName, targetDocuments, table, args ) => {
+    return queryState;
+};
+
+reql.downcase = queryState => {
+    queryState.target = String( queryState.target ).toLowerCase();
+
+    return queryState;
+};
+
+reql.map = ( queryState, args, reqlChain ) => {
     const [ func ] = args;
-    return rethinkMap( targetDocuments, func );
+
+    queryState.target = queryState
+        .target.map( t => spend( func, reqlChain, t ) );
+
+    return queryState;
 };
 
-reql.or = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const res = args.reduce(
-        ( current, value ) => !!( current || unwrap( value ) ),
-        !!targetDocuments[0]);
+reql.without = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
 
-    return {
-        data: [ res ],
-        isSingle: true
-    };
+    args = spend( args, reqlChain );
+
+    queryState.target = args.reduce( arg => {
+        delete queryTarget[arg];
+
+        return queryTarget;
+    }, queryTarget );
+
+    return queryState;
 };
 
-reql.and = ( mockdb, tableName, targetDocuments, table, args ) => {
-    const res = args.reduce(
-        ( current, value ) => !!( current && unwrap( value ) ),
-        !!targetDocuments[0]);
+reql.or = ( queryState, args, reqlChain ) => {
+    queryState.target = args.reduce( ( current, value ) => Boolean(
+        current || spend( value, reqlChain )
+    ), queryState.target );
 
-    return {
-        data: [ res ],
-        isSingle: true
+    return queryState;
+};
+
+reql.and = ( queryState, args, reqlChain ) => {
+    queryState.target = args.reduce( ( current, value ) => Boolean(
+        current && spend( value, reqlChain )
+    ), queryState.target );
+
+    return queryState;
+};
+
+// if the conditionals return any value but false or null (i.e., “truthy” values),
+reql.branch = {};
+reql.branchPlayback = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+    const isResultTruthy = result => (
+        result !== false && result !== null );
+
+    const nextCondition = ( condition, branches ) => {
+        const conditionResult = spend( condition, reqlChain, queryState );
+
+        if ( branches.length === 0 )
+            return conditionResult;
+
+        if ( isResultTruthy( conditionResult ) ) {
+            return spend( branches[0], reqlChain, queryTarget );
+        }
+
+        return nextCondition( branches[1], branches.slice( 2 ) );
     };
+
+    queryState.target = nextCondition( args[0], args.slice( 1 ) );
+
+    return queryState;
 };
 
 // Rethink has its own alg for finding distinct,
 // but unique by ID should be sufficient here.
-reql.distinct = ( mockdb, tableName, targetDocuments ) => {
-    const res = Array.isArray( targetDocuments )
-        ? targetDocuments.filter(
-            ( item, pos, self ) => self.indexOf( item ) === pos )
-        : uniqBy( 'id', targetDocuments );
+reql.distinct = queryState => {
+    queryState.target = queryState.target.filter(
+        ( item, pos, self ) => self.indexOf( item ) === pos );
 
-    return res;
+    return queryState;
 };
 
-reql.context = ( mockdb, tableName, targetDocuments ) => (
-    targetDocuments
-);
-
-reql.union = ( mockdb, tableName, targetDocuments, table, args ) => {
+reql.union = ( queryState, args, reqlChain ) => {
     const queryOptions = queryArgsOptions( args );
 
     if ( queryOptions )
         args.splice( -1, 1 );
 
     let res = args.reduce( ( argData, value ) => {
-        value = unwrap( value );
+        value = spend( value, reqlChain );
         return argData.concat( value );
-    }, targetDocuments );
+    }, queryState.target );
 
     if ( queryOptions && queryOptions.interleave ) {
         res = res.sort(
@@ -661,7 +890,55 @@ reql.union = ( mockdb, tableName, targetDocuments, table, args ) => {
         );
     }
 
-    return res;
+    queryState.target = res;
+
+    return queryState;
 };
+
+reql.table = ( queryState, args, reqlChain, dbState, tables ) => {
+    const [ tablename ] = args;
+    const tablelist = tables[tablename];
+
+    queryState.tablename = tablename;
+    queryState.tablelist = tablelist;
+    queryState.target = tablelist.slice();
+
+    return queryState;
+};
+
+// r.args(array) → special
+reql.args = ( queryState, args, reqlChain ) => {
+    args = spend( args[0], reqlChain );
+
+    if ( !Array.isArray( args ) ) {
+        throw new Error( 'args must be an array' );
+    }
+
+    queryState.target = args;
+
+    return queryState;
+};
+
+reql.desc = ( queryState, args, reqlChain ) => {
+    queryState.target = {
+        sortBy: spend( args[0], reqlChain ),
+        sortDirection: 'desc'
+    };
+
+    return queryState;
+};
+
+reql.asc = ( queryState, args, reqlChain ) => {
+    queryState.target = {
+        sortBy: spend( args[0], reqlChain ),
+        sortDirection: 'asc'
+    };
+
+    return queryState;
+};
+
+reql.run = queryState => queryState.target;
+
+reql.isReql = true;
 
 export default reql;

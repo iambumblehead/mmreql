@@ -35,5 +35,8 @@ console.log(appDoc);
 ------------------
 If you are updating this package, please try to add one or two tests and remove a few boilerplate requirements :).
 
+<!-- todo test 'update' for lists. add tests for mockdbreql queries. -->
+
+
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js

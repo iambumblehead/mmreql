@@ -1,5 +1,4 @@
-import { mapValues, isPlainObject, isMatch } from 'lodash/fp.js';
-import casual from 'casual';
+import { mapValues, isPlainObject } from 'lodash/fp.js';
 
 const internalError = Symbol( 'internalError' );
 
@@ -11,7 +10,7 @@ class PseudoQuery {
         this.str = this.target !== undefined && this.target.toString() !== '[object Object]' ? unwrapString( this.target ) : 'obj';
         return this.bound( this.row );
     }
-
+    /*
     // If you can think of a better way to do this, then please do.
     // This enables chaining like so: r.row('prop1')('prop2').eq('val1')
     bound ( func ) {
@@ -26,7 +25,6 @@ class PseudoQuery {
     resolve ( val, resolveObj, options ) {
         return unwrap( val, this.currentTarget !== undefined ? this.currentTarget : resolveObj, { unwrapDate: true, ...options });
     }
-
     replace ( apply, newStr ) {
         const newQuery = new PseudoQuery();
         newQuery.self.target = this.target;
@@ -56,7 +54,6 @@ class PseudoQuery {
             return this.resolve( obj[property], null );
         }, `${this.str}[${property}]` );
     }
-
     eq ( val ) {
         notUndefined( val );
         return this.replace( obj => obj === this.resolve( val, null ),
@@ -80,7 +77,6 @@ class PseudoQuery {
         return this.replace( obj => obj < this.resolve( val, null ),
             `${this.str} < (${unwrapString( val )})` );
     }
-
     ge ( val ) {
         notUndefined( val );
         return this.replace( obj => obj >= this.resolve( val, null ),
@@ -106,14 +102,12 @@ class PseudoQuery {
     not () {
         return this.replace( obj => !obj, `!(${this.str})` );
     }
-
     branch ( test, onTrue, onFalse ) {
         return this.replace( obj => {
             const isTrue = this.resolve( test, this.currentTarget !== undefined ? this.currentTarget : obj );
             return this.resolve( isTrue ? onTrue : onFalse, this.currentTarget !== undefined ? this.currentTarget : obj, { allowFunction: false });
         }, `(${test.toString()}) ? ${onTrue.toString()} : ${onFalse.toString()}` );
     }
-
     during ( startTime, endTime ) {
         // eslint-disable-next-line arrow-body-style
         return this.replace( obj => {
@@ -121,7 +115,6 @@ class PseudoQuery {
                 && obj < this.resolve( endTime, null );
         });
     }
-
     contains ( val ) {
         return this.replace( obj => {
             if ( obj.includes ) {
@@ -265,7 +258,7 @@ class PseudoQuery {
         return result;
     }
 
-    now () { return this.replace( () => new Date(), '{now}' ); }
+    //     now () { return this.replace( () => new Date(), '{now}' ); }
 
     epochTime ( val ) {
         return this.replace(
@@ -273,8 +266,7 @@ class PseudoQuery {
             `${this.str}.epochTime() (${unwrapString( val )})` );
     }
 
-    uuid () { return this.replace( () => casual.uuid, '{uuid}' ); }
-
+    //    uuid () { return this.replace( () => casual.uuid, '{uuid}' ); }
     hours () {
         return this.replace( obj => new Date( obj ).getHours(), `${this.str}.hours()` );
     }
@@ -282,6 +274,7 @@ class PseudoQuery {
     minutes () {
         return this.replace( obj => new Date( obj ).getMinutes(), `${this.str}.minutes()` );
     }
+*/
 }
 
 function unwrapString ( other ) {
@@ -294,10 +287,10 @@ function unwrapString ( other ) {
     return other.toString();
 }
 
-function notUndefined ( value ) {
-    if ( value === undefined )
-        throw new Error( 'Attempt to call reql method with an undefined argument. See stack trace.' );
-}
+// function notUndefined ( value ) {
+//    if ( value === undefined )
+//        throw new Error( 'Attempt to call reql method with an undefined argument. See stack trace.' );
+// }
 
 // Unwraps a PseudoQuery or sub-query into a concrete value or series of values.
 function unwrap ( val, target, options = {}) {
