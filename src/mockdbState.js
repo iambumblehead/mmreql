@@ -59,7 +59,6 @@ const mockdbStateTableGetIndexTuple = ( db, tableName, indexName ) => {
 
     return ( mocktable && mocktable.indexes )
         && mocktable.indexes.find( i => i[0] === indexName );
-//         : mockdbStateTableCreateIndexTuple( 'id' );
 };
 
 export {
