@@ -1,6 +1,6 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "database mocking used by template projects",
   "main": "dist/mockdb.js",
   "browser": "dist/mockdb.js",
@@ -18,7 +18,7 @@
     "unit-test-coverage": "nyc ava",
     "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env",
     "unit-test": "ava",
-    "test-cover": "nyc ava"
+    "test-cover": "nyc ava --check-coverage=true"
   },
   "dependencies": {
     "uuid": "^8.3.2"

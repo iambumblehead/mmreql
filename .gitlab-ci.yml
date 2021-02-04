@@ -1,4 +1,4 @@
-image: node:15.8.0
+image: node:15.4.0
 
 stages:
   - test
@@ -17,7 +17,6 @@ test:
 publish:
   stage: publish
   when: manual
-  image: node:14.2.0
   script:
     - npm run build-dist
     - npm config set '//code.venom360.com/api/v4/packages/npm/:_authToken' "${CI_JOB_TOKEN}"
