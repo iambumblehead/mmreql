@@ -1,11 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import {
-    isPlainObject,
-    isMatch
-} from 'lodash/fp.js';
-
-import {
     mockdbStateTableIndexAdd,
     mockdbStateTableIndexList,
     mockdbStateTableGetIndexTuple
@@ -24,9 +19,6 @@ import {
     mockdbResChangesFieldCreate,
     mockdbResErrorDuplicatePrimaryKey
 } from './mockdbRes.js';
-
-// const queryValueAsList = value => (
-//     Array.isArray( value ) ? value : [ value ]);
 
 const isReqlObj = obj => Boolean(
     obj && /object|function/.test( typeof obj ) && obj.isReql );
@@ -53,14 +45,14 @@ const compare = ( a, b, prop ) => {
 };
 
 const isReqlArgs = value => (
-    value && typeof value === 'object' && value.queryName === 'args' );
+    isReqlObj( value ) && value.queryName === 'args' );
 
 export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) => {
     if ( value === f ) {
         f = value;
     } else if ( isReqlObj( value ) ) {
         if ( value.record ) {
-            f = value.play( doc );
+            f = value.run( doc );
         } else {
             f = value.run();
         }
@@ -119,7 +111,7 @@ reql.connectPool = opts => ({
 });
 
 reql.indexCreate = ( queryState, args, reqlChain, dbState ) => {
-    const indexName = args[0];
+    const [ indexName ] = args;
     const fields = spend( Array.isArray( args[1]) ? args[1] : [], reqlChain );
     const config = queryArgsOptions( args );
 
@@ -231,17 +223,17 @@ reql.get = ( queryState, args, reqlChain ) => {
     const primaryKeyValue = spend( args[0], reqlChain );
     const tableDoc = mockdbTableGetDocument( queryState.target, primaryKeyValue );
 
-    if ( tableDoc ) {
-        queryState.target = tableDoc;
-    } else {
-        queryState.target = null;
-    }
+    queryState.target = tableDoc || null;
 
     return queryState;
 };
 
-reql.get.fn = ( queryState, args, reqlChain ) => (
-    reqlChain().expr( queryState.target ).getField( args[0]) );
+reql.get.fn = ( queryState, args, reqlChain ) => {
+    queryState.target = reqlChain()
+        .expr( queryState.target ).getField( args[0]).run();
+
+    return queryState;
+};
 
 reql.getAll = ( queryState, args, reqlChain, dbState ) => {
     const queryOptions = queryArgsOptions( args );
@@ -291,12 +283,15 @@ reql.nth = ( queryState, args, reqlChain ) => {
 };
 
 // r.row → value
-reql.row = {};
-reql.rowPlayback = ( queryState, args, reqlChain ) => (
-    reql.getField( queryState, args, reqlChain ) );
+reql.row = ( queryState, args, reqlChain ) => {
+    const rowFieldName = spend( args[0], reqlChain );
 
-// reql.row.fn = ( queryState, args, reqlChain, dbState, tables ) => (
-//     reqlChain().expr( queryState.target ).getField( args[0]) );
+    queryState.target = queryState.target
+        ? queryState.target[rowFieldName]
+        : rowFieldName;
+
+    return queryState;
+};
 
 reql.default = ( queryState, args, reqlChain ) => {
     if ( queryState.target === null ) {
@@ -387,7 +382,7 @@ reql.contains = ( queryState, args, reqlChain ) => {
 };
 
 reql.getField = ( queryState, args, reqlChain ) => {
-    const fieldName = spend( args, reqlChain )[0];
+    const [ fieldName ] = spend( args, reqlChain );
 
     queryState.target = queryState.target[fieldName];
 
@@ -398,11 +393,15 @@ reql.filter = ( queryState, args, reqlChain ) => {
     const [ predicate ] = args;
 
     queryState.target = queryState.target.filter( item => {
-        const itemPredicate = spend( predicate, reqlChain, item );
+        const finitem = spend( predicate, reqlChain, item );
 
-        if ( isPlainObject( itemPredicate ) )
-            return isMatch( itemPredicate, item );
-        return itemPredicate;
+        if ( finitem && typeof finitem === 'object' ) {
+            return Object
+                .keys( finitem )
+                .every( key => finitem[key] === item[key]);
+        }
+
+        return finitem;
     });
 
     return queryState;
@@ -444,7 +443,15 @@ reql.hasFields = ( queryState, args ) => {
 reql.slice = ( queryState, args, reqlChain ) => {
     const [ begin, end ] = spend( args.slice( 0, 2 ), reqlChain );
 
-    queryState.target = queryState.target.slice( begin, end );
+    if ( queryState.isGrouped ) { // slice from each group
+        queryState.target = queryState.target.map( targetGroup => {
+            targetGroup.reduction = targetGroup.reduction.slice( begin, end );
+
+            return targetGroup;
+        });
+    } else {
+        queryState.target = queryState.target.slice( begin, end );
+    }
 
     return queryState;
 };
@@ -597,11 +604,18 @@ reql.max = ( queryState, args ) => {
     return queryState;
 };
 
-reql.max.fn = ( queryState, args ) => {
-    console.log({
-        target: queryState.target[0],
-        args
-    });
+reql.max.fn = ( queryState, args, reqlChain ) => {
+    const field = spend( args[0], reqlChain );
+
+    if ( queryState.isGrouped ) {
+        queryState.target = queryState.target.map( targetGroup => {
+            targetGroup.reduction = targetGroup.reduction[field];
+
+            return targetGroup;
+        });
+    } else {
+        queryState.target = queryState.target[field];
+    }
 
     return queryState;
 };
@@ -631,10 +645,11 @@ reql.min = ( queryState, args ) => {
 };
 
 reql.merge = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
     const merges = args.map( arg => spend( arg, reqlChain ) );
 
     queryState.target = merges
-        .reduce( ( p, next ) => Object.assign( p, next ), queryState.target );
+        .reduce( ( p, next ) => Object.assign( p, next ), queryTarget );
 
     return queryState;
 };
@@ -694,6 +709,15 @@ reql.group = ( queryState, args, reqlChain ) => {
 
     queryState.isGrouped = true;
     queryState.target = rethinkFormat;
+
+    return queryState;
+};
+
+// array.sample(number) → array
+reql.sample = ( queryState, args ) => {
+    queryState.target = queryState.target
+        .sort( () => 0.5 - Math.random() )
+        .slice( 0, args );
 
     return queryState;
 };
@@ -773,8 +797,11 @@ reql.expr = ( queryState, args ) => {
     return queryState;
 };
 
-reql.expr.fn = ( queryState, args, reqlChain ) => (
-    reqlChain().expr( queryState.target ).getField( args[0]) );
+reql.expr.fn = ( queryState, args ) => {
+    queryState.target = queryState.target[args[0]];
+
+    return queryState;
+};
 
 reql.coerceTo = ( queryState, args, reqlChain ) => {
     const [ coerceType ] = args;
@@ -840,14 +867,14 @@ reql.and = ( queryState, args, reqlChain ) => {
 };
 
 // if the conditionals return any value but false or null (i.e., “truthy” values),
-reql.branch = {};
-reql.branchPlayback = ( queryState, args, reqlChain ) => {
+// reql.branch = {};
+reql.branch = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
     const isResultTruthy = result => (
         result !== false && result !== null );
 
     const nextCondition = ( condition, branches ) => {
-        const conditionResult = spend( condition, reqlChain, queryState );
+        const conditionResult = spend( condition, reqlChain, queryState.target );
 
         if ( branches.length === 0 )
             return conditionResult;
@@ -937,7 +964,15 @@ reql.asc = ( queryState, args, reqlChain ) => {
     return queryState;
 };
 
-reql.run = queryState => queryState.target;
+reql.run = queryState => {
+    if ( queryState.error ) {
+        throw new Error( queryState.error );
+    }
+
+    return queryState.target;
+};
+
+reql.serialize = queryState => JSON.stringify( queryState.chain );
 
 reql.isReql = true;
 
