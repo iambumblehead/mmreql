@@ -16,7 +16,7 @@ const compare = ( a, b, prop ) => {
 test( 'supports add(), numbers', async t => {
     const { r } = rethinkdbMocked();
 
-    t.is( await r.expr( 2 ).add( 2 ).run(), 4 );
+    t.is( await r.expr( 2 ).add( 3 ).run(), 5 );
 });
 
 test( 'supports add(), strings', async t => {
@@ -82,7 +82,7 @@ test( 'supports many expressions, same instance', async t => {
     t.deepEqual( await r.epochTime( 531360000 ).run(), new Date( 531360000 * 1000 ) );
 });
 
-test( 'r.row() returns a record of calls that can be played later', t => {
+test( 'r.serialize() returns a call record', t => {
     const { r } = rethinkdbMocked([
         [ 'marvel', {
             id: 'IronMan',
@@ -90,10 +90,12 @@ test( 'r.row() returns a record of calls that can be played later', t => {
         } ]
     ]);
 
-    const recording = r.row( 'name' );
+    const recording = r.row( 'name' ).serialize();
 
-    t.is( recording.play( r.table( 'marvel' ).get( 'IronMan' ) ), 'iron' );
-    t.is( recording.play(), 'name' );
+    t.is( recording, JSON.stringify([
+        { queryName: 'row', queryArgs: [ 'name' ] },
+        { queryName: 'serialize', queryArgs: [] }
+    ]) );
 });
 
 test( 'supports add()', async t => {
@@ -128,9 +130,9 @@ test( 'supports add(), array', async t => {
     t.deepEqual( res, [ 'iron', 'bar', 'baz' ]);
 });
 
-// eslint-disable-next-line ava/no-skip-test
-test.skip( 'supports row.add()', async t => {
+test( 'supports row.add()', async t => {
     const { r } = rethinkdbMocked();
+
     const res = await r.expr([ 1, 2, 3 ]).map( r.row.add( 1 ) ).run();
 
     t.deepEqual( res, [ 2, 3, 4 ]);
@@ -447,6 +449,23 @@ test( 'supports .max()', async t => {
     });
 });
 
+test( 'supports .max()()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const res = await r
+        .table( 'games' )
+        .max( 'points' )( 'points' )
+        .run();
+
+    t.is( res, 15 );
+});
+
 test( 'supports .min()', async t => {
     const { r } = rethinkdbMocked([
         [ 'games',
@@ -609,6 +628,20 @@ test( 'supports .concatMap()', async t => {
     ]);
 });
 
+test( 'supports .sample()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel',
+            { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
+            { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] },
+            { id: 'xavier', defeatedMonsters: [ 'jiggly puff' ] } ]
+    ]);
+
+    const res = await r.table( 'marvel' ).sample( 2 ).run();
+
+    t.true( Array.isArray( res ) );
+    t.is( res.length, 2 );
+});
+
 test( 'supports .group() (basic)', async t => {
     const { r } = rethinkdbMocked([
         [ 'games',
@@ -705,8 +738,50 @@ test( 'supports .ungroup() query', async t => {
     } ]);
 });
 
-// eslint-disable-next-line ava/no-skip-test
-test.skip( 'supports .ungroup() complex query', async t => {
+test( 'supports simple group() ungroup() official example', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'games',
+            { id: 2, player: 'Bob', points: 15, type: 'ranked' },
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 11, player: 'Bob', points: 10, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' } ]
+    ]);
+
+    const ungroupres = await r
+        .table( 'games' )
+        .group( 'player' )
+        .ungroup()
+        .slice( 1 )
+        .run();
+
+    t.deepEqual( ungroupres, [ {
+        group: 'Alice',
+        reduction: [
+            { id: 5, player: 'Alice', points: 7, type: 'free' },
+            { id: 12, player: 'Alice', points: 2, type: 'free' }
+        ]
+    } ]);
+
+    const groupres = await r
+        .table( 'games' )
+        .group( 'player' )
+        .slice( 1 )
+        .run();
+
+    t.deepEqual( groupres, [ {
+        group: 'Bob',
+        reduction: [
+            { id: 11, player: 'Bob', points: 10, type: 'free' }
+        ]
+    }, {
+        group: 'Alice',
+        reduction: [
+            { id: 12, player: 'Alice', points: 2, type: 'free' }
+        ]
+    } ]);
+});
+
+test( 'supports .ungroup() complex query', async t => {
     const { r } = rethinkdbMocked([
         [ 'games',
             { id: 2, player: 'Bob', points: 15, type: 'ranked' },

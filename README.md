@@ -1,4 +1,8 @@
 # template-js-rethinkdb-mocked
+
+[![pipeline status](https://code.venom360.com/platform/template-js-rethinkdb-mocked/badges/master/pipeline.svg)](https://code.venom360.com/platform/template-js-rethinkdb-mocked/commits/master)
+[![coverage report](https://code.venom360.com/platform/template-js-rethinkdb-mocked/badges/master/coverage.svg)](https://code.venom360.com/platform/template-js-rethinkdb-mocked/commits/master)
+
 ```javascript
 import rethinkMocked from 'template-js-rethinkdb-mocked';
 
@@ -27,15 +31,12 @@ console.log(appDoc);
 // }
 ```
 
-**Version 0.1.2** provides drop-in replacement for 'thinkyMock' and 'rethinkMock' files found in venom-api and the template application.
+**v0.1.2** provides near-drop-in replacement for 'thinkyMock' and 'rethinkMock' files found in venom-api and the template application.
 
-**Version 0.2.0** removes boilerplate required by 0.1.2 and adds unit-tests and support for more queries than previous versions incl `nth`, `add`, `append`, `epochTime` and more. Changes here are used by the social-profile application.
+**v0.2.0** removes boilerplate required by v0.1.2 and adds unit-tests and support for more queries.
 
+**v0.4.0** uses one logic for all query chains and removes duplicated branches of logic. adds support and unit tests for all query patterns. removes unused, over-complicated Thinky ORM code. this version is for you.
 
-------------------
-If you are updating this package, please try to add one or two tests and remove a few boilerplate requirements :).
-
-<!-- todo test 'update' for lists. add tests for mockdbreql queries. -->
 
 
 

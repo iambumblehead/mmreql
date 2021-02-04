@@ -1,16 +1,13 @@
 {
    "root": true,
    "extends": [
-      "airbnb-base",
       "plugin:ava/recommended",
-      "plugin:eslint-comments/recommended",
       "plugin:promise/recommended",
       "plugin:security/recommended"
    ],
    "plugins": [
       "import",
       "ava",
-      "eslint-comments",
       "promise",
       "security",
       "filenames"
@@ -149,7 +146,6 @@
          "any"
       ],
       "no-warning-comments": "warn",
-      "eslint-comments/no-unused-disable": "error",
       "promise/prefer-await-to-then": "error",
       "promise/prefer-await-to-callbacks": "error",
       "security/detect-object-injection": "off",
