@@ -1,5 +1,7 @@
 # template-js-rethinkdb-mocked
 
+![rethinkdb](rethinkdb-1500x500.jpg)
+
 [![pipeline status](https://code.venom360.com/platform/template-js-rethinkdb-mocked/badges/master/pipeline.svg)](https://code.venom360.com/platform/template-js-rethinkdb-mocked/commits/master)
 [![coverage report](https://code.venom360.com/platform/template-js-rethinkdb-mocked/badges/master/coverage.svg)](https://code.venom360.com/platform/template-js-rethinkdb-mocked/commits/master)
 
@@ -35,9 +37,12 @@ console.log(appDoc);
 
 **v0.2.0** removes boilerplate required by v0.1.2 and adds unit-tests and support for more queries.
 
-**v0.4.0** uses one logic for all query chains and removes duplicated branches of logic. adds support and unit tests for all query patterns. removes unused, over-complicated Thinky ORM code. this version is for you.
+**v0.4.0** uses one logic for all query chains and removes duplicated branches of logic. adds support and unit tests for all query patterns. removes unused, over-complicated Thinky ORM code.
+
+**v0.4.3** adds initial support for [changefeed cursors.][1]
 
 
 
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js
+[1]: https://rethinkdb.com/docs/changefeeds/javascript/

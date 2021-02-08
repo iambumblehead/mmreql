@@ -7,7 +7,8 @@ const mockdbStateCreate = () => ({
 
 const mockdbStateTableCreate = ( db, tableName ) => {
     db[tableName] = {
-        indexes: [ mockdbStateTableCreateIndexTuple( 'id' ) ]
+        indexes: [ mockdbStateTableCreateIndexTuple( 'id' ) ],
+        cursors: []
     };
 
     return db;
@@ -61,6 +62,59 @@ const mockdbStateTableGetIndexTuple = ( db, tableName, indexName ) => {
         && mocktable.indexes.find( i => i[0] === indexName );
 };
 
+const mockdbStateTableCursorSplice = ( db, tableName, cursorIndex ) => {
+    db[tableName].cursors.splice( cursorIndex, 1 );
+
+    return db;
+};
+
+const mockdbStateTableDocCursorSplice = ( db, tableName, doc, cursorIndex ) => {
+    const tableDocId = [ tableName, doc.id ].join( '-' );
+
+    db[tableDocId] = db[tableDocId] || {};
+    db[tableDocId].cursors.splice( cursorIndex, 1 );
+
+    return db;
+};
+
+const mockdbStateTableCursorSet = ( db, tableName, cursor ) => {
+    db[tableName].cursors.push( cursor );
+
+    return db;
+};
+
+const mockdbStateTableDocCursorSet = ( db, tableName, doc, cursor ) => {
+    const tableDocId = [ tableName, doc.id ].join( '-' );
+
+    db[tableDocId] = db[tableDocId] || {};
+    db[tableName].cursors.push( cursor );
+
+    return db;
+};
+
+const mockdbStateTableCursorsPushChanges = ( db, tableName, changes ) => {
+    db[tableName].cursors.map( c => {
+        changes.map( d => c.push( d ) );
+    });
+
+    return db;
+};
+
+const mockdbStateTableCursorsGetOrCreate = ( db, tableName ) => {
+    db[tableName].cursors = db[tableName].cursors || [];
+
+    return db[tableName].cursors;
+};
+
+const mockdbStateTableDocCursorsGetOrCreate = ( db, tableName, doc ) => {
+    const tableDocId = [ tableName, doc.id ].join( '-' );
+
+    db[tableDocId] = db[tableDocId] || {};
+    db[tableDocId].cursors = db[tableDocId].cursors || [];
+
+    return db[tableDocId].cursors;
+};
+
 export {
     mockdbStateCreate,
     mockdbStateTableCreate,
@@ -69,5 +123,12 @@ export {
     mockdbStateTableIndexAdd,
     mockdbStateTableIndexList,
     mockdbStateTableIndexExists,
-    mockdbStateTableGetIndexTuple
+    mockdbStateTableGetIndexTuple,
+    mockdbStateTableCursorSet,
+    mockdbStateTableDocCursorSet,
+    mockdbStateTableCursorSplice,
+    mockdbStateTableDocCursorSplice,
+    mockdbStateTableCursorsPushChanges,
+    mockdbStateTableCursorsGetOrCreate,
+    mockdbStateTableDocCursorsGetOrCreate
 };

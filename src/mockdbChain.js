@@ -7,7 +7,7 @@ const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
             queryArgs: args
         });
 
-        if ( /^(serialize|run)$/.test( queryName ) ) {
+        if ( /^(serialize|run|getCursor|connect|connectPool)$/.test( queryName ) ) {
             const res = this.queryChainResolve( this.record, args[0]);
 
             this.record.pop();

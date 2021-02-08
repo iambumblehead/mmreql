@@ -1,9 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Readable } from 'stream';
 
 import {
     mockdbStateTableIndexAdd,
     mockdbStateTableIndexList,
-    mockdbStateTableGetIndexTuple
+    mockdbStateTableGetIndexTuple,
+    mockdbStateTableCursorSet,
+    mockdbStateTableDocCursorSet,
+    mockdbStateTableCursorSplice,
+    mockdbStateTableDocCursorSplice,
+    mockdbStateTableCursorsPushChanges,
+    mockdbStateTableCursorsGetOrCreate,
+    mockdbStateTableDocCursorsGetOrCreate
 } from './mockdbState.js';
 
 import {
@@ -89,26 +97,145 @@ export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) =>
 
 const reql = {};
 
-reql.connectPool = opts => ({
-    connParam: {
-        db: opts.db,
-        user: opts.user || 'admin',
-        password: opts.password,
-        buffer: 1,
-        max: 1,
+reql.connect = ( queryState, args, reqlChain, dbState ) => {
+    const [ { db, host, port, user, password } ] = args;
+
+    dbState.connection = {
+        connectionOptions: {
+            host,
+            port
+        },
+        db,
+        options: {
+            host,
+            port
+        },
+        clientPort: port,
+        clientAddress: host,
         timeout: 20,
         pingInterval: -1,
-        timeoutError: 1000,
-        timeoutGb: 3600000,
-        maxExponent: 6,
         silent: false,
-        log: [ () => {} ]
-    },
-    servers: [ {
-        host: opts.host,
-        port: opts.port
-    } ]
-});
+        socket: {
+            runningQueries: {},
+            isOpen: true,
+            nextToken: 3,
+            buffer: {
+                type: 'Buffer',
+                data: []
+            },
+            mode: 'response',
+            connectionOptions: {
+                host,
+                port
+            },
+            user,
+            password: {
+                type: 'Buffer',
+                data: [ 0 ]
+            }
+        }
+    };
+
+    dbState.connection.close = () => {};
+
+    return dbState.connection;
+};
+
+
+reql.connectPool = ( queryState, args, reqlChain, dbState ) => {
+    const [ { db, host, port, user, password } ] = args;
+
+    dbState.connection = {
+        draining: false,
+        healthy: true,
+        discovery: false,
+        connParam: {
+            db,
+            user,
+            password: '',
+            buffer: 1,
+            max: 1,
+            timeout: 20,
+            pingInterval: -1,
+            timeoutError: 1000,
+            timeoutGb: 3600000,
+            maxExponent: 6,
+            silent: false
+        },
+        servers: [ {
+            host,
+            port
+        } ],
+        serverPools: [ {
+            draining: false,
+            healthy: true,
+            connections: [ {
+                connectionOptions: {
+                    host,
+                    port
+                },
+                db,
+                options: {
+                    host,
+                    port
+                },
+                clientPort: port,
+                clientAddress: host,
+                timeout: 20,
+                pingInterval: -1,
+                silent: false,
+                socket: {
+                    runningQueries: {},
+                    isOpen: true,
+                    nextToken: 3,
+                    buffer: {
+                        type: 'Buffer',
+                        data: []
+                    },
+                    mode: 'response',
+                    connectionOptions: {
+                        host,
+                        port
+                    },
+                    user,
+                    password: {
+                        type: 'Buffer',
+                        data: [ 0 ]
+                    },
+                    socket: {
+                        connecting: false,
+                        allowHalfOpen: false,
+                        server: null
+                    }
+                }
+            } ],
+            timers: {},
+            buffer: 1,
+            max: 1,
+            timeoutError: 1000,
+            timeoutGb: 3600000,
+            maxExponent: 6,
+            silent: false,
+            server: {
+                host,
+                port
+            },
+            connParam: {
+                db,
+                user,
+                password: password,
+                timeout: 20,
+                pingInterval: -1,
+                silent: false
+            }
+        } ]
+    };
+
+    return dbState.connection;
+};
+
+// used for selecting/specifying db, not supported yet
+reql.db = queryState => queryState;
 
 reql.indexCreate = ( queryState, args, reqlChain, dbState ) => {
     const [ indexName ] = args;
@@ -147,10 +274,12 @@ reql.indexList = ( queryState, args, reqlChain, dbState ) => {
     return queryState;
 };
 
-reql.insert = ( queryState, args, reqlChain ) => {
-    let documents = spend( args.slice( 0, 1 ), reqlChain );
+reql.insert = ( queryState, args, reqlChain, dbState ) => {
+    // both argument types (list or atom) resolved to a list here
+    let documents = Array.isArray( args[0]) ? args[0] : args.slice( 0, 1 );
     let table = queryState.tablelist;
     const options = args[1] || {};
+
     const [ existingDoc ] = mockdbTableGetDocuments(
         queryState.tablelist, documents.map( doc => doc.id ) );
 
@@ -167,17 +296,20 @@ reql.insert = ( queryState, args, reqlChain ) => {
     }
 
     [ table, documents ] = mockdbTableSetDocuments(
-        table, documents.map( doc => spend( doc, reqlChain ) ) );
+        table, documents.map( doc => spend( doc, reqlChain ) ), dbState );
+
+    const changes = documents.map( doc => ({
+        old_val: null,
+        new_val: doc
+    }) );
+
+    dbState = mockdbStateTableCursorsPushChanges(
+        dbState, queryState.tablename, changes );
 
     queryState.target = mockdbResChangesFieldCreate({
         inserted: documents.length,
         generated_keys: documents.map( doc => doc.id ),
-        changes: options.returnChanges === true
-            ? documents.map( doc => ({
-                old_val: null,
-                new_val: doc
-            }) )
-            : undefined
+        changes: options.returnChanges === true ? changes : undefined
     });
 
     return queryState;
@@ -973,6 +1105,79 @@ reql.run = queryState => {
 };
 
 reql.serialize = queryState => JSON.stringify( queryState.chain );
+
+reql.changes = ( queryState, args ) => {
+    const options = queryArgsOptions( args ) || {};
+
+    queryState.isChanges = true;
+    queryState.includeInitial = Boolean( options.includeInitial );
+
+    return queryState;
+};
+
+// cursor may target a table or a document
+reql.getCursor = ( queryState, args, reqlChain, dbState, tables ) => {
+    const queryTarget = queryState.target;
+    const queryOptions = queryArgsOptions( args );
+    const tableName = queryState.tablename;
+    const cursorTargetType = tableName
+        ? ( Array.isArray( queryTarget ) ? 'table' : 'doc' ) : 'expr';
+
+    let cursors = null;
+    if ( cursorTargetType === 'doc' ) {
+        cursors = mockdbStateTableDocCursorsGetOrCreate(
+            dbState, tableName, queryTarget );
+    } else if ( cursorTargetType === 'table' ) {
+        cursors = mockdbStateTableCursorsGetOrCreate(
+            dbState, tableName );
+    }
+
+    const cursorIndex = cursors ? cursors.length : null;
+
+    const cursor = new Readable({
+        objectMode: true,
+        read ( size ) {
+            const item = Array.isArray( queryTarget )
+                ? queryTarget.pop()
+                : queryTarget;
+
+            if ( !item ) {
+                this.push( null );
+                return;
+            }
+            this.push( item );
+        }
+    });
+
+    cursor.close = () => {
+        cursor.destroy();
+
+        if ( cursorTargetType === 'table' )
+            dbState = mockdbStateTableCursorSplice( dbState, tableName, cursorIndex );
+        else if ( cursorTargetType === 'doc' )
+            dbState = mockdbStateTableDocCursorSplice( dbState, tableName, queryTarget, cursorIndex );
+    };
+
+    if ( cursorTargetType === 'table' ) {
+        dbState = mockdbStateTableCursorSet( dbState, tableName, cursor );
+    } else if ( cursorTargetType === 'doc' ) {
+        dbState = mockdbStateTableDocCursorSet( dbState, tableName, queryTarget, cursor );
+    }
+
+    if ( !queryState.isChanges || queryOptions.includeInitial === true ) {
+        if ( cursorTargetType === 'table' ) {
+            const changes = queryTarget.map( doc => ({
+                old_val: null,
+                new_val: doc
+            }) );
+
+            dbState = mockdbStateTableCursorsPushChanges(
+                dbState, tableName, changes );
+        }
+    }
+
+    return cursor;
+};
 
 reql.isReql = true;
 

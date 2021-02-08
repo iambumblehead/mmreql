@@ -144,19 +144,55 @@ test( 'supports r.args()', async t => {
     t.is( await r.add( r.args([ 'bar', 'baz' ]) ).run(), 'barbaz' );
 });
 
+test( 'provides a faux connect function', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'table', { id: 'id-document-1234' } ]
+    ]);
+
+    const res = await r.connect({
+        db: 'cmdb',
+        user: 'admin',
+        host: 'localhost',
+        port: 8000,
+        password: ''
+    });
+
+    t.like( res, {
+        db: 'cmdb',        
+        socket: {
+            user: 'admin'
+        },
+        connectionOptions: {
+            host: 'localhost',
+            port: 8000
+        }
+    });
+});
+
 test( 'provides a faux connectPool function', async t => {
     const { r } = rethinkdbMocked([
         [ 'table', { id: 'id-document-1234' } ]
     ]);
 
-    await r.connectPool({
+    const res = await r.connectPool({
         db: 'cmdb',
-        host: 'host',
+        host: 'localhost',
         port: 8000,
+        user: 'admin',
         password: ''
     });
 
-    t.pass();
+    t.like( res, {
+        connParam: {
+            db: 'cmdb',
+            user: 'admin',
+            password: ''
+        },
+        servers: [ {
+            host: 'localhost',
+            port: 8000
+        } ]
+    });
 });
 
 test( 'provides primaryIndex (id) lookups', async t => {
@@ -1479,6 +1515,36 @@ test( 'supports .insert(, {})', async t => {
         skipped: 0,
         unchanged: 0
     });
+});
+
+test( 'supports .insert([ doc1, doc2 ], {})', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'posts', {
+            id: 'post-1234',
+            title: 'post title',
+            content: 'post content'
+        } ]
+    ]);
+
+    const insertRes = await r.table( 'posts' ).insert([ {
+        title: 'Lorem ipsum',
+        content: 'Dolor sit amet'
+    },{
+        title: 'Iconic Hito',
+        content: 'Benkyoushimashita'
+    } ]).run();
+
+    t.deepEqual( insertRes, {
+        deleted: 0,
+        errors: 0,
+        generated_keys: insertRes.generated_keys,
+        inserted: 2,
+        replaced: 0,
+        skipped: 0,
+        unchanged: 0
+    });
+
+    t.is( insertRes.generated_keys.length, 2 );
 });
 
 test( 'supports .insert(, { returnChanges: true })', async t => {
