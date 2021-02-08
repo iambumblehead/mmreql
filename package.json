@@ -1,6 +1,6 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.4.1",
+  "version": "0.4.3",
   "description": "database mocking used by template projects",
   "main": "dist/mockdb.js",
   "browser": "dist/mockdb.js",
@@ -11,8 +11,8 @@
     "@platform:registry": "https://code.venom360.com/api/v4/projects/564/packages/npm/"
   },
   "scripts": {
-    "test": "yarn lint && yarn unit-test",
-    "lint": "eslint . && yarn -s lint-yaml",
+    "test": "npm run lint && npm run unit-test",
+    "lint": "eslint . && npm run -s lint-yaml",
     "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
     "lint-fix": "eslint --fix .",
     "unit-test-coverage": "nyc ava",
