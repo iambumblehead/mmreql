@@ -40,6 +40,7 @@ const buildChain = ( tables = {}, dbState = {}) => {
 
     return {
         r,
+        tables,
         dbState
     };
 };
