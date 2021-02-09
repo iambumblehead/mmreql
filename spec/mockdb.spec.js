@@ -37,6 +37,32 @@ test( 'supports uuid()', async t => {
     t.true( uuidValidate( await r.uuid().run() ) );
 });
 
+test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
+    const { r, tables } = rethinkdbMocked([
+        [ 'marvel',
+            { name: 'Iron Man', victories: 214 },
+            { name: 'Jubilee', victories: 49 },
+            { name: 'Slava', victories: 5 } ],
+        [ 'pokemon',
+            { id: 1, name: 'squirtle', strength: 3 },
+            { id: 2, name: 'charmander', strength: 8 },
+            { id: 3, name: 'fiery', strength: 5 } ]
+    ]);
+
+    t.deepEqual( tables, {
+        marvel: [
+            { name: 'Iron Man', victories: 214 },
+            { name: 'Jubilee', victories: 49 },
+            { name: 'Slava', victories: 5 }
+        ],
+        pokemon: [
+            { id: 1, name: 'squirtle', strength: 3 },
+            { id: 2, name: 'charmander', strength: 8 },
+            { id: 3, name: 'fiery', strength: 5 }
+        ]
+    });
+});
+
 test( 'branch(), simple', async t => {
     const { r } = rethinkdbMocked();
 
