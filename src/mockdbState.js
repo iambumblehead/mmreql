@@ -58,8 +58,14 @@ const mockdbStateTableIndexList = ( db, tableName ) => {
 const mockdbStateTableGetIndexTuple = ( db, tableName, indexName ) => {
     const mocktable = mockdbStateTableGet( db, tableName );
 
-    return ( mocktable && mocktable.indexes )
+    const indexTuple = ( mocktable && mocktable.indexes )
         && mocktable.indexes.find( i => i[0] === indexName );
+
+    if ( !indexTuple ) {
+        console.warn(`table index not found. ${tableName}, ${indexName}`);
+    }
+
+    return indexTuple;
 };
 
 const mockdbStateTableCursorSplice = ( db, tableName, cursorIndex ) => {
