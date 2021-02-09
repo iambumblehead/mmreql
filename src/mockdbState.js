@@ -46,11 +46,14 @@ const mockdbStateTableIndexAdd = ( db, tableName, indexName, fields, config ) =>
     return mocktable;
 };
 
-const mockdbStateTableIndexList = ( db, tableName ) => {
-    db = mockdbStateTableGetOrCreate( db, tableName );
+const mockdbStateTableIndexListSecondary = ( db, tableName ) => {
+    const mocktable = mockdbStateTableGet( db, tableName );
+    const indexes = mocktable ? mocktable.indexes.map( i => i[0]) : [];
 
-    return mockdbStateTableGetIndexNames( db, tableName );
+    // should later support custom primary indexes
+    return indexes.filter( index => index !== 'id' );
 };
+
 
 // by default, a tuple for primaryKey 'id' is returned,
 // this should be changed. ech table config should provide a primary key
@@ -126,8 +129,9 @@ export {
     mockdbStateTableCreate,
     mockdbStateTableGet,
     mockdbStateTableGetOrCreate,
+    mockdbStateTableGetIndexNames,
     mockdbStateTableIndexAdd,
-    mockdbStateTableIndexList,
+    mockdbStateTableIndexListSecondary,
     mockdbStateTableIndexExists,
     mockdbStateTableGetIndexTuple,
     mockdbStateTableCursorSet,

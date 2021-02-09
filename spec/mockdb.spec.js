@@ -257,6 +257,29 @@ test( 'indexCreate should add index to dbState', async t => {
     t.true( dbState.Rooms.indexes.some( ([ indexName ]) => indexName === 'numeric_id' ) );
 });
 
+test( 'indexList should return indexes added by indexCreate', async t => {
+    const { r, dbState } = rethinkdbMocked([
+        [ 'AppUserDevices', {
+            id: 'roomAId-1234',
+            app_user_id: 1
+        }, {
+            id: 'roomBId-1234',
+            app_user_id: 2
+        } ]
+    ]);
+
+    const indexList = await r.table( 'AppUserDevices' ).indexList().run();
+
+    if ( !indexList.includes( 'app_user_id' ) ) {
+        await r.table( 'AppUserDevices' ).indexCreate( 'app_user_id' ).run();
+        await r.table( 'AppUserDevices' ).indexWait( 'app_user_id' ).run();
+    }
+
+    t.deepEqual( await r.table( 'AppUserDevices' ).indexList().run(), [
+        'app_user_id'
+    ]);
+});
+
 test( 'indexCreate should add compound index to dbState', async t => {
     const { r, dbState } = rethinkdbMocked([
         [ 'Rooms', {

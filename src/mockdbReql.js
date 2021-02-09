@@ -3,7 +3,8 @@ import { Readable } from 'stream';
 
 import {
     mockdbStateTableIndexAdd,
-    mockdbStateTableIndexList,
+    mockdbStateTableIndexListSecondary,
+    mockdbStateTableGetIndexNames,
     mockdbStateTableGetIndexTuple,
     mockdbStateTableCursorSet,
     mockdbStateTableDocCursorSet,
@@ -252,7 +253,7 @@ reql.indexCreate = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.indexWait = ( queryState, args, reqlChain, dbState ) => {
-    const tableIndexList = mockdbStateTableIndexList(
+    const tableIndexList = mockdbStateTableGetIndexNames(
         dbState, queryState.tablename );
 
     queryState.target = tableIndexList.map( indexName => ({
@@ -268,7 +269,7 @@ reql.indexWait = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.indexList = ( queryState, args, reqlChain, dbState ) => {
-    queryState.target = mockdbStateTableIndexList(
+    queryState.target = mockdbStateTableIndexListSecondary(
         dbState, queryState.tablename );
 
     return queryState;
