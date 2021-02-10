@@ -65,7 +65,7 @@ const mockdbStateTableGetIndexTuple = ( db, tableName, indexName ) => {
         && mocktable.indexes.find( i => i[0] === indexName );
 
     if ( !indexTuple ) {
-        console.warn(`table index not found. ${tableName}, ${indexName}`);
+        console.warn( `table index not found. ${tableName}, ${indexName}` );
     }
 
     return indexTuple;
