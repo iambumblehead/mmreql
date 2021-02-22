@@ -2,8 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 
 import {
+    mockdbStateSelectedDb,
     mockdbStateTableIndexAdd,
-    mockdbStateTableIndexListSecondary,
     mockdbStateTableGetIndexNames,
     mockdbStateTableGetIndexTuple,
     mockdbStateTableCursorSet,
@@ -12,7 +12,12 @@ import {
     mockdbStateTableDocCursorSplice,
     mockdbStateTableCursorsPushChanges,
     mockdbStateTableCursorsGetOrCreate,
-    mockdbStateTableDocCursorsGetOrCreate
+    mockdbStateTableDocCursorsGetOrCreate,
+    mockdbStateTableConfigGet,
+    mockdbStateTableCreate,
+    mockdbStateTableDrop,
+    mockdbStateDbConfigGet,
+    mockdbStateTableGet
 } from './mockdbState.js';
 
 import {
@@ -26,7 +31,13 @@ import {
 
 import {
     mockdbResChangesFieldCreate,
-    mockdbResErrorDuplicatePrimaryKey
+    mockdbResErrorArgumentsNumber,
+    mockdbResErrorDuplicatePrimaryKey,
+    mockdbResErrorIndexOutOfBounds,
+    mockdbResErrorUnrecognizedOption,
+    mockdbResErrorInvalidTableName,
+    mockdbResTableStatus,
+    mockdbResTableInfo
 } from './mockdbRes.js';
 
 const isReqlObj = obj => Boolean(
@@ -99,9 +110,14 @@ export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) =>
 const reql = {};
 
 reql.connect = ( queryState, args, reqlChain, dbState ) => {
-    const [ { db, host, port, user, password } ] = args;
+    const [ connection ] = args;
+    const { db, host, port, user, password } = connection;
 
-    dbState.connection = {
+    if ( dbState.dbConnections.every( c => c.db !== connection.db ) ) {
+        dbState.dbConnections.push( connection );
+    }
+
+    return {
         connectionOptions: {
             host,
             port
@@ -134,19 +150,21 @@ reql.connect = ( queryState, args, reqlChain, dbState ) => {
                 type: 'Buffer',
                 data: [ 0 ]
             }
-        }
+        },
+        close: () => {}
     };
-
-    dbState.connection.close = () => {};
-
-    return dbState.connection;
 };
 
 
 reql.connectPool = ( queryState, args, reqlChain, dbState ) => {
-    const [ { db, host, port, user, password } ] = args;
+    const [ connection ] = args;
+    const { db, host, port, user, password } = connection;
 
-    dbState.connection = {
+    if ( dbState.dbConnections.every( c => c.db !== connection.db ) ) {
+        dbState.dbConnections.push( connection );
+    }
+
+    return {
         draining: false,
         healthy: true,
         discovery: false,
@@ -231,12 +249,117 @@ reql.connectPool = ( queryState, args, reqlChain, dbState ) => {
             }
         } ]
     };
-
-    return dbState.connection;
 };
 
 // used for selecting/specifying db, not supported yet
 reql.db = queryState => queryState;
+
+reql.config = ( queryState, args, reqlChain, dbState ) => {
+    if ( args.length ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'config', 0, args.length );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    if ( queryState.tablename ) {
+        queryState.target = mockdbStateTableConfigGet( dbState, queryState.tablename );
+        queryState.target = { // remove indexes data added for internal use
+            ...queryState.target,
+            indexes: queryState.target.indexes.map( i => i[0])
+        };
+    } else {
+        queryState.target = mockdbStateDbConfigGet( dbState, queryState.tableName );
+    }
+
+    return queryState;
+};
+
+reql.status = ( queryState, args, reqlChain, dbState ) => {
+    const tableConfig = mockdbStateTableConfigGet( dbState, queryState.tablename );
+
+    queryState.target = mockdbResTableStatus( tableConfig );
+
+    return queryState;
+};
+
+reql.info = ( queryState, args, reqlChain, dbState ) => {
+    queryState.target = mockdbResTableInfo( dbState, queryState.tablename );
+
+    return queryState;
+};
+
+reql.tableList = ( queryState, args, reqlChain, dbState ) => {
+    const tables = mockdbStateSelectedDb( dbState, queryState.db );
+
+    queryState.target = Object.keys( tables );
+
+    return queryState;
+};
+
+reql.tableCreate = ( queryState, args, reqlChain, dbState ) => {
+    const [ tableName ] = args;
+    const isValidConfigKeyRe = /^(primaryKey|durabliity)$/;
+    const isValidTableNameRe = /^[A-Za-z0-9_]*$/;
+    const config = queryArgsOptions( args );
+    const invalidConfigKey = Object.keys( config ).find( k => !isValidConfigKeyRe.test( k ) );
+
+    if ( invalidConfigKey ) {
+        queryState.error = mockdbResErrorUnrecognizedOption(
+            invalidConfigKey, config[invalidConfigKey]);
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    if ( !tableName ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'r.tableCreate', 1, 0, true );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    if ( !isValidTableNameRe.test( tableName ) ) {
+        queryState.error = mockdbResErrorInvalidTableName( tableName );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    dbState = mockdbStateTableCreate( dbState, tableName, config );
+
+    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
+
+    queryState.target = {
+        tables_created: 1,
+        config_changes: [ {
+            new_val: tableConfig,
+            old_val: null
+        } ]
+    };
+
+    return queryState;
+};
+
+reql.tableDrop = ( queryState, args, reqlChain, dbState ) => {
+    const [ tableName ] = args;
+
+    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
+
+    dbState = mockdbStateTableDrop( dbState, tableName );
+    
+    queryState.target = {
+        tables_dropped: 1,
+        config_changes: [ {
+            new_val: null,
+            old_val: tableConfig
+        } ]
+    };
+
+    return queryState;
+};
 
 reql.indexCreate = ( queryState, args, reqlChain, dbState ) => {
     const [ indexName ] = args;
@@ -269,8 +392,9 @@ reql.indexWait = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.indexList = ( queryState, args, reqlChain, dbState ) => {
-    queryState.target = mockdbStateTableIndexListSecondary(
-        dbState, queryState.tablename );
+    const tableConfig = mockdbStateTableConfigGet( dbState, queryState.tablename );
+
+    queryState.target = tableConfig.indexes.map( i => i[0]);
 
     return queryState;
 };
@@ -406,7 +530,7 @@ reql.nth = ( queryState, args, reqlChain ) => {
     const nthIndex = spend( args[0], reqlChain );
 
     if ( nthIndex >= queryState.target.length ) {
-        queryState.error = `ReqlNonExistanceError: Index out of bounds: ${nthIndex}`;
+        queryState.error = mockdbResErrorIndexOutOfBounds( nthIndex );
         queryState.target = null;
     } else {
         queryState.target = queryState.target[args[0]];
@@ -1055,13 +1179,14 @@ reql.union = ( queryState, args, reqlChain ) => {
     return queryState;
 };
 
-reql.table = ( queryState, args, reqlChain, dbState, tables ) => {
+reql.table = ( queryState, args, reqlChain, dbState ) => {
     const [ tablename ] = args;
-    const tablelist = tables[tablename];
+    const db = mockdbStateSelectedDb( dbState );
+    const table = db[tablename];
 
     queryState.tablename = tablename;
-    queryState.tablelist = tablelist;
-    queryState.target = tablelist.slice();
+    queryState.tablelist = table;
+    queryState.target = table.slice();
 
     return queryState;
 };

@@ -87,7 +87,7 @@ test( 'expr().changes().getCursor() should return a stream', async t => {
 
 test( 'get().changes() should return a stream', async t => {
     const id = uuidv4();
-    const { r } = rethinkdbMocked([
+    const { r } = rethinkdbMocked([ { db: 'cmdb' },
         [ 'Rooms' ]
     ]);
 
