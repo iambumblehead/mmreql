@@ -103,6 +103,18 @@ test( '`tableCreate` should create a table -- primaryKey', async t => {
     });
 });
 
+test( '`tableCreate` should throw if table exists', async t => {
+    const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+
+    await t.throws( () => ( r
+        .db( 'default' )
+        .tableCreate( 'Rooms' )
+        .run()
+    ), {
+        message: 'Table `default.Rooms` already exists.'
+    });
+});
+
 test( '`tableCreate` should throw -- non valid args', async t => {
     const { r } = rethinkdbMocked();
 
