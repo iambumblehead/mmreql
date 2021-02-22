@@ -36,6 +36,7 @@ import {
     mockdbResErrorIndexOutOfBounds,
     mockdbResErrorUnrecognizedOption,
     mockdbResErrorInvalidTableName,
+    mockdbResErrorTableExists,
     mockdbResTableStatus,
     mockdbResTableInfo
 } from './mockdbRes.js';
@@ -323,6 +324,15 @@ reql.tableCreate = ( queryState, args, reqlChain, dbState ) => {
 
     if ( !isValidTableNameRe.test( tableName ) ) {
         queryState.error = mockdbResErrorInvalidTableName( tableName );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    const dbName = queryState.db || dbState.dbSelected;
+    const tables = mockdbStateSelectedDb( dbState, dbName );
+    if ( tableName in tables ) {
+        queryState.error = mockdbResErrorTableExists( dbName, tableName );
         queryState.target = null;
 
         return queryState;

@@ -82,6 +82,10 @@ const mockdbResErrorInvalidTableName = tableName => (
     'RethinkDBError [ReqlLogicError]: Table name `:tableName` invalid (Use A-Z, a-z, 0-9, _ and - only)'
         .replace( /:tableName/, tableName ) );
 
+const mockdbResErrorTableExists = ( dbName, tableName ) => (
+    'Table `:tableName` already exists.'
+        .replace( /:tableName/, [ dbName, tableName ].join( '.' ) ) );
+
 export {
     mockdbResChangesFieldCreate,
     mockdbResStringify,
@@ -91,5 +95,6 @@ export {
     mockdbResErrorArgumentsNumber,
     mockdbResErrorIndexOutOfBounds,
     mockdbResErrorUnrecognizedOption,
-    mockdbResErrorInvalidTableName
+    mockdbResErrorInvalidTableName,
+    mockdbResErrorTableExists    
 };
