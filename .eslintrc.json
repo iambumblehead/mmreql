@@ -9,8 +9,7 @@
       "import",
       "ava",
       "promise",
-      "security",
-      "filenames"
+      "security"
    ],
    "parser": "@babel/eslint-parser",
    "parserOptions": {
@@ -149,12 +148,6 @@
       "promise/prefer-await-to-then": "error",
       "promise/prefer-await-to-callbacks": "error",
       "security/detect-object-injection": "off",
-      "filenames/match-regex": [
-         "error",
-         "^([A-Za-z0-9-]+)([\\.A-Z][A-Za-z0-9]+)*$"
-      ],
-      "filenames/match-exported": "off",
-      "filenames/no-index": "error",
       "security/detect-non-literal-fs-filename": "off",
       "security/detect-child-process": "off"
    }

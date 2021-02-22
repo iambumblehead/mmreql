@@ -38,7 +38,7 @@ test( 'supports uuid()', async t => {
 });
 
 test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
-    const { r, tables } = rethinkdbMocked([
+    const { r, dbState } = rethinkdbMocked([
         [ 'marvel',
             { name: 'Iron Man', victories: 214 },
             { name: 'Jubilee', victories: 49 },
@@ -49,7 +49,7 @@ test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
             { id: 3, name: 'fiery', strength: 5 } ]
     ]);
 
-    t.deepEqual( tables, {
+    t.deepEqual( dbState.db.default, {
         marvel: [
             { name: 'Iron Man', victories: 214 },
             { name: 'Jubilee', victories: 49 },
@@ -221,7 +221,7 @@ test( 'provides a faux connectPool function', async t => {
     });
 });
 
-test( 'provides primaryIndex (id) lookups', async t => {
+test( 'getAll().filter({ device_id })', async t => {
     const { r } = rethinkdbMocked([
         [ 'AppUserDevices', {
             id: 'id-document-1234',
@@ -254,7 +254,12 @@ test( 'indexCreate should add index to dbState', async t => {
 
     await r.table( 'Rooms' ).indexCreate( 'numeric_id' ).run();
 
-    t.true( dbState.Rooms.indexes.some( ([ indexName ]) => indexName === 'numeric_id' ) );
+    t.deepEqual( await r.table( 'Rooms' ).indexList().run(), [
+        'numeric_id'
+    ]);
+
+    t.true( dbState.dbConfig_default_Rooms.indexes
+        .some( ([ indexName ]) => indexName === 'numeric_id' ) );
 });
 
 test( 'indexList should return indexes added by indexCreate', async t => {
@@ -296,12 +301,11 @@ test( 'indexCreate should add compound index to dbState', async t => {
         r.row( 'numeric_id' )
     ]).run();
 
-    const dbStateIndex = dbState.Rooms.indexes
-        .find( ([ indexName ]) => indexName === 'id_numeric_cid' );
+    const dbStateIndex = dbState.dbConfig_default_Rooms.indexes;
 
-    t.deepEqual( dbStateIndex, [
+    t.deepEqual( dbStateIndex, [ [
         'id_numeric_cid', [ 'id', 'numeric_id' ], {}
-    ]);
+    ] ]);
 });
 
 test( 'provides secondary index methods and lookups', async t => {

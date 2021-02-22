@@ -41,8 +41,9 @@ console.log(appDoc);
 
 **v0.4.3** adds initial support for [changefeed cursors.][1]
 
-
+**v0.6.0** adds support for multiple databases. adds table and database configuration queries. Copies and re-uses tests [from rethinkdb-ts.][2]
 
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js
 [1]: https://rethinkdb.com/docs/changefeeds/javascript/
+[2]: https://github.com/rethinkdb/rethinkdb-ts/blob/main/test/manipulating-tables.ts

@@ -48,12 +48,11 @@ const chains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
 // this complex flow is an optimization.
 // query record calls are looped and defined once only.
 // record calls are mapped to functions 'applied' to unique chain state
-// eslint-disable-next-line prefer-object-spread
-const mockdbChain = ( state, tables, queryChainResolve ) => Object.assign({
+const mockdbChain = ( state, queryChainResolve ) => ({
     state,
-    tables,
     queryChainResolve: ( record, startState ) => (
-        queryChainResolve( record, state, tables, startState ) )
-}, chains );
+        queryChainResolve( record, state, startState ) ),
+    ...chains
+});
 
 export default mockdbChain;
