@@ -388,7 +388,7 @@ test( 'provides compound index methods and lookups', async t => {
     t.is( userSocialDocs.length, 1 );
 });
 
-test( 'returns an app document', async t => {
+test( 'get( id ) returns an app document', async t => {
     const { r } = rethinkdbMocked([
         [ 'Applications', {
             id: 'appid-1234',
@@ -431,6 +431,38 @@ test( 'supports .get()', async t => {
         id: 'userSocialId-1234',
         numeric_id: 5848,
         name_screenname: 'screenname'
+    });
+});
+
+test( '.get(), throws error if called with no arguments', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    await t.throws( () => (
+        r.table( 'UserSocial' ).get().run()
+    ), {
+        message: 'RethinkDBError [ReqlDriverError]: `get` takes 1 argument, 0 provided.'
+    });
+});
+
+test( '.get(), throws error if called argument of wrong type', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', {
+            id: 'userSocialId-1234',
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    await t.throws( () => (
+        r.table( 'UserSocial' ).get( undefined ).run()
+    ), {
+        message: 'Primary keys must be either a number, string, bool, pseudotype or array (got type UNDEFINED)'
     });
 });
 

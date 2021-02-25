@@ -37,6 +37,7 @@ import {
     mockdbResErrorUnrecognizedOption,
     mockdbResErrorInvalidTableName,
     mockdbResErrorTableExists,
+    mockdbResErrorPrimaryKeyWrongType,
     mockdbResTableStatus,
     mockdbResTableInfo
 } from './mockdbRes.js';
@@ -489,6 +490,21 @@ reql.update = ( queryState, args, reqlChain ) => {
 reql.get = ( queryState, args, reqlChain ) => {
     const primaryKeyValue = spend( args[0], reqlChain );
     const tableDoc = mockdbTableGetDocument( queryState.target, primaryKeyValue );
+
+    if ( args.length === 0 ) {
+        queryState.error = mockdbResErrorArgumentsNumber( 'get', 1, 0 );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    if ( !/^(number|string|bool)$/.test( typeof primaryKeyValue )
+        && !Array.isArray( primaryKeyValue ) ) {
+        queryState.error = mockdbResErrorPrimaryKeyWrongType( primaryKeyValue );
+        queryState.target = null;
+
+        return queryState;
+    }
 
     queryState.target = tableDoc || null;
 

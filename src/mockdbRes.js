@@ -86,6 +86,10 @@ const mockdbResErrorTableExists = ( dbName, tableName ) => (
     'Table `:tableName` already exists.'
         .replace( /:tableName/, [ dbName, tableName ].join( '.' ) ) );
 
+const mockdbResErrorPrimaryKeyWrongType = primaryKey => (
+    'Primary keys must be either a number, string, bool, pseudotype or array (got type :type)'
+        .replace( /:type/, String( typeof primaryKey ).toUpperCase() ) );
+
 export {
     mockdbResChangesFieldCreate,
     mockdbResStringify,
@@ -96,5 +100,6 @@ export {
     mockdbResErrorIndexOutOfBounds,
     mockdbResErrorUnrecognizedOption,
     mockdbResErrorInvalidTableName,
-    mockdbResErrorTableExists    
+    mockdbResErrorTableExists,
+    mockdbResErrorPrimaryKeyWrongType
 };
