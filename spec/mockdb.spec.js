@@ -2134,3 +2134,9 @@ test( 'supports .union', async t => {
         { id: 1, name: 'squirtle', strength: 3 }
     ]);
 });
+
+test( 'supports .getPoolMaster().isHealthy', t => {
+    const { r } = rethinkdbMocked();
+
+    t.is( r.getPoolMaster().isHealthy, true );
+});

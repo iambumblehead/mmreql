@@ -40,7 +40,7 @@ const buildChain = ( dbState = {}) => {
     Object.assign( r.row, r );
 
     return {
-        r,
+        r: Object.assign( ( ...args ) => r.expr( ... args ), r ),
         dbState
     };
 };

@@ -244,11 +244,77 @@ reql.connectPool = ( queryState, args, reqlChain, dbState ) => {
             connParam: {
                 db,
                 user,
-                password: password,
+                password,
                 timeout: 20,
                 pingInterval: -1,
                 silent: false
             }
+        } ]
+    };
+};
+
+reql.getPoolMaster = ( queryState, args, reqlChain, dbState ) => {
+    const [ connection ] = dbState.dbConnections;
+    const {
+        db, host, port, user, password
+    } = connection || {
+        db: 'default',
+        host: 'localhost',
+        port: 28015,
+        user: '',
+        password: ''
+    };
+
+    return {
+        isHealthy: true,
+        _events: {},
+        _eventsCount: 0,
+        _maxListeners: undefined,
+        draining: false,
+        healthy: true,
+        discovery: false,
+        connParam: {
+            db,
+            user,
+            password,
+            buffer: 1,
+            max: 1,
+            timeout: 20,
+            pingInterval: -1,
+            timeoutError: 1000,
+            timeoutGb: 3600000,
+            maxExponent: 6,
+            silent: false,
+            log: console.log
+        },
+        servers: [ { host, port } ],
+        serverPools: [ {
+            _events: {},
+            _eventsCount: 4,
+            _maxListeners: undefined,
+            draining: false,
+            healthy: true,
+            connections: [],
+            timers: {},
+            buffer: 1,
+            max: 1,
+            timeoutError: 1000,
+            timeoutGb: 3600000,
+            maxExponent: 6,
+            silent: false,
+            log: console.log,
+            server: {
+                host,
+                port
+            },
+            connParam: [ {
+                db,
+                user,
+                password,
+                timeout: 20,
+                pingInterval: -1,
+                silent: false
+            } ]
         } ]
     };
 };
@@ -548,6 +614,39 @@ reql.replace = ( queryState, args, reqlChain ) => {
     queryState.target = mockdbResChangesFieldCreate({
         replaced
     });
+
+    return queryState;
+};
+
+reql.prepend = ( queryState, args, reqlChain ) => {
+    const prependValue = spend( args[0], reqlChain );
+
+    if ( typeof prependValue === 'undefined' ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'prepend', 1, 0, false );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    queryState.target.unshift( prependValue );
+
+    return queryState;
+};
+
+reql.difference = ( queryState, args, reqlChain ) => {
+    const differenceValues = spend( args[0], reqlChain );
+
+    if ( typeof differenceValues === 'undefined' ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'difference', 1, 0, false );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    queryState.target = queryState.target
+        .filter( e => !differenceValues.some( a => e == a ) );
 
     return queryState;
 };

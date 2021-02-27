@@ -1,5 +1,17 @@
 import queryReql from './mockdbReql.js';
 
+const resolvingQueries = [
+    'serialize',
+    'run',
+    'getCursor',
+    'connect',
+    'connectPool',
+    'getPoolMaster'
+];
+
+// eslint-disable-next-line security/detect-non-literal-regexp
+const isResolvingQueryRe = new RegExp( `^(${resolvingQueries.join( '|' )})$` );
+
 const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
     prev[queryName] = function ( ...args ) {
         this.record.push({
@@ -7,7 +19,7 @@ const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
             queryArgs: args
         });
 
-        if ( /^(serialize|run|getCursor|connect|connectPool)$/.test( queryName ) ) {
+        if ( isResolvingQueryRe.test( queryName ) ) {
             const res = this.queryChainResolve( this.record, args[0]);
 
             this.record.pop();
