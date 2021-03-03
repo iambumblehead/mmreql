@@ -65,7 +65,7 @@ const mockdbResErrorDuplicatePrimaryKey = ( existingDoc, conflictDoc ) => (
         .replace( /:conflictDoc/, mockdbResStringify( conflictDoc ) ) );
 
 const mockdbResErrorArgumentsNumber = ( queryId, takesArgs = 0, givenArgs = 1, atLeast = false ) => (
-    'RethinkDBError [ReqlDriverError]: `:queryId` takes :takesArgs :argument, :givenArgs provided.'
+    '`:queryId` takes :takesArgs :argument, :givenArgs provided.'
         .replace( /:queryId/, queryId )
         .replace( /:argument/, takesArgs === 1 ? 'argument' : 'arguments' )
         .replace( /:takesArgs/, atLeast ? `at least ${takesArgs}` : takesArgs )
@@ -81,6 +81,10 @@ const mockdbResErrorUnrecognizedOption = ( key, value ) => (
 const mockdbResErrorInvalidTableName = tableName => (
     'RethinkDBError [ReqlLogicError]: Table name `:tableName` invalid (Use A-Z, a-z, 0-9, _ and - only)'
         .replace( /:tableName/, tableName ) );
+
+const mockdbResErrorInvalidDbName = dbName => (
+    'Database name `:dbName` invalid (Use A-Z, a-z, 0-9, _ and - only)'
+        .replace( /:dbName/, dbName ) );
 
 const mockdbResErrorTableExists = ( dbName, tableName ) => (
     'Table `:tableName` already exists.'
@@ -100,6 +104,7 @@ export {
     mockdbResErrorIndexOutOfBounds,
     mockdbResErrorUnrecognizedOption,
     mockdbResErrorInvalidTableName,
+    mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
     mockdbResErrorPrimaryKeyWrongType
 };

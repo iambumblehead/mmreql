@@ -16,20 +16,37 @@ const mockdbStateDbCursorsKeyGet = dbName => (
 const mockdbStateDbConfigKeyGet = dbName => (
     `dbConfig_${dbName}` );
 
+const mockdbStateDbCreate = ( state, dbName ) => {
+    state.dbSelected = dbName;
+    state[mockdbStateDbConfigKeyGet( dbName )] = {
+        name: dbName,
+        id: uuidv4()
+    };
+
+    state[mockdbStateDbCursorsKeyGet( dbName )] = {};
+    state.db[dbName] = {};
+
+    return state;
+};
+
+const mockdbStateDbDrop = ( state, dbName ) => {
+    delete state[mockdbStateDbConfigKeyGet( dbName )];
+    delete state[mockdbStateDbCursorsKeyGet( dbName )];
+    delete state.db[dbName];
+
+    if ( state.dbSelected === dbName )
+        [ state.dbSelected ] = Object.keys( state.db );
+
+    return state;
+};
+
 const mockdbStateCreate = opts => {
     const dbConfigList = castas.arr( opts.dbs, [ {
         db: opts.db || 'default'
     } ]);
 
     return dbConfigList.reduce( ( state, s ) => {
-        state.dbSelected = s.db;
-        state[mockdbStateDbConfigKeyGet( s.db )] = {
-            name: s.db,
-            id: uuidv4()
-        };
-
-        state[mockdbStateDbCursorsKeyGet( s.db )] = {};
-        state.db[s.db] = {};
+        state = mockdbStateDbCreate( state, s.db );
 
         return state;
     }, {
@@ -246,9 +263,29 @@ const mockdbStateTableDocCursorsGetOrCreate = ( dbState, tableName, doc ) => {
     return cursorConfig[tableDocId];
 };
 
+const mockdbStateAggregate = ( oldState, aggState ) => (
+    Object.keys( aggState ).reduce( ( state, key ) => {
+        if ( typeof aggState[key] === 'number' ) {
+            if ( typeof state[key] === 'undefined' )
+                state[key] = 0;
+            
+            state[key] += aggState[key];
+        } else if ( Array.isArray( aggState[key]) ) {
+            if ( !Array.isArray( state[key]) )
+                state[key] = [];
+
+            state[key].push( ...aggState[key]);
+        }
+
+        return state;
+    }, oldState ) );
+
 export {
     mockdbStateCreate,
     mockdbStateSelectedDb,
+    mockdbStateAggregate,
+    mockdbStateDbCreate,
+    mockdbStateDbDrop,
     mockdbStateTableCreate,
     mockdbStateTableDrop,
     mockdbStateTableGet,

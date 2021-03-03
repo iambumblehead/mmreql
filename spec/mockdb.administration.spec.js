@@ -91,7 +91,7 @@ test( '`config` should throw if called with an argument', async t => {
     await t.throws( () => (
         r.db( 'cmdb' ).config( 'hello' ).run()
     ), {
-        message: 'RethinkDBError [ReqlDriverError]: `config` takes 0 arguments, 1 provided.'
+        message: '`config` takes 0 arguments, 1 provided.'
     });
 });
 
