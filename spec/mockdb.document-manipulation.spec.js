@@ -20,7 +20,7 @@ test( '`prepend` should throw if now argument has been passed', async t => {
         .prepend()
         .run()
     ), {
-        message: 'RethinkDBError [ReqlDriverError]: `prepend` takes 1 argument, 0 provided.'
+        message: '`prepend` takes 1 argument, 0 provided.'
     });
 });
 
@@ -43,7 +43,7 @@ test( '`difference` should throw if now argument has been passed', async t => {
         .difference()
         .run()
     ), {
-        message: 'RethinkDBError [ReqlDriverError]: `difference` takes 1 argument, 0 provided.'
+        message: '`difference` takes 1 argument, 0 provided.'
     });
 });
 

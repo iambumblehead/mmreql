@@ -446,7 +446,7 @@ test( '.get(), throws error if called with no arguments', async t => {
     await t.throws( () => (
         r.table( 'UserSocial' ).get().run()
     ), {
-        message: 'RethinkDBError [ReqlDriverError]: `get` takes 1 argument, 0 provided.'
+        message: '`get` takes 1 argument, 0 provided.'
     });
 });
 

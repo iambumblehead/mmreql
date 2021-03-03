@@ -3,6 +3,9 @@ import { Readable } from 'stream';
 
 import {
     mockdbStateSelectedDb,
+    mockdbStateAggregate,
+    mockdbStateDbCreate,
+    mockdbStateDbDrop,
     mockdbStateTableIndexAdd,
     mockdbStateTableGetIndexNames,
     mockdbStateTableGetIndexTuple,
@@ -36,6 +39,7 @@ import {
     mockdbResErrorIndexOutOfBounds,
     mockdbResErrorUnrecognizedOption,
     mockdbResErrorInvalidTableName,
+    mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResTableStatus,
@@ -320,7 +324,86 @@ reql.getPoolMaster = ( queryState, args, reqlChain, dbState ) => {
 };
 
 // used for selecting/specifying db, not supported yet
-reql.db = queryState => queryState;
+reql.db = ( queryState, args ) => {
+    const [ dbName ] = args;
+    const isValidDbNameRe = /^[A-Za-z0-9_]*$/;
+
+    if ( !args.length ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'r.dbCreate', 1, args.length );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    if ( !isValidDbNameRe.test( dbName ) ) {
+        queryState.error = mockdbResErrorInvalidDbName( dbName );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    queryState.db = dbName;
+
+    return queryState;
+};
+
+reql.dbList = ( queryState, args, reqlChain, dbState ) => {
+    queryState.target = Object.keys( dbState.db );
+
+    return queryState;
+};
+
+reql.dbCreate = ( queryState, args, reqlChain, dbState ) => {
+    const [ dbName ] = args;
+
+    if ( !args.length ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'r.dbCreate', 1, args.length );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    dbState = mockdbStateDbCreate( dbState, dbName );
+
+    queryState.target = {
+        config_changes: [ {
+            new_val: mockdbStateDbConfigGet( dbName ),
+            old_val: null
+        } ],
+        dbs_created: 1
+    };
+
+    return queryState;
+};
+
+reql.dbDrop = ( queryState, args, reqlChain, dbState ) => {
+    const [ dbName ] = args;
+    const dbConfig = mockdbStateDbConfigGet( dbState, dbName );
+    const tables = mockdbStateSelectedDb( dbState, dbName );
+
+    if ( args.length !== 1 ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'r.dbDrop', 1, args.length );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    dbState = mockdbStateDbDrop( dbState, dbName );
+
+    queryState.target = {
+        config_changes: [ {
+            new_val: null,
+            old_val: dbConfig
+        } ],
+        dbs_dropped: 1,
+        tables_dropped: Object.keys( tables ).length
+    };
+
+    return queryState;
+};
 
 reql.config = ( queryState, args, reqlChain, dbState ) => {
     if ( args.length ) {
@@ -1362,6 +1445,26 @@ reql.changes = ( queryState, args ) => {
 
     queryState.isChanges = true;
     queryState.includeInitial = Boolean( options.includeInitial );
+
+    return queryState;
+};
+
+reql.forEach =  ( queryState, args, reqlChain ) => {
+    const [ forEachFn ] = args;
+
+    if ( args.length !== 1 ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'forEach', 1, args.length );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    queryState.target = queryState.target.reduce( ( st, arg ) => {
+        const result = spend( forEachFn( arg ), reqlChain );
+
+        return mockdbStateAggregate( st, result );
+    }, {});
 
     return queryState;
 };

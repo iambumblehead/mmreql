@@ -135,7 +135,7 @@ test( '`tableCreate` should throw if no argument is given', async t => {
         .tableCreate()
         .run()
     ), {
-        message: 'RethinkDBError [ReqlDriverError]: `r.tableCreate` takes at least 1 argument, 0 provided.'
+        message: '`r.tableCreate` takes at least 1 argument, 0 provided.'
     });
 });
 
