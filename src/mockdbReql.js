@@ -98,7 +98,7 @@ export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) =>
         if ( doc ) {
             f = value( reqlChain().expr( doc ) ).run();
         } else {
-            f = value().run();
+            f = value( doc ).run();
         }
     } else if ( value instanceof Date ) {
         f = value;
@@ -451,7 +451,7 @@ reql.tableList = ( queryState, args, reqlChain, dbState ) => {
 
 reql.tableCreate = ( queryState, args, reqlChain, dbState ) => {
     const [ tableName ] = args;
-    const isValidConfigKeyRe = /^(primaryKey|durabliity)$/;
+    const isValidConfigKeyRe = /^(primaryKey|durability)$/;
     const isValidTableNameRe = /^[A-Za-z0-9_]*$/;
     const config = queryArgsOptions( args );
     const invalidConfigKey = Object.keys( config ).find( k => !isValidConfigKeyRe.test( k ) );
@@ -935,14 +935,67 @@ reql.limit = ( queryState, args ) => {
     return queryState;
 };
 
+// Documents in the result set consist of pairs of left-hand and right-hand documents,
+// matched when the field on the left-hand side exists and is non-null and an entry
+// with that field’s value exists in the specified index on the right-hand side.
 reql.eqJoin = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
-    const [ leftKey, otherSequence ] = spend( args.slice( 0, 2 ), reqlChain );
+    const isNonNull = v => v !== null && v !== undefined;
+    const queryConfig = queryArgsOptions( args );
+    const isValidConfigKeyRe = /^index$/;
+    const rightFields = spend( args[1], reqlChain );
+    const rightFieldConfig = args[1] && spend( args[1] && args[1].config(), reqlChain );
+    const rightFieldKey = ( queryConfig.index )
+        || ( rightFieldConfig && rightFieldConfig.primary_key );
+    const invalidConfigKey = Object.keys( queryConfig )
+        .find( k => !isValidConfigKeyRe.test( k ) );
 
-    queryState.target = queryTarget.map( item => ({
-        left: item,
-        right: otherSequence.find( other => other.id === item[leftKey])
-    }) ).filter( ({ right }) => right );
+    if ( invalidConfigKey ) {
+        queryState.error = mockdbResErrorUnrecognizedOption(
+            invalidConfigKey, queryConfig[invalidConfigKey]);
+        queryState.target = null;
+
+        return queryState;
+    }
+    
+    if ( args.length === 0 ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'eqJoin', 2, 0, true );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    queryState.target = queryTarget.reduce( ( joins, item ) => {
+        const leftFieldSpend = spend( args[0], reqlChain, item );
+        const leftFieldValue = queryState.tablelist
+            ? item // if value comes from table use full document
+            : leftFieldSpend;
+        const leftFieldValueType = typeof leftFieldValue;
+
+        if ( isNonNull( leftFieldValue ) ) {
+            const rightFieldValue = rightFields
+                .find( rf => rf[rightFieldKey] === leftFieldSpend );
+
+            if ( isNonNull( rightFieldValue ) ) {
+                joins.push({
+                    left: leftFieldValue,
+                    right: rightFieldValue
+                });
+            }
+        }
+
+        return joins;
+    }, []);
+    
+    return queryState;
+};
+
+// Used to ‘zip’ up the result of a join by merging the ‘right’ fields into
+// ‘left’ fields of each member of the sequence.
+reql.zip = ( queryState, args, reqlChain ) => {
+    queryState.target = queryState.target
+        .map( t => ({ ...t.left, ...t.right }) );
 
     return queryState;
 };
@@ -1311,6 +1364,28 @@ reql.without = ( queryState, args, reqlChain ) => {
 
         return queryTarget;
     }, queryTarget );
+
+    return queryState;
+};
+
+// Call an anonymous function using return values from other
+// ReQL commands or queries as arguments.
+reql.do = ( queryState, args, reqlChain ) => {
+    const queryTarget = queryState.target;
+    const [ doFn ] = args.slice( -1 );
+    const spentArgs = !isReqlObj( doFn ) && typeof doFn === 'function'
+        ? spend( args.slice( 0, -1 ), reqlChain )
+        : spend( args, reqlChain );
+
+    if ( !isReqlObj( doFn ) && typeof doFn === 'function' ) {
+        queryState.target = queryTarget
+            ? spend( doFn, reqlChain, queryTarget )
+            : doFn( ...spentArgs );
+    } else if ( isReqlObj( args[0]) ) {
+        [ queryState.target ] = spentArgs;
+    } else if ( typeof doFn !== 'undefined' ) {
+        queryState.target = doFn;
+    }
 
     return queryState;
 };

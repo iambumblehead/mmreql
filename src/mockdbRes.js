@@ -75,7 +75,7 @@ const mockdbResErrorIndexOutOfBounds = index => (
     `ReqlNonExistanceError: Index out of bounds: ${index}` );
 
 const mockdbResErrorUnrecognizedOption = ( key, value ) => (
-    '[ReqlUnknownError]: Unrecognized optional argument `:key` in:'
+    'Unrecognized optional argument `:key`.'
         .replace( /:key/, key ) );
 
 const mockdbResErrorInvalidTableName = tableName => (

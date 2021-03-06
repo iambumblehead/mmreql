@@ -123,7 +123,7 @@ test( '`tableCreate` should throw -- non valid args', async t => {
         .tableCreate( 'thetablename', { nonValidArg: true })
         .run()
     ), {
-        message: '[ReqlUnknownError]: Unrecognized optional argument `nonValidArg` in:'
+        message: 'Unrecognized optional argument `nonValidArg`.'
     });
 });
 
