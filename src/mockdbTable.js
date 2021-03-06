@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
-const mockdbTableGetDocument = ( table, id ) => table
-    .find( doc => doc.id === id );
+const mockdbTableGetDocument = ( table, id, key = 'id' ) => table
+    .find( doc => doc[key] === id );
 
 const mockdbTableGetDocuments = ( table, ids = []) => {
     // eslint-disable-next-line security/detect-non-literal-regexp
