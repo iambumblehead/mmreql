@@ -10,7 +10,21 @@ const mockdbTableGetDocuments = ( table, ids = []) => {
     return table.filter( doc => idsRe.test( doc.id ) );
 };
 
+const mockdbTableRmDocument = ( table, doc ) => {
+    if ( doc && doc.id ) {
+        const existingIndex = table
+            .findIndex( d => d.id === doc.id );
+
+        if ( existingIndex >= 0 )
+            table.splice( existingIndex, 1 );
+    }
+
+    return [ table ];
+};
+
 const mockdbTableSetDocument = ( table, doc ) => {
+    [ table ] = mockdbTableRmDocument( table, doc );
+    
     if ( doc && !doc.id )
         doc.id = uuidv4();
 

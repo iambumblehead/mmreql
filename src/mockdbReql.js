@@ -604,33 +604,39 @@ reql.update = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
     const queryTable = queryState.tablelist;
     const updateProps = spend( args[0], reqlChain );
+    const options = args[1] || {};
 
     const updateTarget = targetDoc => {
-        let tableDoc = mockdbTableGetDocument( queryTable, targetDoc.id );
-
-        if ( tableDoc ) {
-            Object.assign( tableDoc, updateProps || {});
-            [ , tableDoc ] = mockdbTableSetDocument( queryTable, tableDoc );
+        const oldDoc = mockdbTableGetDocument( queryTable, targetDoc.id );
+        let newDoc = oldDoc && Object.assign({}, oldDoc, updateProps || {});
+        
+        if ( oldDoc ) {
+            [ , newDoc ] = mockdbTableSetDocument( queryTable, newDoc );
         }
 
-        return tableDoc;
+        return [ newDoc, oldDoc ];
     };
 
-    const updatedDocs = (
+    const changesDocs = (
         Array.isArray( queryTarget )
             ? queryTarget
             : [ queryTarget ]
-    ).reduce( ( updated, targetDoc ) => {
-        const tableDoc = updateTarget( targetDoc );
+    ).reduce( ( changes, targetDoc ) => {
+        const [ newDoc, oldDoc ]= updateTarget( targetDoc );
 
-        if ( tableDoc )
-            updated.push( tableDoc );
+        if ( newDoc ) {
+            changes.push({
+                new_val: newDoc,
+                old_val: oldDoc
+            });
+        }
 
-        return updated;
+        return changes;
     }, []);
 
     queryState.target = mockdbResChangesFieldCreate({
-        replaced: updatedDocs.length
+        replaced: changesDocs.length,
+        changes: options.returnChanges === true ? changesDocs : undefined
     });
 
     return queryState;
