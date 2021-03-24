@@ -434,6 +434,25 @@ test( 'supports .get()', async t => {
     });
 });
 
+test( '.get(), uses table-pre-configured primaryKey', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'UserSocial', [ { primaryKey: 'numeric_id' } ], {
+            numeric_id: 5848,
+            name_screenname: 'screenname'
+        } ]
+    ]);
+
+    const res = await r.table( 'UserSocial' )
+        .get( 5848 )
+        .default({ defaultValue: true })
+        .run();
+
+    t.deepEqual( res, {
+        numeric_id: 5848,
+        name_screenname: 'screenname'
+    });
+});
+
 test( '.get(), uses table-configured primaryKey', async t => {
     const { r } = rethinkdbMocked();
     await r

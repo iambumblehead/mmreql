@@ -43,6 +43,9 @@ console.log(appDoc);
 
 **v0.6.0** adds support for multiple databases. adds table and database configuration queries. Copies and re-uses tests [from rethinkdb-ts.][2]
 
+**v0.8.0** adds support for complex insert queries. documents can be inserted, replaced and modified at the same time through a single atomic query. improves support for tables with custom primary_keys. ex, 'user_id' as in the document `{ user_id: 'cyclingHal4482', presence: 'ONLINE' }`
+ 
+
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js
 [1]: https://rethinkdb.com/docs/changefeeds/javascript/
