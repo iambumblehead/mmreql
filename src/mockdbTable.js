@@ -3,17 +3,17 @@ import { v4 as uuidv4 } from 'uuid';
 const mockdbTableGetDocument = ( table, id, key = 'id' ) => table
     .find( doc => doc[key] === id );
 
-const mockdbTableGetDocuments = ( table, ids = []) => {
+const mockdbTableGetDocuments = ( table, ids = [], primaryKey = 'id' ) => {
     // eslint-disable-next-line security/detect-non-literal-regexp
     const idsRe = new RegExp( `^(${ids.join( '|' )})$` );
 
-    return table.filter( doc => idsRe.test( doc.id ) );
+    return table.filter( doc => idsRe.test( doc[primaryKey]) );
 };
 
-const mockdbTableRmDocument = ( table, doc ) => {
+const mockdbTableRmDocument = ( table, doc, primaryKey = 'id' ) => {
     if ( doc && doc.id ) {
         const existingIndex = table
-            .findIndex( d => d.id === doc.id );
+            .findIndex( d => d[primaryKey] === doc[primaryKey]);
 
         if ( existingIndex >= 0 )
             table.splice( existingIndex, 1 );
@@ -22,13 +22,18 @@ const mockdbTableRmDocument = ( table, doc ) => {
     return [ table ];
 };
 
-const mockdbTableSetDocument = ( table, doc ) => {
-    [ table ] = mockdbTableRmDocument( table, doc );
-    
-    if ( doc && !doc.id )
-        doc.id = uuidv4();
+const mockdbTableDocEnsurePrimaryKey = ( doc, primaryKey ) => {
+    if ( doc && !doc[primaryKey])
+        doc[primaryKey] = uuidv4();
 
-    table.push( doc );
+    return doc;
+};
+
+const mockdbTableSetDocument = ( table, doc, primaryKey = 'id' ) => {
+    [ table ] = mockdbTableRmDocument( table, doc, primaryKey );
+    
+    table.push(
+        mockdbTableDocEnsurePrimaryKey( doc, primaryKey ) );
 
     return [ table, doc ];
 };
@@ -78,6 +83,7 @@ export {
     mockdbTableSetDocument,
     mockdbTableSetDocuments,
     mockdbTableDocGetIndexValue,
+    mockdbTableDocEnsurePrimaryKey,
     mockdbTableRmDocumentsAll,
     mockdbTableSet
 };
