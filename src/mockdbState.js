@@ -150,6 +150,12 @@ const mockdbStateTableGetIndexNames = ( dbState, tableName ) => {
     return tableConfig ? tableConfig.indexes.map( i => i[0]) : [];
 };
 
+const mockdbStateTableGetPrimaryKey = ( dbState, tableName ) => {
+    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
+
+    return tableConfig && tableConfig.primary_key;
+};
+
 const mockdbStateTableIndexExists = ( db, tableName, indexName ) => {
     const indexNames = mockdbStateTableGetIndexNames( db, tableName );
 
@@ -292,6 +298,7 @@ export {
     mockdbStateTableSet,
     mockdbStateTableGetOrCreate,
     mockdbStateTableGetIndexNames,
+    mockdbStateTableGetPrimaryKey,
     mockdbStateTableIndexAdd,
     mockdbStateTableIndexExists,
     mockdbStateTableGetIndexTuple,

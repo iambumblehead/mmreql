@@ -9,6 +9,7 @@ import {
     mockdbStateTableIndexAdd,
     mockdbStateTableGetIndexNames,
     mockdbStateTableGetIndexTuple,
+    mockdbStateTableGetPrimaryKey,
     mockdbStateTableCursorSet,
     mockdbStateTableDocCursorSet,
     mockdbStateTableCursorSplice,
@@ -29,6 +30,7 @@ import {
     mockdbTableGetDocuments,
     mockdbTableSetDocuments,
     mockdbTableDocGetIndexValue,
+    mockdbTableDocEnsurePrimaryKey,
     mockdbTableSet
 } from './mockdbTable.js';
 
@@ -563,20 +565,77 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
     // both argument types (list or atom) resolved to a list here
     let documents = Array.isArray( args[0]) ? args[0] : args.slice( 0, 1 );
     let table = queryState.tablelist;
+    const primaryKey = mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
     const options = args[1] || {};
 
-    const [ existingDoc ] = mockdbTableGetDocuments(
-        queryState.tablelist, documents.map( doc => doc.id ) );
+    const isValidConfigKeyRe = /^(returnChanges|durability|conflict)$/;
+    const invalidConfigKey = Object.keys( options )
+        .find( k => !isValidConfigKeyRe.test( k ) );
 
-    if ( existingDoc ) {
-        queryState.target = mockdbResChangesFieldCreate({
-            errors: 1,
-            firstError: mockdbResErrorDuplicatePrimaryKey(
-                existingDoc,
-                documents.find( doc => doc.id === existingDoc.id )
-            )
-        });
+    if ( invalidConfigKey ) {
+        queryState.error = mockdbResErrorUnrecognizedOption(
+            invalidConfigKey, options[invalidConfigKey]);
+        queryState.target = null;
 
+        return queryState;
+    }
+
+    if ( documents.length === 0 ) {
+        queryState.error = mockdbResErrorArgumentsNumber( 'insert', 1, 0 );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    documents = documents
+        .map( doc => mockdbTableDocEnsurePrimaryKey( doc, primaryKey ) );
+
+    const existingDocs = mockdbTableGetDocuments(
+        queryState.tablelist, documents.map( doc => doc[primaryKey]), primaryKey );
+
+    if ( existingDocs.length ) {
+        // only processes single document now
+        if ( typeof options.conflict === 'function' ) {
+            const oldDoc = reqlChain().expr( existingDocs[0]);
+            const newDoc = reqlChain().expr( documents[0]);
+
+            const resDoc = options.conflict( documents[0].id, oldDoc, newDoc ).run();
+            const changes = [ {
+                old_val: existingDocs[0],
+                new_val: resDoc
+            } ];
+
+            mockdbTableSetDocument( table, resDoc, primaryKey );
+            
+            queryState.target = mockdbResChangesFieldCreate({
+                replaced: documents.length,
+                changes: options.returnChanges === true ? changes : undefined
+            });
+
+            return queryState;
+        } else if ( /^(update|replace)$/.test( options.conflict ) ) {
+            const conflictIds = existingDocs.map( doc => doc[primaryKey]);
+            // eslint-disable-next-line security/detect-non-literal-regexp
+            const conflictIdRe = new RegExp( `^(${conflictIds.join( '|' )})$` );
+            const conflictDocs = documents.filter( doc => conflictIdRe.test( doc[primaryKey]) );
+
+            queryState = options.conflict === 'update'
+                ? reql.update( queryState, conflictDocs, reqlChain, dbState )
+                : reql.replace( queryState, conflictDocs, reqlChain, dbState );
+
+            const conflictTarget = queryState.target;
+
+            return queryState;
+        } else {
+            queryState.target = mockdbResChangesFieldCreate({
+                errors: 1,
+                firstError: mockdbResErrorDuplicatePrimaryKey(
+                    existingDocs[0],
+                    documents.find( doc => doc[primaryKey] === existingDocs[0][primaryKey])
+                )
+            });
+        }
+        
         return queryState;
     }
 
@@ -593,25 +652,26 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
 
     queryState.target = mockdbResChangesFieldCreate({
         inserted: documents.length,
-        generated_keys: documents.map( doc => doc.id ),
+        generated_keys: documents.map( doc => doc[primaryKey]),
         changes: options.returnChanges === true ? changes : undefined
     });
 
     return queryState;
 };
 
-reql.update = ( queryState, args, reqlChain ) => {
+reql.update = ( queryState, args, reqlChain, dbState ) => {
     const queryTarget = queryState.target;
     const queryTable = queryState.tablelist;
     const updateProps = spend( args[0], reqlChain );
+    const primaryKey = mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
     const options = args[1] || {};
 
     const updateTarget = targetDoc => {
-        const oldDoc = mockdbTableGetDocument( queryTable, targetDoc.id );
+        const oldDoc = mockdbTableGetDocument( queryTable, targetDoc[primaryKey], primaryKey );
         let newDoc = oldDoc && Object.assign({}, oldDoc, updateProps || {});
         
         if ( oldDoc ) {
-            [ , newDoc ] = mockdbTableSetDocument( queryTable, newDoc );
+            [ , newDoc ] = mockdbTableSetDocument( queryTable, newDoc, primaryKey );
         }
 
         return [ newDoc, oldDoc ];
@@ -688,12 +748,14 @@ reql.getAll = ( queryState, args, reqlChain, dbState ) => {
     return queryState;
 };
 
-reql.replace = ( queryState, args, reqlChain ) => {
+reql.replace = ( queryState, args, reqlChain, dbState ) => {
     let replaced = 0;
     const replacement = spend( args[0], reqlChain );
-    const targetIndexName = 'id';
+    const targetIndexName = mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
+
     const targetIndex = queryState.tablelist
         .findIndex( doc => doc[targetIndexName] === replacement[targetIndexName]);
+
 
     if ( targetIndex > -1 ) {
         replaced += 1;
