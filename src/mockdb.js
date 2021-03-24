@@ -54,8 +54,11 @@ export default configList => {
         : tables;
 
     const mockdb = dbConfigTables.reduce( ( dbState, tablelist ) => {
-        dbState = mockdbStateTableCreate( dbState, tablelist[0]);
-        dbState = mockdbStateTableSet( dbState, tablelist[0], tablelist.slice( 1 ) );
+        const tableConfig = Array.isArray( tablelist[1]) && tablelist[1];
+
+        dbState = mockdbStateTableCreate( dbState, tablelist[0], tableConfig[0]);
+        dbState = mockdbStateTableSet(
+            dbState, tablelist[0], tablelist.slice( tableConfig ? 2 : 1 ) );
 
         return dbState;
     }, dbConfig );
