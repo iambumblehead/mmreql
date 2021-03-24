@@ -640,7 +640,7 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
     }
 
     [ table, documents ] = mockdbTableSetDocuments(
-        table, documents.map( doc => spend( doc, reqlChain ) ), dbState );
+        table, documents.map( doc => spend( doc, reqlChain ) ), primaryKey );
 
     const changes = documents.map( doc => ({
         old_val: null,
@@ -702,9 +702,10 @@ reql.update = ( queryState, args, reqlChain, dbState ) => {
     return queryState;
 };
 
-reql.get = ( queryState, args, reqlChain ) => {
+reql.get = ( queryState, args, reqlChain, dbState ) => {
     const primaryKeyValue = spend( args[0], reqlChain );
-    const tableDoc = mockdbTableGetDocument( queryState.target, primaryKeyValue );
+    const primaryKey = mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
+    const tableDoc = mockdbTableGetDocument( queryState.target, primaryKeyValue, primaryKey );
 
     if ( args.length === 0 ) {
         queryState.error = mockdbResErrorArgumentsNumber( 'get', 1, 0 );

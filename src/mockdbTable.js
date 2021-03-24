@@ -31,16 +31,16 @@ const mockdbTableDocEnsurePrimaryKey = ( doc, primaryKey ) => {
 
 const mockdbTableSetDocument = ( table, doc, primaryKey = 'id' ) => {
     [ table ] = mockdbTableRmDocument( table, doc, primaryKey );
-    
+
     table.push(
         mockdbTableDocEnsurePrimaryKey( doc, primaryKey ) );
 
     return [ table, doc ];
 };
 
-const mockdbTableSetDocuments = ( table, docs ) => {
+const mockdbTableSetDocuments = ( table, docs, primaryKey = 'id' ) => {
     docs = docs.map( doc => {
-        [ table, doc ] = mockdbTableSetDocument( table, doc );
+        [ table, doc ] = mockdbTableSetDocument( table, doc, primaryKey );
 
         return doc;
     });
