@@ -736,14 +736,21 @@ reql.get.fn = ( queryState, args, reqlChain ) => {
 
 reql.getAll = ( queryState, args, reqlChain, dbState ) => {
     const queryOptions = queryArgsOptions( args );
+    const primaryKeyValues = ( queryOptions && queryOptions.index ) ? args.slice( 0, -1 ) : args;
     const { tablename } = queryState;
-    const indexName = queryOptions.index || 'id';
-    const indexTargetValue = Array.isArray( args[0]) ? args[0].join() : args[0];
-    const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, tablename, indexName );
+    const primaryKey = queryOptions.index || mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
+    const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, tablename, primaryKey );
 
-    queryState.target = queryState.target.filter( doc => (
-        mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend, reqlChain ) === indexTargetValue
-    ) ).sort( () => 0.5 - Math.random() );
+    if ( primaryKeyValues.length ) {
+        // eslint-disable-next-line security/detect-non-literal-regexp
+        const targetValueRe = new RegExp( `^(${primaryKeyValues.join( '|' )})$` );
+        
+        queryState.target = queryState.target.filter( doc => (
+            targetValueRe.test( mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend, reqlChain ) )
+        ) );
+    }
+
+    queryState.target = queryState.target.slice().sort( () => 0.5 - Math.random() );
     // rethink output array is not in-order
 
     return queryState;
