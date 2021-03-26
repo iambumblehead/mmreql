@@ -241,6 +241,34 @@ test( 'getAll().filter({ device_id })', async t => {
     t.is( AppUserDevice[0].id, 'id-document-1234' );
 });
 
+test( 'getAll should use special primaryKey', async t => {
+    const { r, dbState } = rethinkdbMocked([
+        [ 'Rooms', [ { primaryKey: 'room_id' } ], {
+            room_id: 'roomAId-1234',
+            numeric_id: 755090
+        }, {
+            room_id: 'roomBId-1234',
+            numeric_id: 123321
+        }, {
+            room_id: 'roomCId-1234',
+            numeric_id: 572984
+        } ]
+    ]);
+
+    const roomDocs = await r
+        .table( 'Rooms' )
+        .getAll( 'roomAId-1234', 'roomBId-1234' )
+        .run();
+
+    t.deepEqual( roomDocs.sort( ( a, b ) => compare( a, b, 'room_id' ) ), [ {
+        room_id: 'roomAId-1234',
+        numeric_id: 755090
+    }, {
+        room_id: 'roomBId-1234',
+        numeric_id: 123321
+    } ].sort( ( a, b ) => compare( a, b, 'room_id' ) ) );
+});
+
 test( 'indexCreate should add index to dbState', async t => {
     const { r, dbState } = rethinkdbMocked([
         [ 'Rooms', {
