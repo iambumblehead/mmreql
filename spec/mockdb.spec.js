@@ -1620,6 +1620,19 @@ test( 'supports .append()', async t => {
     t.deepEqual( res, [ 'gloves', 'newBoots' ]);
 });
 
+test( 'supports .insert([ ...docs ]) should insert several docs', async t => {
+    const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+    await r
+        .db( 'default' )
+        .table( 'Rooms' )
+        .insert([ { val: 1 }, { val: 2 }, { val: 3 } ])
+        .run();
+
+    const testRooms = await r.db( 'default' ).table( 'Rooms' ).run();
+
+    t.is( testRooms.length, 3 );
+});
+
 test( 'supports .insert(, {})', async t => {
     const { r } = rethinkdbMocked([
         [ 'posts', {
@@ -1742,6 +1755,30 @@ test( '.insert(, {}) returns error if inserted document is found', async t => {
         deleted: 0,
         firstError: mockdbResErrorDuplicatePrimaryKey( existingDoc, conflictDoc )
     });
+});
+
+test( 'r.table().insert( doc, { conflict: "update" }) updates existing doc', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'Presence', [ { primaryKey: 'user_id' } ], {
+            user_id: 0,
+            state: 'UNHAPPY',
+            status_msg: ''
+        } ] ]);
+
+    await r
+        .table( 'Presence' )
+        .insert({
+            user_id: 0,
+            state: 'HAPPY',
+            status_msg: ''
+        }, { conflict: 'update' })
+        .run();
+
+    t.deepEqual( await r.table( 'Presence' ).getAll().run(), [ {
+        user_id: 0,
+        state: 'HAPPY',
+        status_msg: ''
+    } ]);
 });
 
 test( '.update(, { prop: val }) should update a document', async t => {

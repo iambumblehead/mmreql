@@ -1,5 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 
+const mockdbTableDocIsPrimaryKey = ( doc, primaryKey ) => Boolean(
+    doc && /number|string/.test( typeof doc[primaryKey]) );
+
 const mockdbTableGetDocument = ( table, id, key = 'id' ) => table
     .find( doc => doc[key] === id );
 
@@ -11,19 +14,20 @@ const mockdbTableGetDocuments = ( table, ids = [], primaryKey = 'id' ) => {
 };
 
 const mockdbTableRmDocument = ( table, doc, primaryKey = 'id' ) => {
-    if ( doc && doc.id ) {
-        const existingIndex = table
-            .findIndex( d => d[primaryKey] === doc[primaryKey]);
+    if ( !mockdbTableDocIsPrimaryKey( doc, primaryKey ) )
+        return [ table ];
 
-        if ( existingIndex >= 0 )
-            table.splice( existingIndex, 1 );
-    }
+    const existingIndex = table
+        .findIndex( d => d[primaryKey] === doc[primaryKey]);
+
+    if ( existingIndex > -1 )
+        table.splice( existingIndex, 1 );
 
     return [ table ];
 };
 
 const mockdbTableDocEnsurePrimaryKey = ( doc, primaryKey ) => {
-    if ( doc && !doc[primaryKey])
+    if ( !mockdbTableDocIsPrimaryKey( doc, primaryKey ) )
         doc[primaryKey] = uuidv4();
 
     return doc;
@@ -84,6 +88,7 @@ export {
     mockdbTableSetDocuments,
     mockdbTableDocGetIndexValue,
     mockdbTableDocEnsurePrimaryKey,
+    mockdbTableDocIsPrimaryKey,
     mockdbTableRmDocumentsAll,
     mockdbTableSet
 };

@@ -153,7 +153,7 @@ const mockdbStateTableGetIndexNames = ( dbState, tableName ) => {
 const mockdbStateTableGetPrimaryKey = ( dbState, tableName ) => {
     const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
 
-    return tableConfig && tableConfig.primary_key;
+    return ( tableConfig && tableConfig.primary_key ) || 'id';
 };
 
 const mockdbStateTableIndexExists = ( db, tableName, indexName ) => {
