@@ -882,9 +882,9 @@ reql.match = ( queryState, args, reqlChain ) => {
 reql.delete = ( queryState, args, reqlChain, dbState ) => {
     const queryTarget = queryState.target;
     const queryTable = queryState.tablelist;
-    const indexName = 'id';
+    const primaryKey = mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
     const tableIndexTuple = mockdbStateTableGetIndexTuple(
-        dbState, queryState.tablename, indexName );
+        dbState, queryState.tablename, primaryKey );
     const targetIds = ( Array.isArray( queryTarget ) ? queryTarget : [ queryTarget ])
         .map( doc => mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend ) );
     // eslint-disable-next-line security/detect-non-literal-regexp
@@ -892,6 +892,18 @@ reql.delete = ( queryState, args, reqlChain, dbState ) => {
     const tableFiltered = queryTable.filter( doc => !targetIdRe.test(
         mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend ) ) );
     const deleted = queryTable.length - tableFiltered.length;
+    const queryConfig = queryArgsOptions( args );
+    const isValidConfigKeyRe = /^(durability|returnChanges|ignoreWriteHook)$/;
+    const invalidConfigKey = Object.keys( queryConfig )
+        .find( k => !isValidConfigKeyRe.test( k ) );
+
+    if ( invalidConfigKey ) {
+        queryState.error = mockdbResErrorUnrecognizedOption(
+            invalidConfigKey, queryConfig[invalidConfigKey]);
+        queryState.target = null;
+
+        return queryState;
+    }
 
     mockdbTableSet( queryTable, tableFiltered );
 
