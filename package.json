@@ -1,6 +1,6 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "description": "database mocking used by template projects",
   "main": "dist/mockdb.js",
   "browser": "dist/mockdb.js",

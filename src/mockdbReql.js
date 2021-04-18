@@ -1521,9 +1521,35 @@ reql.branch = ( queryState, args, reqlChain ) => {
 
 // Rethink has its own alg for finding distinct,
 // but unique by ID should be sufficient here.
-reql.distinct = queryState => {
-    queryState.target = queryState.target.filter(
-        ( item, pos, self ) => self.indexOf( item ) === pos );
+reql.distinct = ( queryState, args, reqlChain, dbState ) => {
+    const queryOptions = queryArgsOptions( args );
+
+    if ( Array.isArray( queryState.target )
+        && queryState.tablename
+
+        // skip if target is filtered, concatenated or manipulated in some way
+        && !/string|boolean|number/.test( typeof queryState.target[0]) ) {
+        const primaryKey = queryOptions.index
+            || mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
+
+        const keys = {};
+        queryState.target = queryState.target.reduce( ( disti, row ) => {
+            const value = row[primaryKey];
+
+            if ( !keys[value]) {
+                keys[value] = true;
+                disti.push( value );
+            }
+
+            return disti;
+        }, []);
+    } else if ( Array.isArray( queryState.target ) ) {
+        queryState.target = queryState.target.filter(
+            ( item, pos, self ) => self.indexOf( item ) === pos );
+    } else if ( Array.isArray( args[0]) ) {
+        queryState.target = args[0].filter(
+            ( item, pos, self ) => self.indexOf( item ) === pos );
+    }
 
     return queryState;
 };
