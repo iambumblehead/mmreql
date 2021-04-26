@@ -1,4 +1,4 @@
-import queryReql from './mockdbReql.js';
+import queryReql from './mockdbReql.mjs';
 
 const resolvingQueries = [
     'serialize',

@@ -1,7 +1,7 @@
 import {
     mockdbStateDbConfigGet,
     mockdbStateTableConfigGet
-} from './mockdbState.js';
+} from './mockdbState.mjs';
 
 // rethinkdb response values are never 'undefined'
 // remove 'undefined' definitions from object

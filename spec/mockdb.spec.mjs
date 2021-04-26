@@ -1,8 +1,8 @@
 import test from 'ava';
 import timezonemock from 'timezone-mock';
 import { validate as uuidValidate } from 'uuid';
-import rethinkdbMocked from '../src/mockdb.js';
-import { mockdbResErrorDuplicatePrimaryKey } from '../src/mockdbRes.js';
+import rethinkdbMocked from '../src/mockdb.mjs';
+import { mockdbResErrorDuplicatePrimaryKey } from '../src/mockdbRes.mjs';
 
 timezonemock.register( 'US/Pacific' );
 

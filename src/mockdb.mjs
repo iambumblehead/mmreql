@@ -1,11 +1,11 @@
-import queryReql from './mockdbReql.js';
-import mockdbChain from './mockdbChain.js';
+import queryReql from './mockdbReql.mjs';
+import mockdbChain from './mockdbChain.mjs';
 
 import {
     mockdbStateCreate,
     mockdbStateTableSet,
     mockdbStateTableCreate
-} from './mockdbState.js';
+} from './mockdbState.mjs';
 
 // obj not instances of mockdbReql fn...
 const objlookup = ( nsstr, obj ) => String( nsstr )

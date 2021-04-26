@@ -1,6 +1,6 @@
 import test from 'ava';
 import { validate as uuidValidate } from 'uuid';
-import rethinkdbMocked from '../src/mockdb.js';
+import rethinkdbMocked from '../src/mockdb.mjs';
 
 test( 'db `config` should work (default)', async t => {
     const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);

@@ -1,31 +1,31 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "description": "database mocking used by template projects",
   "main": "dist/mockdb.js",
   "browser": "dist/mockdb.js",
-  "module": "src/mockdb.js",
+  "module": "src/mockdb.mjs",
   "repository": "code.venom360.com/platform/mockdb",
   "license": "UNLICENSED",
   "exports": {
     ".": {
       "require": "./dist/mockdb.js",
-      "import": "./src/mockdb.js"
+      "import": "./src/mockdb.mjs"
     },
     "./": "./"
-  },    
+  },
   "publishConfig": {
     "@platform:registry": "https://code.venom360.com/api/v4/projects/564/packages/npm/"
   },
   "scripts": {
     "test": "npm run lint && npm run unit-test",
-    "lint": "eslint . && npm run -s lint-yaml",
+    "lint": "eslint */*mjs && npm run -s lint-yaml",
     "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
     "lint-fix": "eslint --fix .",
-    "unit-test-coverage": "nyc ava",
+    "unit-test-coverage": "c8 --all ava",
     "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env",
     "unit-test": "ava",
-    "test-cover": "nyc ava --check-coverage=true"
+    "test-cover": "c8 --all ava --check-coverage=true"
   },
   "dependencies": {
     "castas": "0.1.3",
@@ -38,7 +38,8 @@
     "@babel/helper-module-transforms": "^7.12.13",
     "@babel/preset-env": "^7.12.13",
     "@babel/register": "^7.12.13",
-    "ava": "^3.15.0",
+    "ava": "^4.0.0-alpha.2",
+    "c8": "^7.7.1",
     "eslint": "^7.19.0",
     "eslint-plugin-ava": "^11.0.0",
     "eslint-plugin-babel": "^5.3.0",
@@ -50,13 +51,7 @@
     "js-yaml": "^3.13.1",
     "lint-staged": "^10.2.1",
     "milliseconds": "^1.0.3",
-    "nyc": "^15.1.0",
     "timezone-mock": "^1.1.3"
-  },
-  "ava": {
-    "require": [
-      "esm"
-    ]
   },
   "husky": {
     "hooks": {
@@ -64,19 +59,7 @@
     }
   },
   "lint-staged": {
-    "*.js": "eslint"
-  },
-  "nyc": {
-    "compact": false,
-    "include": [
-      "src/*js"
-    ],
-    "files": [
-      "spec/*.spec.js"
-    ],
-    "all": true,
-    "reporter": "text-summary",
-    "cache": true
+    "*.mjs": "eslint"
   },
   "eslintIgnore": [
     "node_modules",

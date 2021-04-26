@@ -1,7 +1,7 @@
 import test from 'ava';
 import { Readable } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
-import rethinkdbMocked from '../src/mockdb.js';
+import rethinkdbMocked from '../src/mockdb.mjs';
 
 test( '`delete` should work`', async t => {
     const { r } = rethinkdbMocked([
