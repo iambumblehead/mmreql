@@ -12,7 +12,7 @@ test:
   script:
   - npm run lint
   - npm run test-cover
-  coverage: '/^Statements\s*:\s*([^%]+)/'
+  coverage: '/^src[^\d]*(\d\d?\.?\d?\d?)/'
   
 publish:
   stage: publish

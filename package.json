@@ -1,6 +1,6 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "description": "database mocking used by template projects",
   "main": "dist/mockdb.js",
   "browser": "dist/mockdb.js",
@@ -22,10 +22,10 @@
     "lint": "eslint */*mjs && npm run -s lint-yaml",
     "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
     "lint-fix": "eslint --fix .",
-    "unit-test-coverage": "nyc ava",
+    "unit-test-coverage": "c8 --all ava",
     "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env",
     "unit-test": "ava",
-    "test-cover": "nyc ava --check-coverage=true"
+    "test-cover": "c8 --all ava --check-coverage=true"
   },
   "dependencies": {
     "castas": "0.1.3",
@@ -39,6 +39,7 @@
     "@babel/preset-env": "^7.12.13",
     "@babel/register": "^7.12.13",
     "ava": "^4.0.0-alpha.2",
+    "c8": "^7.7.1",
     "eslint": "^7.19.0",
     "eslint-plugin-ava": "^11.0.0",
     "eslint-plugin-babel": "^5.3.0",
@@ -50,7 +51,6 @@
     "js-yaml": "^3.13.1",
     "lint-staged": "^10.2.1",
     "milliseconds": "^1.0.3",
-    "nyc": "^15.1.0",
     "timezone-mock": "^1.1.3"
   },
   "husky": {
@@ -60,18 +60,6 @@
   },
   "lint-staged": {
     "*.mjs": "eslint"
-  },
-  "nyc": {
-    "compact": false,
-    "include": [
-      "src/*js"
-    ],
-    "files": [
-      "spec/*.spec.mjs"
-    ],
-    "all": true,
-    "reporter": "text-summary",
-    "cache": true
   },
   "eslintIgnore": [
     "node_modules",
