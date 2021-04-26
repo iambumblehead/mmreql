@@ -1,12 +1,19 @@
 {
   "name": "@platform/template-js-rethinkdb-mocked",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "description": "database mocking used by template projects",
   "main": "dist/mockdb.js",
   "browser": "dist/mockdb.js",
   "module": "src/mockdb.js",
   "repository": "code.venom360.com/platform/mockdb",
   "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "require": "./dist/mockdb.js",
+      "import": "./src/mockdb.js"
+    },
+    "./": "./"
+  },    
   "publishConfig": {
     "@platform:registry": "https://code.venom360.com/api/v4/projects/564/packages/npm/"
   },
