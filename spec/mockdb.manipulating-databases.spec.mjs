@@ -1,5 +1,5 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.js';
+import rethinkdbMocked from '../src/mockdb.mjs';
 
 test( '`expr` should work', async t => {
     const { r } = rethinkdbMocked();

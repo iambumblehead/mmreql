@@ -1,5 +1,5 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.js';
+import rethinkdbMocked from '../src/mockdb.mjs';
 
 test( '`distinct` should work', async t => {
     const { r } = rethinkdbMocked();

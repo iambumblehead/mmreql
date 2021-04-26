@@ -22,7 +22,7 @@ import {
     mockdbStateTableDrop,
     mockdbStateDbConfigGet,
     mockdbStateTableGet
-} from './mockdbState.js';
+} from './mockdbState.mjs';
 
 import {
     mockdbTableGetDocument,
@@ -32,7 +32,7 @@ import {
     mockdbTableDocGetIndexValue,
     mockdbTableDocEnsurePrimaryKey,
     mockdbTableSet
-} from './mockdbTable.js';
+} from './mockdbTable.mjs';
 
 import {
     mockdbResChangesFieldCreate,
@@ -46,7 +46,7 @@ import {
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResTableStatus,
     mockdbResTableInfo
-} from './mockdbRes.js';
+} from './mockdbRes.mjs';
 
 const isReqlObj = obj => Boolean(
     obj && /object|function/.test( typeof obj ) && obj.isReql );
