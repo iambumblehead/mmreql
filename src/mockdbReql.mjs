@@ -1650,7 +1650,7 @@ reql.forEach =  ( queryState, args, reqlChain ) => {
     }
 
     queryState.target = queryState.target.reduce( ( st, arg ) => {
-        const result = spend( forEachFn( arg ), reqlChain );
+        const result = spend( forEachFn, reqlChain, arg );
 
         return mockdbStateAggregate( st, result );
     }, {});
