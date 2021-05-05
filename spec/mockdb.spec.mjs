@@ -2250,3 +2250,60 @@ test( 'supports .getPoolMaster().isHealthy', t => {
 
     t.is( r.getPoolMaster().isHealthy, true );
 });
+
+test( 'supports .filter( doc => doc("id") )', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'player', {
+            id: 'playerId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            score: 6
+        } ]
+    ]);
+
+    await r
+        .table( 'player' )
+        .filter( player => player( 'score' ).eq( 10 ) )
+        .delete()
+        .run();
+
+    t.is( await r.table( 'player' ).count().run(), 1 );
+
+    await r
+        .table( 'player' )
+        .getAll( 'playerId-5678' )
+        .filter( player => player( 'score' ).eq( 6 ) )
+        .delete()
+        .run();
+
+    t.is( await r.table( 'player' ).count().run(), 0 );
+});
+
+test( 'supports .forEach( doc => doc("id") )', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'playershoes', {
+            id: 'shoeId-1234',
+            type: 'cleat'
+        },{
+            id: 'shoeId-5678',
+            type: 'boot'
+        } ],
+        [ 'player', {
+            id: 'playerId-1234',
+            shoeId: 'shoeId-1234',
+            score: 10
+        }, {
+            id: 'playerId-5678',
+            shoeId: 'shoeId-5678',
+            score: 6
+        } ]
+    ]);
+
+    const res = await r
+        .table( 'player' )
+        .forEach( player => r.table( 'playershoes' ).get( player( 'shoeId' ) ).delete() )
+        .run();
+
+    t.is( await r.table( 'playershoes' ).count().run(), 0 );
+});
