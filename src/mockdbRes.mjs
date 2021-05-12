@@ -94,6 +94,9 @@ const mockdbResErrorPrimaryKeyWrongType = primaryKey => (
     'Primary keys must be either a number, string, bool, pseudotype or array (got type :type)'
         .replace( /:type/, String( typeof primaryKey ).toUpperCase() ) );
 
+const mockdbResErrorNotATIMEpsudotype = () => (
+    'Not a TIME pseudotype: `null`' );
+
 export {
     mockdbResChangesFieldCreate,
     mockdbResStringify,
@@ -106,5 +109,6 @@ export {
     mockdbResErrorInvalidTableName,
     mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
-    mockdbResErrorPrimaryKeyWrongType
+    mockdbResErrorPrimaryKeyWrongType,
+    mockdbResErrorNotATIMEpsudotype
 };
