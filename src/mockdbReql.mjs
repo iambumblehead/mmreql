@@ -44,6 +44,7 @@ import {
     mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
     mockdbResErrorPrimaryKeyWrongType,
+    mockdbResErrorNotATIMEpsudotype,
     mockdbResTableStatus,
     mockdbResTableInfo
 } from './mockdbRes.mjs';
@@ -1157,7 +1158,19 @@ reql.ge = ( queryState, args, reqlChain ) => {
 reql.lt = ( queryState, args, reqlChain ) => {
     const argTarget = spend( args[0], reqlChain );
 
-    queryState.target = queryState.target < argTarget;
+    if ( argTarget instanceof Date ) {
+        if ( !( queryState.target instanceof Date ) ) {
+            queryState.error = mockdbResErrorNotATIMEpsudotype(
+                'forEach', 1, args.length );
+            queryState.target = null;
+
+            return queryState;
+        }
+    }
+
+    if ( typeof queryState.target === typeof queryState.target ) {
+        queryState.target = queryState.target < argTarget;
+    }
 
     return queryState;
 };
