@@ -488,6 +488,14 @@ test( '.get(), uses table-configured primaryKey', async t => {
         .tableCreate( 'UserSocial', { primaryKey: 'numeric_id' })
         .run();
 
+    const tableInfo = await r
+        .db( 'default' )
+        .table( 'UserSocial' )
+        .info()
+        .run();
+
+    t.is( tableInfo.primary_key, 'numeric_id' );
+    
     await r
         .db( 'default' )
         .table( 'UserSocial' )
@@ -505,6 +513,37 @@ test( '.get(), uses table-configured primaryKey', async t => {
         numeric_id: 5848,
         name_screenname: 'screenname'
     });
+});
+
+test( 'should drop and (re)create a table with a different primaryKey', async t => {
+    const { r } = rethinkdbMocked();
+    await r
+        .db( 'default' )
+        .tableCreate( 'UserSocial' )
+        .run();
+
+    const tableInfo = await r
+        .db( 'default' )
+        .table( 'UserSocial' )
+        .info()
+        .run();
+
+    t.is( tableInfo.primary_key, 'id' );
+
+    await r.db( 'default' ).tableDrop( 'UserSocial' ).run();
+
+    await r
+        .db( 'default' )
+        .tableCreate( 'UserSocial', { primaryKey: 'numeric_id' })
+        .run();
+
+    const tableCreatedInfo = await r
+        .db( 'default' )
+        .table( 'UserSocial' )
+        .info()
+        .run();
+
+    t.is( tableCreatedInfo.primary_key, 'numeric_id' );
 });
 
 test( '.get(), throws error if called with no arguments', async t => {
