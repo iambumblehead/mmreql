@@ -43,6 +43,7 @@ import {
     mockdbResErrorInvalidTableName,
     mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
+    mockdbResErrorSecondArgumentOfQueryMustBeObject,
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResErrorNotATIMEpsudotype,
     mockdbResTableStatus,
@@ -572,6 +573,14 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
     const isValidConfigKeyRe = /^(returnChanges|durability|conflict)$/;
     const invalidConfigKey = Object.keys( options )
         .find( k => !isValidConfigKeyRe.test( k ) );
+
+    if ( args.length > 1 && ( !args[1] || typeof args[1] !== 'object' ) ) {
+        queryState.error = mockdbResErrorSecondArgumentOfQueryMustBeObject(
+            'insert' );
+        queryState.target = null;
+
+        return queryState;
+    }
 
     if ( invalidConfigKey ) {
         queryState.error = mockdbResErrorUnrecognizedOption(

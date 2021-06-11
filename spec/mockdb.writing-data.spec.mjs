@@ -373,6 +373,18 @@ test( '`insert` should work - testing conflict` (custom id)', async t => {
     t.is( result4.errors, 1 );
 });
 
+test( '`insert` should throw if options param `undefined` is passed', async t => {
+    const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+    await t.throws( () => ( r
+        .db( 'default' )
+        .table( 'Rooms' )
+        .insert({ val: 3 }, undefined )
+        .run()
+    ), {
+        message: 'Second argument of `insert` must be an object.'
+    });
+});
+
 test( '`insert` should throw if no argument is given', async t => {
     const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
