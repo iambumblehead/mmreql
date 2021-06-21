@@ -746,7 +746,9 @@ reql.get.fn = ( queryState, args, reqlChain ) => {
 
 reql.getAll = ( queryState, args, reqlChain, dbState ) => {
     const queryOptions = queryArgsOptions( args );
-    const primaryKeyValues = ( queryOptions && queryOptions.index ) ? args.slice( 0, -1 ) : args;
+    const primaryKeyValues = spend(
+        ( queryOptions && queryOptions.index ) ? args.slice( 0, -1 ) : args, reqlChain
+    );
     const { tablename } = queryState;
     const primaryKey = queryOptions.index || mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
     const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, tablename, primaryKey );

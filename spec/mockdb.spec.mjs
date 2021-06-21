@@ -269,6 +269,35 @@ test( 'getAll should use special primaryKey', async t => {
     } ].sort( ( a, b ) => compare( a, b, 'room_id' ) ) );
 });
 
+test( 'getAll should support nested args query getAll( r.args(...) )', async t => {
+    const { r, dbState } = rethinkdbMocked([
+        [ 'people', {
+            id: 'Alice',
+            children: [ 'Sally', 'Bobby' ]
+        }, {
+            id: 'Sally',
+            children: []
+        }, {
+            id: 'Bobby',
+            children: []
+        } ]
+    ]);
+
+    const children = await r
+        .table( 'people' )
+        .getAll( r.args(
+            r.table( 'people' ).get( 'Alice' )( 'children' )
+        ) ).orderBy( 'id' ).run();
+
+    t.deepEqual( children, [ {
+        id: 'Bobby',
+        children: []
+    }, {
+        id: 'Sally',
+        children: []
+    } ]);
+});
+
 test( 'indexCreate should add index to dbState', async t => {
     const { r, dbState } = rethinkdbMocked([
         [ 'Rooms', {
