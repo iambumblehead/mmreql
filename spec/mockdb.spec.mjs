@@ -298,6 +298,35 @@ test( 'getAll should support nested args query getAll( r.args(...) )', async t =
     } ]);
 });
 
+test( 'getAll should return empty when nested args query getAll( r.args([]) )', async t => {
+    const { r, dbState } = rethinkdbMocked([
+        [ 'people', {
+            id: 'Alice',
+            children: [ 'Sally', 'Bobby' ]
+        }, {
+            id: 'Sally',
+            children: []
+        }, {
+            id: 'Bobby',
+            children: []
+        } ]
+    ]);
+
+    const children = await r
+        .table( 'people' )
+        .getAll( r.args([]) )
+        .run();
+
+    t.deepEqual( children, []);
+
+    const childrenNoArgs = await r
+        .table( 'people' )
+        .getAll()
+        .run();
+
+    t.deepEqual( childrenNoArgs, []);
+});
+
 test( 'indexCreate should add index to dbState', async t => {
     const { r, dbState } = rethinkdbMocked([
         [ 'Rooms', {
@@ -1889,7 +1918,7 @@ test( 'r.table().insert( doc, { conflict: "update" }) updates existing doc', asy
         }, { conflict: 'update' })
         .run();
 
-    t.deepEqual( await r.table( 'Presence' ).getAll().run(), [ {
+    t.deepEqual( await r.table( 'Presence' ).run(), [ {
         user_id: 0,
         state: 'HAPPY',
         status_msg: ''

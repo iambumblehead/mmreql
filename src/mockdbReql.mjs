@@ -753,16 +753,18 @@ reql.getAll = ( queryState, args, reqlChain, dbState ) => {
     const primaryKey = queryOptions.index || mockdbStateTableGetPrimaryKey( dbState, queryState.tablename );
     const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, tablename, primaryKey );
 
-    if ( primaryKeyValues.length ) {
-        // eslint-disable-next-line security/detect-non-literal-regexp
-        const targetValueRe = new RegExp( `^(${primaryKeyValues.join( '|' )})$` );
-        
-        queryState.target = queryState.target.filter( doc => (
-            targetValueRe.test( mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend, reqlChain ) )
-        ) );
+    if ( primaryKeyValues.length === 0 ) {
+        queryState.target = [];
+
+        return queryState;
     }
 
-    queryState.target = queryState.target.slice().sort( () => 0.5 - Math.random() );
+    // eslint-disable-next-line security/detect-non-literal-regexp
+    const targetValueRe = new RegExp( `^(${primaryKeyValues.join( '|' )})$` );
+
+    queryState.target = queryState.target.filter( doc => (
+        targetValueRe.test( mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend, reqlChain ) )
+    ) ).sort( () => 0.5 - Math.random() );
     // rethink output array is not in-order
 
     return queryState;
