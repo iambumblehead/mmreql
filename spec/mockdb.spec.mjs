@@ -1594,6 +1594,25 @@ test( 'supports .getField()', async t => {
     t.is( ironManEquipment[0], 'boots' );
 });
 
+// https://rethinkdb.com/api/javascript/get_field
+test( 'supports .getField() on sequences', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel', {
+            id: 'IronMan',
+            equipment: [ 'boots' ],
+            name: 'Jim Glow'
+        } ]
+    ]);
+
+    const ironMenNames = await r
+        .table( 'marvel' )
+        .getAll( 'IronMan' )
+        .getField( 'name' )
+        .run();
+
+    t.deepEqual( ironMenNames, [ 'Jim Glow' ]);
+});
+
 test( 'supports brackets lookup ()', async t => {
     const { r } = rethinkdbMocked([
         [ 'marvel', {

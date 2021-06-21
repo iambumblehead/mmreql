@@ -944,10 +944,16 @@ reql.contains = ( queryState, args, reqlChain ) => {
     return queryState;
 };
 
+// Get a single field from an object. If called on a sequence, gets that field
+// from every object in the sequence, skipping objects that lack it.
+//
+// https://rethinkdb.com/api/javascript/get_field
 reql.getField = ( queryState, args, reqlChain ) => {
     const [ fieldName ] = spend( args, reqlChain );
 
-    queryState.target = queryState.target[fieldName];
+    queryState.target = Array.isArray( queryState.target )
+        ? queryState.target.map( t => t[fieldName])
+        : queryState.target[fieldName];
 
     return queryState;
 };
