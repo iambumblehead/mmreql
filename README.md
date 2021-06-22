@@ -45,6 +45,7 @@ console.log(appDoc);
 
 **v0.8.0** adds support for complex insert queries. documents can be inserted, replaced and modified at the same time through a single atomic query. improves support for tables with custom primary_keys. ex, 'user_id' as in the document `{ user_id: 'cyclingHal4482', presence: 'ONLINE' }`
  
+**v0.9.5** adds support for advanced `getAll()` queries, `getAll().getField('name')`, `getAll(r.expr(...)).)`, support for deeply nested row query `r.row('name').eq('xavier').or(r.row('membership').eq('joined'))`, and completed support for configurable primaryKeys.
 
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js

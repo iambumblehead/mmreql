@@ -2312,6 +2312,52 @@ test( 'and()', async t => {
     } ]);
 });
 
+test( 'nested r.row.and()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'memberships', {
+            user_id: 'wolverine',
+            membership: 'join'
+        }, {
+            user_id: 'magneto',
+            membership: 'invite'
+        } ]
+    ]);
+
+    const users = await r
+        .table( 'memberships' )
+        .filter( r.row( 'user_id' ).ne( 'xavier' ).and(
+            r.row( 'membership' ).eq( 'join' )
+        ) ).run();
+
+    t.deepEqual( users, [ {
+        user_id: 'wolverine',
+        membership: 'join'
+    } ]);
+});
+
+test( 'nested r.row.or()', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'memberships', {
+            user_id: 'wolverine',
+            membership: 'join'
+        }, {
+            user_id: 'magneto',
+            membership: 'invite'
+        } ]
+    ]);
+
+    const users = await r
+        .table( 'memberships' )
+        .filter( r.row( 'user_id' ).eq( 'xavier' ).or(
+            r.row( 'membership' ).eq( 'join' )
+        ) ).run();
+
+    t.deepEqual( users, [ {
+        user_id: 'wolverine',
+        membership: 'join'
+    } ]);
+});
+
 test( 'supports .distinct()', async t => {
     const { r } = rethinkdbMocked([
         [ 'marvel',

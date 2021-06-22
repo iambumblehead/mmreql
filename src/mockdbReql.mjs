@@ -841,8 +841,15 @@ reql.nth = ( queryState, args, reqlChain ) => {
 reql.row = ( queryState, args, reqlChain ) => {
     const rowFieldName = spend( args[0], reqlChain );
 
-    queryState.target = queryState.target
-        ? queryState.target[rowFieldName]
+    // nested and chained row queries may mutate the target
+    // so that, for example, a row document target way be redefined 'true'
+    // preserve 'row' from first 'target', before target is mutated
+    queryState.row = queryState.row === undefined
+        ? queryState.target
+        : queryState.row;
+
+    queryState.target = queryState.row && typeof queryState.row === 'object'
+        ? queryState.row[rowFieldName]
         : rowFieldName;
 
     return queryState;
@@ -1512,7 +1519,7 @@ reql.do = ( queryState, args, reqlChain ) => {
 
 reql.or = ( queryState, args, reqlChain ) => {
     queryState.target = args.reduce( ( current, value ) => Boolean(
-        current || spend( value, reqlChain )
+        current || spend( value, reqlChain, queryState.row )
     ), queryState.target );
 
     return queryState;
@@ -1520,7 +1527,7 @@ reql.or = ( queryState, args, reqlChain ) => {
 
 reql.and = ( queryState, args, reqlChain ) => {
     queryState.target = args.reduce( ( current, value ) => Boolean(
-        current && spend( value, reqlChain )
+        current && spend( value, reqlChain, queryState.row )
     ), queryState.target );
 
     return queryState;
