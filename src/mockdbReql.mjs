@@ -46,6 +46,7 @@ import {
     mockdbResErrorSecondArgumentOfQueryMustBeObject,
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResErrorNotATIMEpsudotype,
+    mockDbResErrorCannotUseNestedRow,
     mockdbResTableStatus,
     mockdbResTableInfo
 } from './mockdbRes.mjs';
@@ -1518,6 +1519,13 @@ reql.do = ( queryState, args, reqlChain ) => {
 };
 
 reql.or = ( queryState, args, reqlChain ) => {
+    if ( args[0] && args[0].queryName === 'row' ) {
+        queryState.error = mockDbResErrorCannotUseNestedRow();
+        queryState.target = null;
+
+        return queryState;
+    }
+
     queryState.target = args.reduce( ( current, value ) => Boolean(
         current || spend( value, reqlChain, queryState.row )
     ), queryState.target );
@@ -1526,6 +1534,13 @@ reql.or = ( queryState, args, reqlChain ) => {
 };
 
 reql.and = ( queryState, args, reqlChain ) => {
+    if ( args[0] && args[0].queryName === 'row' ) {
+        queryState.error = mockDbResErrorCannotUseNestedRow();
+        queryState.target = null;
+
+        return queryState;
+    }
+
     queryState.target = args.reduce( ( current, value ) => Boolean(
         current && spend( value, reqlChain, queryState.row )
     ), queryState.target );

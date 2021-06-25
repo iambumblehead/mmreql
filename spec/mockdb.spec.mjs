@@ -2,7 +2,10 @@ import test from 'ava';
 import timezonemock from 'timezone-mock';
 import { validate as uuidValidate } from 'uuid';
 import rethinkdbMocked from '../src/mockdb.mjs';
-import { mockdbResErrorDuplicatePrimaryKey } from '../src/mockdbRes.mjs';
+import {
+    mockdbResErrorDuplicatePrimaryKey,
+    mockDbResErrorCannotUseNestedRow
+} from '../src/mockdbRes.mjs';
 
 timezonemock.register( 'US/Pacific' );
 
@@ -2312,7 +2315,8 @@ test( 'and()', async t => {
     } ]);
 });
 
-test( 'nested r.row.and()', async t => {
+// NOTE: rethinkdb-ts only throws if nested row inside AND or OR are evaluated
+test( 'nested r.row.and() throws error', async t => {
     const { r } = rethinkdbMocked([
         [ 'memberships', {
             user_id: 'wolverine',
@@ -2323,19 +2327,27 @@ test( 'nested r.row.and()', async t => {
         } ]
     ]);
 
-    const users = await r
+    await t.throws( () => r
         .table( 'memberships' )
         .filter( r.row( 'user_id' ).ne( 'xavier' ).and(
-            r.row( 'membership' ).eq( 'join' )
+            r.row( 'membership' ).eq( 'invite' )
+        ) ).run(), { message: mockDbResErrorCannotUseNestedRow() });
+
+    // use this instead
+    const users = await r
+        .table( 'memberships' )
+        .filter( membership => membership( 'user_id' ).ne( 'xavier' ).and(
+            membership( 'membership' ).eq( 'join' )
         ) ).run();
 
     t.deepEqual( users, [ {
         user_id: 'wolverine',
         membership: 'join'
     } ]);
+
 });
 
-test( 'nested r.row.or()', async t => {
+test( 'nested r.row.or() throws error', async t => {
     const { r } = rethinkdbMocked([
         [ 'memberships', {
             user_id: 'wolverine',
@@ -2345,17 +2357,25 @@ test( 'nested r.row.or()', async t => {
             membership: 'invite'
         } ]
     ]);
-
-    const users = await r
+    
+    await t.throws( () => r
         .table( 'memberships' )
         .filter( r.row( 'user_id' ).eq( 'xavier' ).or(
             r.row( 'membership' ).eq( 'join' )
+        ).run() ), { message: mockDbResErrorCannotUseNestedRow() });
+
+    // use this instead
+    const users = await r
+        .table( 'memberships' )
+        .filter( membership => membership( 'user_id' ).eq( 'xavier' ).or(
+            membership( 'membership' ).eq( 'join' )
         ) ).run();
 
     t.deepEqual( users, [ {
         user_id: 'wolverine',
         membership: 'join'
     } ]);
+
 });
 
 test( 'supports .distinct()', async t => {
