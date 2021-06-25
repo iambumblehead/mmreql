@@ -101,6 +101,9 @@ const mockdbResErrorPrimaryKeyWrongType = primaryKey => (
 const mockdbResErrorNotATIMEpsudotype = () => (
     'Not a TIME pseudotype: `null`' );
 
+const mockDbResErrorCannotUseNestedRow = () => (
+    'Cannot user r.row in nested queries. Use functions instead' );
+
 export {
     mockdbResChangesFieldCreate,
     mockdbResStringify,
@@ -115,5 +118,6 @@ export {
     mockdbResErrorTableExists,
     mockdbResErrorSecondArgumentOfQueryMustBeObject,
     mockdbResErrorPrimaryKeyWrongType,
-    mockdbResErrorNotATIMEpsudotype
+    mockdbResErrorNotATIMEpsudotype,
+    mockDbResErrorCannotUseNestedRow
 };
