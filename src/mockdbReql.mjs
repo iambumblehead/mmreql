@@ -945,13 +945,19 @@ reql.delete = ( queryState, args, reqlChain, dbState ) => {
 
 reql.contains = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
+    const queryRowFn = typeof args[0] === 'function' && args[0];
 
     if ( !args.length ) {
         throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
     }
 
-    queryState.target = args.every( predicate => (
-        queryTarget.includes( spend( predicate, reqlChain ) ) ) );
+    if ( typeof queryRowFn === 'function' ) {
+        queryState.target = queryTarget.some( target => (
+            spend( queryRowFn, reqlChain, target ) ) );
+    } else {
+        queryState.target = args.every( predicate => (
+            queryTarget.includes( spend( predicate, reqlChain ) ) ) );
+    }
 
     return queryState;
 };

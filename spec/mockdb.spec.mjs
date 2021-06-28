@@ -2489,3 +2489,63 @@ test( 'supports .forEach( doc => doc("id") )', async t => {
 
     t.is( await r.table( 'playershoes' ).count().run(), 0 );
 });
+
+test( 'supports nested contains row function', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'playershoes', {
+            id: 'shoeId-1234',
+            type: 'cleat'
+        },{
+            id: 'shoeId-5678',
+            type: 'boot'
+        } ]
+    ]);
+
+    t.true(
+        await r
+            .expr([ 'cleat' ])
+            .contains( 'cleat' )
+            .run()
+    );
+
+    t.true(
+        await r
+            .table( 'playershoes' )
+            .contains( row => row.getField( 'type' ).eq( 'cleat' ) )
+            .run()
+    );
+
+    t.true(
+        await r
+            .table( 'playershoes' )
+            .contains( joinRow => r
+                .expr([ 'cleat' ])
+                .contains( joinRow.getField( 'type' ) ) )
+            .run()
+    );
+
+    t.true(
+        await r
+            .table( 'playershoes' )
+            .contains( joinRow => r
+                .expr([ 'cleat' ])
+                .contains( joinRow( 'type' ) ) )
+            .run()
+    );
+});
+
+test( 'returns true if multiple contains values evaluate true', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'marvel',
+            { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
+            { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] },
+            { id: 'xavier', defeatedMonsters: [ 'jiggly puff' ] } ]
+    ]);
+
+    const res = await r
+        .table( 'marvel' )
+        .filter( hero => hero( 'defeatedMonsters' ).contains( 'charzar', 'fiery' ) )
+        .run();
+
+    t.deepEqual( res, [ { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] } ]);
+});
