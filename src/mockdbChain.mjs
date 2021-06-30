@@ -9,11 +9,23 @@ const resolvingQueries = [
     'getPoolMaster'
 ];
 
+const firstTermQueries = [
+    'desc',
+    'asc'
+];
+
 // eslint-disable-next-line security/detect-non-literal-regexp
 const isResolvingQueryRe = new RegExp( `^(${resolvingQueries.join( '|' )})$` );
+// eslint-disable-next-line security/detect-non-literal-regexp
+const isFirstTermQueryRe = new RegExp( `^(${firstTermQueries.join( '|' )})$` );
 
-const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
+const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName, i ) => {
     prev[queryName] = function ( ...args ) {
+        // must not follow another term, ex: r.expr( ... ).desc( 'foo' )
+        if ( this.record.length && isFirstTermQueryRe.test( queryName ) ) {
+            throw new Error( `.${queryName} is not a function` );
+        }
+
         this.record.push({
             queryName,
             queryArgs: args
