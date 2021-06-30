@@ -1385,22 +1385,28 @@ reql.orderBy = ( queryState, args, reqlChain, dbState ) => {
     const queryOptions = typeof args[0] === 'function'
         ? args[0]
         : queryArgsOptions( args );
-
     const queryOptionsIndex = spend( queryOptions.index, reqlChain );
     const indexSortBy = typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortBy;
     const indexSortDirection = ( typeof queryOptionsIndex === 'object' && queryOptionsIndex.sortDirection ) || 'asc';
     const indexString = typeof queryOptionsIndex === 'string' && queryOptionsIndex;
     const argsSortPropValue = typeof args[0] === 'string' && args[0];
     const indexName = indexSortBy || indexString || 'id';
+    let fieldSortDirection = '';
     const tableIndexTuple = mockdbStateTableGetIndexTuple( dbState, queryState.tablename, indexName );
-    const sortDirection = isAscending => (
-        isAscending * ( indexSortDirection === 'asc' ? 1 : -1 ) );
+    const sortDirection = ( isAscending, dir = fieldSortDirection || indexSortDirection ) => (
+        isAscending * ( dir === 'asc' ? 1 : -1 ) );
 
     const getSortFieldValue = doc => {
         let value;
 
         if ( typeof queryOptions === 'function' ) {
             value = spend( queryOptions, reqlChain, doc );
+            if ( typeof value === 'object' && value && 'sortBy' in value ) {
+                if ( value.sortDirection )
+                    fieldSortDirection = value.sortDirection;
+
+                value = value.sortBy;
+            }
         } else if ( argsSortPropValue ) {
             value = doc[argsSortPropValue];
         } else {
@@ -1409,6 +1415,14 @@ reql.orderBy = ( queryState, args, reqlChain, dbState ) => {
 
         return value;
     };
+
+    if ( !args.length ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'orderBy', 1, args.length, true );
+        queryState.target = null;
+
+        return queryState;
+    }
 
     queryState.target = queryTarget.sort( ( doca, docb ) => {
         const docaField = getSortFieldValue( doca, tableIndexTuple );
@@ -1663,7 +1677,7 @@ reql.args = ( queryState, args, reqlChain ) => {
 
 reql.desc = ( queryState, args, reqlChain ) => {
     queryState.target = {
-        sortBy: spend( args[0], reqlChain ),
+        sortBy: spend( args[0], reqlChain, queryState.target ),
         sortDirection: 'desc'
     };
 
@@ -1672,7 +1686,7 @@ reql.desc = ( queryState, args, reqlChain ) => {
 
 reql.asc = ( queryState, args, reqlChain ) => {
     queryState.target = {
-        sortBy: spend( args[0], reqlChain ),
+        sortBy: spend( args[0], reqlChain, queryState.target ),
         sortDirection: 'asc'
     };
 
