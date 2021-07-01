@@ -2549,3 +2549,81 @@ test( 'returns true if multiple contains values evaluate true', async t => {
 
     t.deepEqual( res, [ { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] } ]);
 });
+
+test( 'returns a complex merge result', async t => {
+    const dateFuture = new Date( Date.now() + 88888 );
+    const datePast = new Date( Date.now() - 88888 );
+    
+    const { r } = rethinkdbMocked([
+        [ 'SocialFriendRequests', {
+            id: 1,
+            receiver_id: 'jimfix1133',
+            requested_date: datePast
+        }, {
+            id: 2,
+            receiver_id: 'janehill8888',
+            requested_date: datePast
+        } ],
+        [ 'SocialRoomInvites', {
+            id: 10,
+            doc: 'sr',
+            receiver_id: 'jimfix1133',
+            requester_id: 'march',
+            requested_date: datePast,
+            expires_date: dateFuture
+        }, {
+            id: 11,
+            doc: 'sr',
+            receiver_id: 'janehill8888',
+            requester_id: 'april',
+            invited_date: datePast,
+            expires_date: dateFuture
+        }, {
+            id: 12,
+            doc: 'sr',
+            receiver_id: 'janehill8888',
+            requester_id: 'may',
+            invited_date: datePast,
+            expires_date: dateFuture
+        } ]
+    ]);
+
+    await r.table( 'SocialFriendRequests' ).indexCreate( 'receiver_id' ).run();
+    await r.table( 'SocialRoomInvites' ).indexCreate( 'receiver_id' ).run();
+    
+    const notifications = await r.expr([]).union(
+        r.table( 'SocialFriendRequests' )
+            .getAll( 'janehill8888', { index: 'receiver_id' })
+            .merge( row => ({ date: row( 'requested_date' ), type_name: 'sfr' }) ),
+        r.table( 'SocialRoomInvites' )
+            .getAll( 'janehill8888', { index: 'receiver_id' })
+            .filter( row => row( 'expires_date' ).gt( r.now() ) )
+            .merge( row => ({ date: row( 'invited_date' ), type_name: 'sri' }) )
+    ).orderBy( 'id' ).run();
+
+    t.deepEqual( notifications, [ {
+        date: datePast,
+        type_name: 'sfr',
+        id: 2,
+        receiver_id: 'janehill8888',
+        requested_date: datePast
+    }, {
+        date: datePast,
+        type_name: 'sri',
+        id: 11,
+        doc: 'sr',
+        receiver_id: 'janehill8888',
+        requester_id: 'april',
+        invited_date: datePast,
+        expires_date: dateFuture
+    }, {
+        date: datePast,
+        type_name: 'sri',
+        id: 12,
+        doc: 'sr',
+        receiver_id: 'janehill8888',
+        requester_id: 'may',
+        invited_date: datePast,
+        expires_date: dateFuture
+    } ]);
+});

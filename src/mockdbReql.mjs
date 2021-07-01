@@ -43,6 +43,7 @@ import {
     mockdbResErrorInvalidTableName,
     mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
+    mockdbResErrorTableDoesNotExist,
     mockdbResErrorSecondArgumentOfQueryMustBeObject,
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResErrorNotATIMEpsudotype,
@@ -1298,10 +1299,47 @@ reql.min = ( queryState, args ) => {
 
 reql.merge = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
-    const merges = args.map( arg => spend( arg, reqlChain ) );
 
-    queryState.target = merges
-        .reduce( ( p, next ) => Object.assign( p, next ), queryTarget );
+    if ( args.length === 0 ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'merge', 1, args.length, true );
+        queryState.target = null;
+
+        return queryState;
+    }
+
+    // evaluate anonymous function given as merge definition
+    const evaluateMergeObj = ( objFn, target ) => {
+        const row = reqlChain().expr( target );
+        const mergeObj = args[0]( row );
+
+        return Object.keys( mergeObj ).reduce( ( obj, key ) => {
+            obj[key] = isReqlObj( mergeObj[key])
+                ? mergeObj[key].run()
+                : mergeObj[key];
+
+            return obj;
+        }, {});
+    };
+
+    if ( typeof args[0] === 'function' ) {
+        args[0] = Array.isArray( queryTarget )
+            ? queryTarget.map( qt => evaluateMergeObj( args[0], qt ) )
+            : evaluateMergeObj( args[0], queryTarget );
+    }
+    
+    if ( Array.isArray( args[0]) && Array.isArray( queryTarget ) ) {
+        queryState.target = queryTarget
+            .map( ( qt, i ) => Object.assign({}, args[0][i], qt ) );
+    } else {
+        const merges = args.map( arg => spend( arg, reqlChain ) );
+        const mergeTarget = ( marge, target ) => merges
+            .reduce( ( p, next ) => Object.assign( p, next ), target );
+
+        queryState.target = Array.isArray( queryTarget )
+            ? queryTarget.map( qt => mergeTarget( merges, qt ) )
+            : mergeTarget( merges, queryTarget );
+    }
 
     return queryState;
 };
@@ -1629,13 +1667,14 @@ reql.distinct = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.union = ( queryState, args, reqlChain ) => {
-    const queryOptions = queryArgsOptions( args );
+    const queryOptions = queryArgsOptions( args, null );
 
     if ( queryOptions )
         args.splice( -1, 1 );
 
     let res = args.reduce( ( argData, value ) => {
         value = spend( value, reqlChain );
+
         return argData.concat( value );
     }, queryState.target );
 
@@ -1655,6 +1694,15 @@ reql.table = ( queryState, args, reqlChain, dbState ) => {
     const db = mockdbStateSelectedDb( dbState );
     const table = db[tablename];
 
+    if ( !Array.isArray( db[tablename]) ) {
+        const dbName = queryState.db || dbState.dbSelected;
+
+        queryState.error = mockdbResErrorTableDoesNotExist( dbName, tablename );
+        queryState.target = null;
+
+        return queryState;
+    }
+    
     queryState.tablename = tablename;
     queryState.tablelist = table;
     queryState.target = table.slice();
