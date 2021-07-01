@@ -90,6 +90,10 @@ const mockdbResErrorTableExists = ( dbName, tableName ) => (
     'Table `:tableName` already exists.'
         .replace( /:tableName/, [ dbName, tableName ].join( '.' ) ) );
 
+const mockdbResErrorTableDoesNotExist = ( dbName, tableName ) => (
+    'Table `:tableName` does not exist.'
+        .replace( /:tableName/, [ dbName, tableName ].join( '.' ) ) );
+
 const mockdbResErrorSecondArgumentOfQueryMustBeObject = queryType => (
     'Second argument of `:queryType` must be an object.'
         .replace( /:queryType/, queryType ) );
@@ -116,6 +120,7 @@ export {
     mockdbResErrorInvalidTableName,
     mockdbResErrorInvalidDbName,
     mockdbResErrorTableExists,
+    mockdbResErrorTableDoesNotExist,
     mockdbResErrorSecondArgumentOfQueryMustBeObject,
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResErrorNotATIMEpsudotype,

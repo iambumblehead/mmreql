@@ -56,3 +56,81 @@ test( '`difference` should work with table names', async t => {
 
     t.deepEqual( result, [ 'Users' ]);
 });
+
+test( '`merge` should work', async t => {
+    const { r } = rethinkdbMocked();
+    let result;
+
+    result = await r
+        .expr({ a: 0 })
+        .merge({ b: 1 })
+        .run();
+
+    t.deepEqual( result, { a: 0, b: 1 });
+
+    result = await r
+        .expr([ { a: 0 }, { a: 1 }, { a: 2 } ])
+        .merge({ b: 1 })
+        .run();
+
+    t.deepEqual( result, [ { a: 0, b: 1 }, { a: 1, b: 1 }, { a: 2, b: 1 } ]);
+
+    result = await r
+        .expr({ a: 0, c: { l: 'tt' } })
+        .merge({ b: { c: { d: { e: 'fff' } }, k: 'pp' } })
+        .run();
+
+    t.deepEqual( result, {
+        a: 0,
+        b: { c: { d: { e: 'fff' } }, k: 'pp' },
+        c: { l: 'tt' }
+    });
+
+    result = await r
+        .expr({ a: 1 })
+        .merge({ date: r.now() })
+        .run();
+
+    t.is( result.a, 1 );
+    t.true( result.date instanceof Date );
+
+    result = await r
+        .expr({ a: 1 })
+        .merge( row => ({ nested: row }), { b: 2 })
+        .run();
+    t.deepEqual( result, { a: 1, nested: { a: 1 }, b: 2 });
+});
+
+test( '`merge` should take an anonymous function', async t => {
+    const { r } = rethinkdbMocked();
+    
+    const result = await r
+        .expr({ a: 0 })
+        .merge( doc => ({ b: doc( 'a' ).add( 1 ) }) )
+        .run();
+
+    t.deepEqual( result, { a: 0, b: 1 });
+});
+
+test( '`merge` should map an anonymous function against a list', async t => {
+    const { r } = rethinkdbMocked();
+    
+    const result = await r
+        .expr([ { a: 0 }, { a: 1 }, { a: 2 } ])
+        .merge( doc => ({ b: doc( 'a' ).add( 1 ) }) )
+        .run();
+
+    t.deepEqual( result, [ { a: 0, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 3 } ]);
+});
+
+test( '`merge` should throw if no argument has been passed', async t => {
+    const { r } = rethinkdbMocked();
+    await t.throws( () => ( r
+        .expr([])
+        .merge()
+        .run()
+    ), {
+        message: '`merge` takes at least 1 argument, 0 provided.'
+    });
+});
+
