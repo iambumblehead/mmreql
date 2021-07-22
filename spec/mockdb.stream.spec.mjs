@@ -24,6 +24,112 @@ test( 'table().getCursor() should return a stream', async t => {
     stream.close();
 });
 
+test( 'Arrays should return a stream', async t => {
+    const { r } = rethinkdbMocked();
+    const data = [ 10, 11, 12, 13, 14, 15, 16 ];
+    const stream = await r.expr( data ).getCursor();
+
+    t.true( stream instanceof Readable );
+
+    await new Promise( resolve => {
+        let count = 0;
+        stream.on( 'data', () => {
+            count += 1;
+            if ( count === data.length ) {
+                resolve();
+            }
+        });
+    });
+});
+
+test( 'changes() should return a stream', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'TheTable', { n: 0 }, { n: -1 } ]
+    ]);
+
+    const data = [
+        { n: 1 },
+        { n: 2 },
+        { n: 3 },
+        { n: 4 },
+        { n: 5 },
+        { n: 6 },
+        { n: 7 }
+    ];
+
+    // added include initial, so it won't hang on some extreame cases
+    const stream = await r
+        .db( 'default' )
+        .table( 'TheTable' )
+        .changes()
+        .getCursor();
+
+    t.true( stream instanceof Readable );
+
+    const promise = new Promise( resolve => {
+        let count = 0;
+        stream.on( 'data', d => {
+            if ( d.new_val.n === -1 ) {
+                throw new Error( 'initial value must not be sent' );
+            }
+
+            if ( typeof d.new_val.n === 'number' ) {
+                count += 1;
+                if ( count === data.length ) {
+                    resolve();
+                    stream.close();
+                }
+            }
+        });
+    });
+
+    await r.db( 'default' ).table( 'TheTable' ).insert( data ).run();
+
+    await promise;
+});
+
+test( 'changes() should return a stream, initial value true', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'TheTable', { n: 0 }, { n: -1 } ]
+    ]);
+
+    const data = [
+        { n: 1 },
+        { n: 2 },
+        { n: 3 },
+        { n: 4 },
+        { n: 5 },
+        { n: 6 },
+        { n: 7 }
+    ];
+
+    // added include initial, so it won't hang on some extreame cases
+    const stream = await r
+        .db( 'default' )
+        .table( 'TheTable' )
+        .changes({ includeInitial: true })
+        .getCursor();
+
+    t.true( stream instanceof Readable );
+
+    const promise = new Promise( resolve => {
+        let count = 0;
+        stream.on( 'data', d => {
+            if ( typeof d.new_val.n === 'number' ) {
+                count += 1;
+                if ( count === data.length + 2 ) {
+                    resolve();
+                    stream.close();
+                }
+            }
+        });
+    });
+
+    await r.db( 'default' ).table( 'TheTable' ).insert( data ).run();
+
+    await promise;
+});
+
 test( 'expr().getCursor() should return a stream', async t => {
     const { r } = rethinkdbMocked();
     const data = [ 10, 11, 12, 13, 14, 15, 16 ];
@@ -291,6 +397,60 @@ test( 'Test flowing - event data (pause, resume)', async t => {
             );
         }
         stream.resume();
+    });
+    await stream.close();
+    await connection.close();
+});
+
+test( 'read with null value', async t => {
+    const { r } = rethinkdbMocked([
+        [ 'Rooms',
+            { n: 1 },
+            { n: 2 },
+            { n: 3 },
+            { n: 4 },
+            { n: 5 },
+            { n: 6 },
+            { n: 7 },
+            { n: 8 },
+            { n: 9 },
+            { n: 10 },
+            { n: 11 }
+        ]
+    ]);
+
+    const connection = await r.connect({
+        host: 'localhost',
+        port: 8080,
+        user: 'user',
+        password: 'pass'
+    });
+
+    const stream = await r
+        .db( 'default' )
+        .table( 'Rooms' )
+        .limit( 10 )
+        .union([ null ])
+        .union( r
+            .db( 'default' )
+            .table( 'Rooms' )
+            .limit( 10 )
+        ).getCursor( connection, { maxBatchRows: 1 });
+
+    t.true( stream instanceof Readable );
+
+    await new Promise( ( resolve, reject ) => {
+        stream.once( 'readable', () => {
+            let count = 0;
+            stream.on( 'data', data => {
+                count += 1;
+                if ( count === 20 ) {
+                    resolve();
+                } else if ( count > 20 ) {
+                    reject( new Error( 'Should not get null' ) );
+                }
+            });
+        });
     });
     await stream.close();
     await connection.close();

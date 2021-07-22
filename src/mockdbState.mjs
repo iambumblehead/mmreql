@@ -219,15 +219,6 @@ const mockdbStateTableDocCursorSplice = ( dbState, tableName, doc, cursorIndex )
     return dbState;
 };
 
-const mockdbStateTableCursorSet = ( dbState, tableName, cursor ) => {
-    const cursors = mockdbStateDbCursorConfigGet( dbState );
-    const tableCursors = cursors[tableName];
-
-    tableCursors.push( cursor );
-
-    return dbState;
-};
-
 const mockdbStateTableDocCursorSet = ( dbState, tableName, doc, cursor ) => {
     const db = mockdbStateSelectedDb( dbState );
     const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
@@ -267,6 +258,15 @@ const mockdbStateTableDocCursorsGetOrCreate = ( dbState, tableName, doc ) => {
     cursorConfig[tableDocId] = cursorConfig[tableDocId] || [];
 
     return cursorConfig[tableDocId];
+};
+
+const mockdbStateTableCursorSet = ( dbState, tableName, cursor ) => {
+    const cursors = mockdbStateDbCursorConfigGet( dbState );
+    const tableCursors = cursors[tableName];
+
+    tableCursors.push( cursor );
+
+    return dbState;
 };
 
 const mockdbStateAggregate = ( oldState, aggState ) => (
