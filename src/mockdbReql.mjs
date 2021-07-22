@@ -1789,6 +1789,11 @@ reql.getCursor = ( queryState, args, reqlChain, dbState, tables ) => {
         ? ( Array.isArray( queryTarget ) ? 'table' : 'doc' ) : 'expr';
 
     let cursors = null;
+
+    if ( typeof queryOptions.maxBatchRows !== 'number' ) {
+        queryOptions.maxBatchRows = Math.Infinite;
+    }
+
     if ( cursorTargetType === 'doc' ) {
         cursors = mockdbStateTableDocCursorsGetOrCreate(
             dbState, tableName, queryTarget );
@@ -1799,20 +1804,37 @@ reql.getCursor = ( queryState, args, reqlChain, dbState, tables ) => {
 
     const cursorIndex = cursors ? cursors.length : null;
 
-    const cursor = new Readable({
-        objectMode: true,
-        read ( size ) {
-            const item = Array.isArray( queryTarget )
-                ? queryTarget.pop()
-                : queryTarget;
-
-            if ( !item ) {
-                this.push( null );
-                return;
+    const getCursorInitial = () => {
+        if ( queryState.isChanges && !queryState.includeInitial ) {
+            if ( cursorTargetType === 'table' ) {
+                return new Readable({
+                    objectMode: true,
+                    read ( size ) {}
+                });
             }
-            this.push( item );
         }
-    });
+
+        return new Readable({
+            objectMode: true,
+            read ( size ) {
+                const item = Array.isArray( queryTarget )
+                    ? queryTarget.pop()
+                    : queryTarget;
+
+                if ( !item ) {
+                    this.push( null );
+                    return;
+                }
+
+                this.push({
+                    new_val: item,
+                    old_val: null
+                });
+            }
+        });
+    };
+
+    const cursor = getCursorInitial();
 
     cursor.close = () => {
         cursor.destroy();
@@ -1829,10 +1851,9 @@ reql.getCursor = ( queryState, args, reqlChain, dbState, tables ) => {
         dbState = mockdbStateTableDocCursorSet( dbState, tableName, queryTarget, cursor );
     }
 
-    if ( !queryState.isChanges || queryOptions.includeInitial === true ) {
+    if ( !queryState.isChanges ) {
         if ( cursorTargetType === 'table' ) {
             const changes = queryTarget.map( doc => ({
-                old_val: null,
                 new_val: doc
             }) );
 
