@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
+import mockdbStream from './mockdbStream.mjs';
 
 import {
     mockdbStateSelectedDb,
@@ -35,6 +36,9 @@ import {
 } from './mockdbTable.mjs';
 
 import {
+    mockdbResChangeTypeADD,
+    mockdbResChangeTypeINITIAL,
+
     mockdbResChangesFieldCreate,
     mockdbResErrorArgumentsNumber,
     mockdbResErrorDuplicatePrimaryKey,
@@ -48,6 +52,7 @@ import {
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResErrorNotATIMEpsudotype,
     mockDbResErrorCannotUseNestedRow,
+    mockDbResErrorNoAttributeInObject,
     mockdbResTableStatus,
     mockdbResTableInfo
 } from './mockdbRes.mjs';
@@ -163,7 +168,9 @@ reql.connect = ( queryState, args, reqlChain, dbState ) => {
                 data: [ 0 ]
             }
         },
-        close: () => {}
+        close: function () {
+            this.open = false;
+        }
     };
 };
 
@@ -660,7 +667,7 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
     }) );
 
     dbState = mockdbStateTableCursorsPushChanges(
-        dbState, queryState.tablename, changes );
+        dbState, queryState.tablename, changes, mockdbResChangeTypeADD );
 
     queryState.target = mockdbResChangesFieldCreate({
         inserted: documents.length,
@@ -694,7 +701,7 @@ reql.update = ( queryState, args, reqlChain, dbState ) => {
             ? queryTarget
             : [ queryTarget ]
     ).reduce( ( changes, targetDoc ) => {
-        const [ newDoc, oldDoc ]= updateTarget( targetDoc );
+        const [ newDoc, oldDoc ] = updateTarget( targetDoc );
 
         if ( newDoc ) {
             changes.push({
@@ -705,6 +712,9 @@ reql.update = ( queryState, args, reqlChain, dbState ) => {
 
         return changes;
     }, []);
+
+    dbState = mockdbStateTableCursorsPushChanges(
+        dbState, queryState.tablename, changesDocs );
 
     queryState.target = mockdbResChangesFieldCreate({
         replaced: changesDocs.length,
@@ -734,6 +744,9 @@ reql.get = ( queryState, args, reqlChain, dbState ) => {
         return queryState;
     }
 
+    // define primaryKeyValue on queryState to use in subsequent change() query
+    // for the case of change() request for document which does not exist (yet)
+    queryState.primaryKeyValue = primaryKeyValue;
     queryState.target = tableDoc || null;
 
     return queryState;
@@ -1382,11 +1395,15 @@ reql.add = ( queryState, args, reqlChain ) => {
     return queryState;
 };
 
+// .group(field | function..., [{index: <indexname>, multi: false}]) → grouped_stream
+// arg can be stringy field name, { index: 'indexname' }, { multi: true }
 reql.group = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
     const [ arg ] = args;
     const groupedData = queryTarget.reduce( ( group, item ) => {
-        const key = spend( arg, reqlChain );
+        const key = ( typeof arg === 'object' && arg && 'index' in arg )
+            ? arg.index
+            : spend( arg, reqlChain );
         const groupKey = item[key];
 
         group[groupKey] = group[groupKey] || [];
@@ -1502,7 +1519,12 @@ reql.expr = ( queryState, args ) => {
 };
 
 reql.expr.fn = ( queryState, args ) => {
-    queryState.target = queryState.target[args[0]];
+    if ( args[0] in queryState.target ) {
+        queryState.target = queryState.target[args[0]];
+    } else {
+        queryState.error = mockDbResErrorNoAttributeInObject( args[0]);
+        queryState.target = null;
+    }
 
     return queryState;
 };
@@ -1751,11 +1773,87 @@ reql.run = queryState => {
 
 reql.serialize = queryState => JSON.stringify( queryState.chain );
 
-reql.changes = ( queryState, args ) => {
-    const options = queryArgsOptions( args ) || {};
+reql.changes = ( queryState, args, reqlChain, dbState ) => {
+    const tableName = queryState.tablename;
+    const queryTarget = queryState.target;
+    const queryTargetFuture = queryState.target || {
+        [mockdbStateTableGetPrimaryKey( dbState, tableName )]: queryState.primaryKeyValue
+    };
+    const queryOptions = queryArgsOptions( args ) || {};
+    const cursorTargetType = tableName
+        ? ( Array.isArray( queryTarget ) ? 'table' : 'doc' ) : 'expr';
 
     queryState.isChanges = true;
-    queryState.includeInitial = Boolean( options.includeInitial );
+    queryState.includeInitial = Boolean( queryOptions.includeInitial );
+    queryState.includeTypes = Boolean( queryOptions.includeTypes );
+
+    let cursors = null;
+
+    if ( typeof queryOptions.maxBatchRows !== 'number' ) {
+        queryOptions.maxBatchRows = Math.Infinite;
+    }
+
+    if ( cursorTargetType === 'doc' ) {
+        cursors = mockdbStateTableDocCursorsGetOrCreate(
+            dbState, tableName, queryTargetFuture );
+    } else if ( cursorTargetType === 'table' ) {
+        cursors = mockdbStateTableCursorsGetOrCreate(
+            dbState, tableName );
+    }
+
+    const cursorIndex = cursors ? cursors.length : null;
+    const initialDocs = [];
+
+    if ( !queryState.isChanges || queryState.includeInitial ) {
+        ( Array.isArray( queryTarget ) ? queryTarget : [ queryTarget ]).map( item => {
+            if ( cursorTargetType === 'doc' || item || /string|number|boolean/.test( typeof item ) ) {
+                if ( queryOptions.includeInitial ) {
+                    initialDocs.push({
+                        type: mockdbResChangeTypeINITIAL,
+                        new_val: item
+                    });
+                } else {
+                    initialDocs.push({
+                        new_val: item
+                    });
+                }
+            }
+        });
+    }
+
+    const cursor = mockdbStream(
+        initialDocs, !queryState.isChanges, true, queryState.includeTypes );
+
+    cursor.close = () => {
+        cursor.emit( 'end' );
+        cursor.destroy();
+
+        if ( cursorTargetType === 'doc' )
+            dbState = mockdbStateTableDocCursorSplice( dbState, tableName, queryTargetFuture, cursorIndex );
+        if ( cursorTargetType === 'table' )
+            dbState = mockdbStateTableCursorSplice( dbState, tableName, cursorIndex );
+
+        return new Promise( ( resolve, reject ) => resolve() );
+    };
+
+    if ( cursorTargetType === 'doc' )
+        dbState = mockdbStateTableDocCursorSet( dbState, tableName, queryTargetFuture, cursor );
+    else if ( cursorTargetType === 'table' )
+        dbState = mockdbStateTableCursorSet( dbState, tableName, cursor );
+
+    if ( !queryState.isChanges ) {
+        if ( cursorTargetType === 'table' ) {
+            const changes = queryTarget.map( doc => ({
+                new_val: doc
+            }) );
+
+            dbState = mockdbStateTableCursorsPushChanges(
+                dbState, tableName, changes );
+        }
+    }
+
+    queryState.changesTarget = queryState.target;
+    queryState.target = cursor;
 
     return queryState;
 };
@@ -1780,11 +1878,19 @@ reql.forEach =  ( queryState, args, reqlChain ) => {
     return queryState;
 };
 
-// cursor may target a table or a document
 reql.getCursor = ( queryState, args, reqlChain, dbState, tables ) => {
-    const queryTarget = queryState.target;
-    const queryOptions = queryArgsOptions( args );
+    // returning the changes()-defined 'target' here causes node to hang un-predictably
+    if ( queryState.target instanceof Readable
+        && 'changesTarget' in queryState ) {
+        queryState.target.close();
+        queryState.target = queryState.changesTarget;
+    }
     const tableName = queryState.tablename;
+    const queryTarget = queryState.target;
+    const queryTargetFuture = queryState.target || {
+        [mockdbStateTableGetPrimaryKey( dbState, tableName )]: queryState.primaryKeyValue
+    };
+    const queryOptions = queryArgsOptions( args );
     const cursorTargetType = tableName
         ? ( Array.isArray( queryTarget ) ? 'table' : 'doc' ) : 'expr';
 
@@ -1796,70 +1902,41 @@ reql.getCursor = ( queryState, args, reqlChain, dbState, tables ) => {
 
     if ( cursorTargetType === 'doc' ) {
         cursors = mockdbStateTableDocCursorsGetOrCreate(
-            dbState, tableName, queryTarget );
+            dbState, tableName, queryTargetFuture );
     } else if ( cursorTargetType === 'table' ) {
         cursors = mockdbStateTableCursorsGetOrCreate(
             dbState, tableName );
     }
 
     const cursorIndex = cursors ? cursors.length : null;
+    const initialDocs = [];
 
-    const getCursorInitial = () => {
-        if ( queryState.isChanges && !queryState.includeInitial ) {
-            if ( cursorTargetType === 'table' ) {
-                return new Readable({
-                    objectMode: true,
-                    read ( size ) {}
-                });
-            }
-        }
-
-        return new Readable({
-            objectMode: true,
-            read ( size ) {
-                const item = Array.isArray( queryTarget )
-                    ? queryTarget.pop()
-                    : queryTarget;
-
-                if ( !item ) {
-                    this.push( null );
-                    return;
-                }
-
-                this.push({
-                    new_val: item,
-                    old_val: null
+    if ( !queryState.isChanges || queryState.includeInitial ) {
+        ( Array.isArray( queryTarget ) ? queryTarget : [ queryTarget ]).map( item => {
+            if ( cursorTargetType === 'doc' || item || /string|number|boolean/.test( typeof item ) ) {
+                initialDocs.push({
+                    new_val: item
                 });
             }
         });
-    };
+    }
 
-    const cursor = getCursorInitial();
-
+    const cursor = mockdbStream( initialDocs, !queryState.isChanges );
     cursor.close = () => {
         cursor.destroy();
 
         if ( cursorTargetType === 'table' )
             dbState = mockdbStateTableCursorSplice( dbState, tableName, cursorIndex );
-        else if ( cursorTargetType === 'doc' )
-            dbState = mockdbStateTableDocCursorSplice( dbState, tableName, queryTarget, cursorIndex );
+        if ( cursorTargetType === 'doc' )
+            dbState = mockdbStateTableDocCursorSplice( dbState, tableName, queryTargetFuture, cursorIndex );
+
+        return new Promise( ( resolve, reject ) => resolve() );
     };
 
     if ( cursorTargetType === 'table' ) {
         dbState = mockdbStateTableCursorSet( dbState, tableName, cursor );
     } else if ( cursorTargetType === 'doc' ) {
-        dbState = mockdbStateTableDocCursorSet( dbState, tableName, queryTarget, cursor );
-    }
-
-    if ( !queryState.isChanges ) {
-        if ( cursorTargetType === 'table' ) {
-            const changes = queryTarget.map( doc => ({
-                new_val: doc
-            }) );
-
-            dbState = mockdbStateTableCursorsPushChanges(
-                dbState, tableName, changes );
-        }
+        dbState = mockdbStateTableDocCursorSet( dbState, tableName, queryTargetFuture, cursor );
     }
 
     return cursor;

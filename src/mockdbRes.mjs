@@ -57,6 +57,13 @@ const mockdbResTableInfo = ( dbState, tableName ) => {
     });
 };
 
+const mockdbResChangeTypeADD = 'add';
+const mockdbResChangeTypeREMOVE = 'remove';
+const mockdbResChangeTypeCHANGE = 'change';
+const mockdbResChangeTypeINITIAL = 'initial';
+const mockdbResChangeTypeUNINITIAL = 'uninitial';
+const mockdbResChangeTypeSTATE = 'state';
+
 const mockdbResStringify = obj => JSON.stringify( obj, null, '\t' );
 
 const mockdbResErrorDuplicatePrimaryKey = ( existingDoc, conflictDoc ) => (
@@ -108,7 +115,21 @@ const mockdbResErrorNotATIMEpsudotype = () => (
 const mockDbResErrorCannotUseNestedRow = () => (
     'Cannot user r.row in nested queries. Use functions instead' );
 
+const mockDbResErrorNoMoreRowsInCursor = () => (
+    'No more rows in the cursor.' );
+
+const mockDbResErrorNoAttributeInObject = propertyName => (
+    'No attribute `:propertyName` in object'
+        .replace( /:propertyName/, propertyName ) );
+
 export {
+    mockdbResChangeTypeADD,
+    mockdbResChangeTypeREMOVE,
+    mockdbResChangeTypeCHANGE,
+    mockdbResChangeTypeINITIAL,
+    mockdbResChangeTypeUNINITIAL,
+    mockdbResChangeTypeSTATE,
+
     mockdbResChangesFieldCreate,
     mockdbResStringify,
     mockdbResTableStatus,
@@ -124,5 +145,7 @@ export {
     mockdbResErrorSecondArgumentOfQueryMustBeObject,
     mockdbResErrorPrimaryKeyWrongType,
     mockdbResErrorNotATIMEpsudotype,
-    mockDbResErrorCannotUseNestedRow
+    mockDbResErrorCannotUseNestedRow,
+    mockDbResErrorNoMoreRowsInCursor,
+    mockDbResErrorNoAttributeInObject
 };

@@ -211,7 +211,8 @@ const mockdbStateTableCursorSplice = ( dbState, tableName, cursorIndex ) => {
 const mockdbStateTableDocCursorSplice = ( dbState, tableName, doc, cursorIndex ) => {
     const db = mockdbStateSelectedDb( dbState );
     const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
-    const tableDocId = [ tableName, doc.id ].join( '-' );
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
+    const tableDocId = [ tableName, doc[tablePrimaryKey] ].join( '-' );
     const tableCursors = cursorConfig[tableDocId];
 
     tableCursors.splice( cursorIndex, 1 );
@@ -222,7 +223,8 @@ const mockdbStateTableDocCursorSplice = ( dbState, tableName, doc, cursorIndex )
 const mockdbStateTableDocCursorSet = ( dbState, tableName, doc, cursor ) => {
     const db = mockdbStateSelectedDb( dbState );
     const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
-    const tableDocId = [ tableName, doc.id ].join( '-' );
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
+    const tableDocId = [ tableName, doc[tablePrimaryKey] ].join( '-' );
 
     cursorConfig[tableDocId] = cursorConfig[tableDocId] || [];
     cursorConfig[tableDocId].push( cursor );
@@ -230,13 +232,22 @@ const mockdbStateTableDocCursorSet = ( dbState, tableName, doc, cursor ) => {
     return dbState;
 };
 
-const mockdbStateTableCursorsPushChanges = ( dbState, tableName, changes ) => {
+const mockdbStateTableCursorsPushChanges = ( dbState, tableName, changes, changeType ) => {
     const db = mockdbStateSelectedDb( dbState );
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
     const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
     const cursors = cursorConfig[tableName] || [];
 
     cursors.forEach( c => {
-        changes.forEach( d => c.push( d ) );
+        changes.forEach( d => c.push({ ...d, type: changeType }) );
+    });
+
+    changes.forEach( c => {
+        const doc = c.new_val || c.old_val;
+        const docKey = doc && [ tableName, doc[tablePrimaryKey] ].join( '-' );
+        const docCursors = cursorConfig[docKey] || [];
+
+        docCursors.forEach( d => d.push({ ...c, type: changeType }) );
     });
 
     return dbState;
@@ -252,7 +263,8 @@ const mockdbStateTableCursorsGetOrCreate = ( dbState, tableName ) => {
 
 const mockdbStateTableDocCursorsGetOrCreate = ( dbState, tableName, doc ) => {
     const db = mockdbStateSelectedDb( dbState );
-    const tableDocId = [ tableName, doc.id ].join( '-' );
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
+    const tableDocId = [ tableName, doc[tablePrimaryKey] ].join( '-' );
     const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
 
     cursorConfig[tableDocId] = cursorConfig[tableDocId] || [];

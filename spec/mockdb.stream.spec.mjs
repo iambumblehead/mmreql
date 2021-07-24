@@ -214,6 +214,7 @@ test( 'get().changes() should return a stream', async t => {
 
     const promise = new Promise( ( resolve, reject ) => {
         let count = 0;
+
         stream.on( 'data', n => {
             count += 1;
             if ( count === 3 ) {
@@ -404,7 +405,7 @@ test( 'Test flowing - event data (pause, resume)', async t => {
 
 test( 'read with null value', async t => {
     const { r } = rethinkdbMocked([
-        [ 'Rooms',
+        [ 'Rooms', [ { primaryKey: 'n' } ],
             { n: 1 },
             { n: 2 },
             { n: 3 },

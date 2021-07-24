@@ -32,7 +32,17 @@ const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName, i ) => {
         });
 
         if ( isResolvingQueryRe.test( queryName ) ) {
-            const res = this.queryChainResolve( this.record, args[0]);
+            let res;
+
+            if ( queryName === 'getCursor' ) {
+                try {
+                    res = this.queryChainResolve( this.record, args[0]);
+                } catch ( e ) {
+                    res = { next: () => new Promise( ( resolve, reject ) => reject( e ) ) };
+                }
+            } else {
+                res = this.queryChainResolve( this.record, args[0]);
+            }
 
             this.record.pop();
 
