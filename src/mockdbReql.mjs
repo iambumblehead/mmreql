@@ -1565,12 +1565,28 @@ reql.map = ( queryState, args, reqlChain ) => {
 reql.without = ( queryState, args, reqlChain ) => {
     const queryTarget = queryState.target;
 
+    if ( args.length === 0 ) {
+        queryState.error = mockdbResErrorArgumentsNumber(
+            'without', 1, args.length );
+        queryState.target = null;
+
+        return queryState;
+    }
+
     args = spend( args, reqlChain );
 
-    queryState.target = args.reduce( arg => {
-        delete queryTarget[arg];
+    queryState.target = args.reduce( ( prev, arg ) => {
+        if ( Array.isArray( prev ) ) {
+            prev = prev.map( p => {
+                delete p[arg];
 
-        return queryTarget;
+                return p;
+            });
+        } else {
+            delete prev[arg];
+        }
+
+        return prev;
     }, queryTarget );
 
     return queryState;
