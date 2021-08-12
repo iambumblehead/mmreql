@@ -47,7 +47,7 @@ console.log(appDoc);
  
 **v0.9.5** adds support for advanced `getAll()` queries, `getAll().getField('name')`, `getAll(r.expr(...)).)`, support for deeply nested row query `r.row('name').eq('xavier').or(r.row('membership').eq('joined'))`, and completed support for configurable primaryKeys.
 
-**v1.0.0** adds completed stream, changefeed and cursor support
+**v1.0.0** adds completed stream, changefeed and cursor support. adds basic support for 'multi' index
 
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js

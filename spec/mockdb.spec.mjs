@@ -390,11 +390,15 @@ test( 'indexCreate should add compound index to dbState', async t => {
         r.row( 'numeric_id' )
     ]).run();
 
-    const dbStateIndex = dbState.dbConfig_default_Rooms.indexes;
 
-    t.deepEqual( dbStateIndex, [ [
-        'id_numeric_cid', [ 'id', 'numeric_id' ], {}
-    ] ]);
+    const isReqlObj = obj => Boolean(
+        obj && /object|function/.test( typeof obj ) && obj.isReql );
+    const dbStateIndexes = dbState.dbConfig_default_Rooms.indexes;
+    const dbStateIndex = dbStateIndexes.find( i => i[0] === 'id_numeric_cid' );
+
+    t.is( dbStateIndex[0], 'id_numeric_cid' );
+    t.true( isReqlObj( dbStateIndex[1][0]) );
+    t.true( isReqlObj( dbStateIndex[1][1]) );
 });
 
 test( 'provides secondary index methods and lookups', async t => {
@@ -1233,9 +1237,9 @@ test( 'supports .orderBy property', async t => {
 });
 
 test( 'supports .orderBy(), desc date', async t => {
-    const now = Date.now();
-    const earliest = new Date( now - 80000 );
-    const latest = new Date( now + 50 );
+    const now = new Date();
+    const earliest = new Date( now.getTime() - 80000 );
+    const latest = new Date( now.getTime() + 50 );
 
     const { r } = rethinkdbMocked([
         [ 'streetfighter',
@@ -1259,9 +1263,9 @@ test( 'supports .orderBy(), desc date', async t => {
 });
 
 test( 'supports .orderBy(), asc date', async t => {
-    const now = Date.now();
-    const earliest = new Date( now - 80000 );
-    const latest = new Date( now + 50 );
+    const now = new Date();
+    const earliest = new Date( now.getTime() - 80000 );
+    const latest = new Date( now.getTime() + 50 );
 
     const { r } = rethinkdbMocked([
         [ 'streetfighter',
