@@ -1,6 +1,35 @@
 import test from 'ava';
 import rethinkdbMocked from '../src/mockdb.mjs';
 
+test( '`without` should work', async t => {
+    const { r } = rethinkdbMocked();
+    const result1 = await r
+        .expr({ a: 0, b: 1, c: 2 })
+        .without( 'c' )
+        .run();
+
+    t.deepEqual( result1, { a: 0, b: 1 });
+
+    const result2 = await r
+        .expr([ { a: 0, b: 1, c: 2 }, { a: 0, b: 10, c: 20 } ])
+        .without( 'a', 'c' )
+        .run();
+
+    t.deepEqual( result2, [ { b: 1 }, { b: 10 } ]);
+});
+
+test( '`without` should throw if no argument has been passed', async t => {
+    const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+    
+    await t.throws( () => ( r        
+        .table( 'Rooms' )
+        .without()
+        .run()
+    ), {
+        message: '`without` takes 1 argument, 0 provided.'
+    });
+});
+
 test( '`prepend` should work', async t => {
     const { r } = rethinkdbMocked();
 

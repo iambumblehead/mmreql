@@ -2255,11 +2255,9 @@ test( 'map()', async t => {
         .run();
 
     t.deepEqual( res, [ {
-        id: 'userid-fred-1234',
         userId: 'userid-fred-1234',
         name: 'fred'
     }, {
-        id: 'userid-jane-1234',
         userId: 'userid-jane-1234',
         name: 'jane'
     } ]);
