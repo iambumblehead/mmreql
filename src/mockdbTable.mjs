@@ -68,17 +68,38 @@ const mockdbTableSet = ( table, docs ) => {
 };
 
 const mockdbTableDocGetIndexValue = ( doc, indexTuple, spend, indexValueDefault, reqlChain ) => {
-    const [ indexName, fields /* , options */ ] = indexTuple;
+    const [ indexName, fields ] = indexTuple;
 
-    if ( fields.length ) {
+    if ( typeof fields === 'function' || ( fields && fields.isReql ) ) {
+        indexValueDefault = spend( fields, reqlChain, doc );
+    } else if ( Array.isArray( fields ) && fields.length > 0 ) {
         indexValueDefault = fields
-            .map( field => spend( field, reqlChain, doc ) )
-            .join( ',' );
+            .map( field => spend( field, reqlChain, doc ) );
     } else {
         indexValueDefault = doc[indexName];
     }
 
     return indexValueDefault;
+};
+
+const mockdbTableDocHasIndexValueFn = ( tableIndexTuple, indexValues ) => {
+    const targetIndexMulti = Boolean( tableIndexTuple[2].multi );
+    // eslint-disable-next-line security/detect-non-literal-regexp
+    const targetValueRe = targetIndexMulti || new RegExp( `^(${indexValues.join( '|' )})$` );
+    const targetValueIs = valueResolved => targetValueRe.test( valueResolved );
+
+    return ( doc, spend, reqlChain ) => {
+        const indexValueResolved = mockdbTableDocGetIndexValue(
+            doc, tableIndexTuple, spend, null, reqlChain );
+
+        if ( !targetIndexMulti )
+            return targetValueIs( indexValueResolved );
+
+        return indexValues.every( value => (
+            Array.isArray( indexValueResolved )
+                ? indexValueResolved.flat().includes( value )
+                : indexValueResolved === value ) );
+    };
 };
 
 export {
@@ -90,5 +111,6 @@ export {
     mockdbTableDocEnsurePrimaryKey,
     mockdbTableDocIsPrimaryKey,
     mockdbTableRmDocumentsAll,
+    mockdbTableDocHasIndexValueFn,
     mockdbTableSet
 };

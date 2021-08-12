@@ -32,6 +32,7 @@ import {
     mockdbTableSetDocuments,
     mockdbTableDocGetIndexValue,
     mockdbTableDocEnsurePrimaryKey,
+    mockdbTableDocHasIndexValueFn,
     mockdbTableSet
 } from './mockdbTable.mjs';
 
@@ -103,11 +104,16 @@ export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) =>
         if ( isReqlArgs( value.slice( -1 )[0]) ) {
             f = value.slice( -1 )[0].run();
         } else {
-            f = value.map( v => spend( v, reqlChain ) );
+            f = value.map( v => spend( v, reqlChain, doc ) );
         }
     } else if ( type === 'function' ) {
         if ( doc ) {
-            f = value( reqlChain().expr( doc ) ).run();
+            f = value( reqlChain().expr( doc ) );
+            // array is found in this rare case ex,
+            //   indexCreate( 'buzz', row => [ row( 'buzz' ) ])
+            f = ( !isReqlObj( f ) && Array.isArray( f ) )
+                ? f.map( elem => elem.run() )
+                : f.run();
         } else {
             f = value( doc ).run();
         }
@@ -534,13 +540,21 @@ reql.tableDrop = ( queryState, args, reqlChain, dbState ) => {
     return queryState;
 };
 
+// .indexCreate( 'foo' )
+// .indexCreate( 'foo', { multi: true })
+// .indexCreate( 'things', r.row( 'hobbies' ).add( r.row( 'sports' ) ), { multi: true })
 reql.indexCreate = ( queryState, args, reqlChain, dbState ) => {
     const [ indexName ] = args;
-    const fields = spend( Array.isArray( args[1]) ? args[1] : [], reqlChain );
     const config = queryArgsOptions( args );
 
+    // necessarily complex: must be a row function or valid index definition
+    const fieldsChainOrRowFn =
+        ( typeof args[1] === 'function' && args[1])
+        || ( isConfigObj( args[1]) ? null : args[1] || null )
+        || [ indexName ];
+
     mockdbStateTableIndexAdd(
-        dbState, queryState.tablename, indexName, fields, config );
+        dbState, queryState.tablename, indexName, fieldsChainOrRowFn, config );
 
     // should throw ReqlRuntimeError if index exits already
     queryState.target = { created: 1 };
@@ -774,13 +788,12 @@ reql.getAll = ( queryState, args, reqlChain, dbState ) => {
         return queryState;
     }
 
-    // eslint-disable-next-line security/detect-non-literal-regexp
-    const targetValueRe = new RegExp( `^(${primaryKeyValues.join( '|' )})$` );
+    const tableDocHasIndex = mockdbTableDocHasIndexValueFn(
+        tableIndexTuple, primaryKeyValues );
 
-    queryState.target = queryState.target.filter( doc => (
-        targetValueRe.test( mockdbTableDocGetIndexValue( doc, tableIndexTuple, spend, reqlChain ) )
-    ) ).sort( () => 0.5 - Math.random() );
-    // rethink output array is not in-order
+    queryState.target = queryState.target
+        .filter( doc => tableDocHasIndex( doc, spend, reqlChain ) )
+        .sort( () => 0.5 - Math.random() );
 
     return queryState;
 };
@@ -1373,9 +1386,8 @@ reql.isEmpty = queryState => {
 };
 
 reql.add = ( queryState, args, reqlChain ) => {
-    const { target } = queryState;
+    const target = queryState.target || queryState.row;
     const values = spend( args, reqlChain );
-
     let result;
 
     if ( typeof target === 'undefined' ) {
