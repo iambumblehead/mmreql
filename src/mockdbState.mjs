@@ -41,7 +41,7 @@ const mockdbStateDbDrop = ( state, dbName ) => {
 };
 
 const mockdbStateCreate = opts => {
-    const dbConfigList = castas.default.arr( opts.dbs, [ {
+    const dbConfigList = castas.arr( opts.dbs, [ {
         db: opts.db || 'default'
     } ]);
 
@@ -50,7 +50,7 @@ const mockdbStateCreate = opts => {
 
         return state;
     }, {
-        dbConnections: castas.default.arr( opts.connections, []),
+        dbConnections: castas.arr( opts.connections, []),
         db: {}
     });
 };

@@ -17,6 +17,11 @@ const queryChainResolve = ( chain, dbState, startState ) => {
 
     const chainNext = chainRest => {
         if ( chainRest.length ) {
+            if ( queryState.error
+                && ( chainRest[0].queryName !== 'default' && chainRest.length > 1 ) ) {
+                return chainNext( chainRest.slice( 1 ) );
+            }
+
             queryState = objlookup( chainRest[0].queryName, queryReql )(
                 queryState,
                 chainRest[0].queryArgs,
