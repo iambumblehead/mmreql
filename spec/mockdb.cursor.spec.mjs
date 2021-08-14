@@ -189,7 +189,8 @@ test( '`cursor.close` should still return a promise if the cursor was closed', a
             time_last_seen: new Date()
         } ]
     ]);
-    
+
+    const state = {};
     const cursor = await r.table( 'Presence' ).changes().run();
 
     await cursor.close();
@@ -198,7 +199,7 @@ test( '`cursor.close` should still return a promise if the cursor was closed', a
         // eslint-disable-next-line
         result.then( () => undefined ); // Promise's contract is to have a `then` method
     } catch ( e ) {
-        t.fail( e );
+        t.fail( 'failed' );
     }
 
     t.pass();
@@ -355,7 +356,9 @@ test( '`changes` with `includeTypes` should work', async t => {
 
     let counter = 0;
 
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     const promise = new Promise( ( resolve, reject ) => {
+        // eslint-disable-next-line promise/prefer-await-to-callbacks
         feed.each( ( error, change ) => {
             if ( error ) {
                 reject( error );
