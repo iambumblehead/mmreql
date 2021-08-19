@@ -546,6 +546,23 @@ test( '.get(), uses table-pre-configured primaryKey', async t => {
     });
 });
 
+test( 'tableCreate should evaluate reql-defined table name', async t => {
+    const { r } = rethinkdbMocked();
+
+    const res = await r([ 'Users', 'Devices' ])
+        .difference( r.db( 'default' ).tableList() )
+        .forEach( table => r.db( 'cmdb' ).tableCreate( table ) )
+        .run();
+
+    t.deepEqual( res, {
+        tables_created: 2,
+        config_changes: [
+            { new_val: res.config_changes[0].new_val, old_val: null },
+            { new_val: res.config_changes[1].new_val, old_val: null }
+        ]
+    });
+});
+
 test( '.get(), uses table-configured primaryKey', async t => {
     const { r } = rethinkdbMocked();
     await r
