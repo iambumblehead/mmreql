@@ -469,7 +469,7 @@ reql.tableList = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.tableCreate = ( queryState, args, reqlChain, dbState ) => {
-    const [ tableName ] = args;
+    const tableName = spend( args[0], reqlChain );
     const isValidConfigKeyRe = /^(primaryKey|durability)$/;
     const isValidTableNameRe = /^[A-Za-z0-9_]*$/;
     const config = queryArgsOptions( args );
