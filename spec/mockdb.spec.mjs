@@ -401,6 +401,67 @@ test( 'indexCreate should add compound index to dbState', async t => {
     t.true( isReqlObj( dbStateIndex[1][1]) );
 });
 
+test( 'indexCreate should add compound index to dbState, function generated', async t => {
+    const { r, dbState } = rethinkdbMocked([
+        [ 'Users', {
+            id: 'userAId-1234',
+            name_screenname: 'userA',
+            numeric_id: 1234
+        }, {
+            id: 'userBId-1234',
+            name_screenname: 'userB',
+            numeric_id: 1234
+        } ]
+    ]);
+
+    await r
+        .table( 'Users' )
+        .indexCreate( 'name_numeric', row => [
+            row( 'name' ), row( 'numeric_id' ) ])
+        .run();
+
+    const isReqlObj = obj => Boolean(
+        obj && /object|function/.test( typeof obj ) && obj.isReql );
+    const dbStateIndexes = dbState.dbConfig_default_Users.indexes;
+    const dbStateIndex = dbStateIndexes.find( i => i[0] === 'name_numeric' );
+
+    t.is( dbStateIndex[0], 'name_numeric' );
+    t.true( typeof dbStateIndex[1] === 'function' );
+});
+
+test( 'indexCreate should return results from compound index, function generated', async t => {
+    const { r, dbState } = rethinkdbMocked([
+        [ 'Users', {
+            id: 'userAId-1234',
+            name_screenname: 'userA',
+            numeric_id: 1234
+        }, {
+            id: 'userBId-1234',
+            name_screenname: 'userB',
+            numeric_id: 1234
+        } ]
+    ]);
+
+    await r
+        .table( 'Users' )
+        .indexCreate( 'name_numeric', row => [
+            row( 'name_screenname' ), row( 'numeric_id' ) ])
+        .run();
+
+    await r.table( 'Users' ).indexWait().run();
+
+    const users = await r
+        .table( 'Users' )
+        .getAll([ 'userA', 1234 ], { index: 'name_numeric' })
+        .run();
+
+    t.deepEqual( users, [ {
+        id: 'userAId-1234',
+        name_screenname: 'userA',
+        numeric_id: 1234
+    } ]);
+});
+
 test( 'provides secondary index methods and lookups', async t => {
     const { r } = rethinkdbMocked([
         [ 'AppUserDevices', {
