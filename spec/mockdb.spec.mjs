@@ -610,6 +610,7 @@ test( '.get(), uses table-pre-configured primaryKey', async t => {
 test( 'tableCreate should evaluate reql-defined table name', async t => {
     const { r } = rethinkdbMocked();
 
+    await r.dbCreate( 'cmdb' ).run();
     const res = await r([ 'Users', 'Devices' ])
         .difference( r.db( 'default' ).tableList() )
         .forEach( table => r.db( 'cmdb' ).tableCreate( table ) )
@@ -2706,4 +2707,24 @@ test( 'returns a complex merge result', async t => {
         invited_date: datePast,
         expires_date: dateFuture
     } ]);
+});
+
+test( 'populates multiple db on init', async t => {
+    const { r } = rethinkdbMocked([
+        { db: 'cmdb' },
+        [ 'User',
+            { id: 'userId-1234', name: 'fred' },
+            { id: 'userId-5678', name: 'jane' }
+        ],
+        { db: 'jobs' },
+        [ 'Spec',
+            { id: 'specId-1234', repo: 'clearvr-transcode' }
+        ]
+    ]);
+
+    const cmdbUser = await r.db( 'cmdb' ).table( 'User' ).get( 'userId-1234' ).run();
+    const jobsSpec = await r.db( 'jobs' ).table( 'Spec' ).get( 'specId-1234' ).run();
+
+    t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
+    t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
 });

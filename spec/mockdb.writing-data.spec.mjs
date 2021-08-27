@@ -515,7 +515,7 @@ test( '`delete` should work', async t => {
     ]);
 
     const result = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .delete()
         .run();
@@ -523,7 +523,7 @@ test( '`delete` should work', async t => {
     t.is( result.deleted, 2 );
 
     const result2 = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .delete()
         .run();

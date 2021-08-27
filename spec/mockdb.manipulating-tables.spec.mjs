@@ -5,7 +5,7 @@ test( '`tableList` should return a cursor', async t => {
     const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
     const result = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .tableList()
         .run();
 
@@ -45,7 +45,7 @@ test( '`tableList` should show the table we created', async t => {
     });
     
     const result2 = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .tableList()
         .run();
 
