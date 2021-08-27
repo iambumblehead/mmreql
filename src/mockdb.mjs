@@ -68,9 +68,9 @@ const buildDb = ( tables, config ) => {
             return dbState;
         }
 
-        dbState = mockdbStateTableCreate( dbState, tablelist[0], tableConfig[0]);
+        dbState = mockdbStateTableCreate( dbState, dbState.dbSelected, tablelist[0], tableConfig[0]);
         dbState = mockdbStateTableSet(
-            dbState, tablelist[0], tablelist.slice( tableConfig ? 2 : 1 ) );
+            dbState, dbState.dbSelected, tablelist[0], tablelist.slice( tableConfig ? 2 : 1 ) );
 
         return dbState;
     }, dbConfig );

@@ -41,7 +41,7 @@ test( 'supports uuid()', async t => {
 });
 
 test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
-    const { r, dbState } = rethinkdbMocked([
+    const { dbState } = rethinkdbMocked([
         [ 'marvel',
             { name: 'Iron Man', victories: 214 },
             { name: 'Jubilee', victories: 49 },
@@ -245,7 +245,7 @@ test( 'getAll().filter({ device_id })', async t => {
 });
 
 test( 'getAll should use special primaryKey', async t => {
-    const { r, dbState } = rethinkdbMocked([
+    const { r } = rethinkdbMocked([
         [ 'Rooms', [ { primaryKey: 'room_id' } ], {
             room_id: 'roomAId-1234',
             numeric_id: 755090
@@ -273,7 +273,7 @@ test( 'getAll should use special primaryKey', async t => {
 });
 
 test( 'getAll should support nested args query getAll( r.args(...) )', async t => {
-    const { r, dbState } = rethinkdbMocked([
+    const { r } = rethinkdbMocked([
         [ 'people', {
             id: 'Alice',
             children: [ 'Sally', 'Bobby' ]
@@ -302,7 +302,7 @@ test( 'getAll should support nested args query getAll( r.args(...) )', async t =
 });
 
 test( 'getAll should return empty when nested args query getAll( r.args([]) )', async t => {
-    const { r, dbState } = rethinkdbMocked([
+    const { r } = rethinkdbMocked([
         [ 'people', {
             id: 'Alice',
             children: [ 'Sally', 'Bobby' ]
@@ -352,7 +352,7 @@ test( 'indexCreate should add index to dbState', async t => {
 });
 
 test( 'indexList should return indexes added by indexCreate', async t => {
-    const { r, dbState } = rethinkdbMocked([
+    const { r } = rethinkdbMocked([
         [ 'AppUserDevices', {
             id: 'roomAId-1234',
             app_user_id: 1
@@ -390,7 +390,6 @@ test( 'indexCreate should add compound index to dbState', async t => {
         r.row( 'numeric_id' )
     ]).run();
 
-
     const isReqlObj = obj => Boolean(
         obj && /object|function/.test( typeof obj ) && obj.isReql );
     const dbStateIndexes = dbState.dbConfig_default_Rooms.indexes;
@@ -420,8 +419,6 @@ test( 'indexCreate should add compound index to dbState, function generated', as
             row( 'name' ), row( 'numeric_id' ) ])
         .run();
 
-    const isReqlObj = obj => Boolean(
-        obj && /object|function/.test( typeof obj ) && obj.isReql );
     const dbStateIndexes = dbState.dbConfig_default_Users.indexes;
     const dbStateIndex = dbStateIndexes.find( i => i[0] === 'name_numeric' );
 
@@ -430,7 +427,7 @@ test( 'indexCreate should add compound index to dbState, function generated', as
 });
 
 test( 'indexCreate should return results from compound index, function generated', async t => {
-    const { r, dbState } = rethinkdbMocked([
+    const { r } = rethinkdbMocked([
         [ 'Users', {
             id: 'userAId-1234',
             name_screenname: 'userA',
@@ -2563,7 +2560,7 @@ test( 'supports .forEach( doc => doc("id") )', async t => {
         } ]
     ]);
 
-    const res = await r
+    await r
         .table( 'player' )
         .forEach( player => r.table( 'playershoes' ).get( player( 'shoeId' ) ).delete() )
         .run();

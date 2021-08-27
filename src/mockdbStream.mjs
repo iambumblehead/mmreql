@@ -1,5 +1,4 @@
 import stream from 'stream';
-import util from 'util';
 
 const mockdbStreamReadable = ( docs, isEmptyEnd, curIndex = 0 ) => new stream.Readable({
     objectMode: true,

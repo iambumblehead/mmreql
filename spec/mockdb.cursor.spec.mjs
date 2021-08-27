@@ -190,7 +190,6 @@ test( '`cursor.close` should still return a promise if the cursor was closed', a
         } ]
     ]);
 
-    const state = {};
     const cursor = await r.table( 'Presence' ).changes().run();
 
     await cursor.close();
@@ -320,7 +319,7 @@ test( '`next` should error when hitting an error -- not on the first batch', asy
 
     await t.throwsAsync( async () => {
         while ( true ) {
-            const result = await cursor.next();
+            await cursor.next();
 
             i = i + 1;
         }

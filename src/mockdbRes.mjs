@@ -39,9 +39,9 @@ const mockdbResTableStatus = opts => mockdbFilterUndefined({
     }
 });
 
-const mockdbResTableInfo = ( dbState, tableName ) => {
-    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
-    const dbConfig = mockdbStateDbConfigGet( dbState, tableConfig.db );
+const mockdbResTableInfo = ( dbState, dbName, tableName ) => {
+    const tableConfig = mockdbStateTableConfigGet( dbState, dbName, tableName );
+    const dbConfig = mockdbStateDbConfigGet( dbState, dbName );
 
     return mockdbFilterUndefined({
         db: {
@@ -81,7 +81,7 @@ const mockdbResErrorArgumentsNumber = ( queryId, takesArgs = 0, givenArgs = 1, a
 const mockdbResErrorIndexOutOfBounds = index => (
     `ReqlNonExistanceError: Index out of bounds: ${index}` );
 
-const mockdbResErrorUnrecognizedOption = ( key, value ) => (
+const mockdbResErrorUnrecognizedOption = key => (
     'Unrecognized optional argument `:key`.'
         .replace( /:key/, key ) );
 

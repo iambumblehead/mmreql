@@ -16,7 +16,7 @@ test( '`r.do` should work', async t => {
     const { r } = rethinkdbMocked();
 
     const result1 = await r
-        .do( 1, 2, ( a, b ) => a )
+        .do( 1, 2, a => a )
         .run();
 
     t.is( result1, 1 );

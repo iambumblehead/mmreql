@@ -4,8 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 const mockdbStateTableCreateIndexTuple = ( name, fields = [], config = {}) => (
     [ name, fields, config ]);
 
-const mockdbStateSelectedDb = ( dbState, dbIndex ) => (
-    dbState.db[dbState.dbSelected]);
+const mockdbStateDbGet = ( dbState, dbName ) => (
+    dbState.db[dbName]);
 
 const mockdbStateDbTableConfigKeyGet = ( dbName, tableName ) => (
     `dbConfig_${dbName}_${tableName}` );
@@ -55,49 +55,34 @@ const mockdbStateCreate = opts => {
     });
 };
 
-const mockdbStateTableConfigGet = ( dbState, tableName ) => {
-    const dbName = dbState.dbSelected;
+const mockdbStateTableConfigGet = ( dbState, dbName, tableName ) => {
     const tableKey = mockdbStateDbTableConfigKeyGet( dbName, tableName );
 
     return dbState[tableKey];
 };
 
-const mockdbStateDbConfigGet = ( dbState, dbName ) => {
-    dbName = dbName || dbState.dbSelected;
+const mockdbStateDbConfigGet = ( dbState, dbName ) => (
+    dbState[mockdbStateDbConfigKeyGet( dbName ) ]);
 
-    return dbState[mockdbStateDbConfigKeyGet( dbName )];
-};
+const mockdbStateDbCursorConfigGet = ( dbState, dbName ) => (
+    dbState[mockdbStateDbCursorsKeyGet( dbName )]);
 
-const mockdbStateDbCursorConfigGet = dbState => {
-    const dbName = dbState.dbSelected;
-
-    return dbState[mockdbStateDbCursorsKeyGet( dbName )];
-};
-
-const mockdbStateTableSet = ( dbState, tableName, table ) => {
-    const dbName = dbState.dbSelected;
-
+const mockdbStateTableSet = ( dbState, dbName, tableName, table ) => {
     dbState.db[dbName][tableName] = table;
 
     return dbState;
 };
 
-const mockdbStateTableRm = ( dbState, tableName ) => {
-    const dbName = dbState.dbSelected;
-
+const mockdbStateTableRm = ( dbState, dbName, tableName ) => {
     delete dbState.db[dbName][tableName];
 
     return dbState;
 };
 
-const mockdbStateTableGet = ( dbState, tableName ) => {
-    const dbName = dbState.dbSelected;
+const mockdbStateTableGet = ( dbState, dbName, tableName ) => (
+    dbState.db[dbName][tableName]);
 
-    return dbState.db[dbName][tableName];
-};
-
-const mockdbStateTableConfigSet = ( dbState, tableName, tableConfig ) => {
-    const dbName = dbState.dbSelected;
+const mockdbStateTableConfigSet = ( dbState, dbName, tableName, tableConfig ) => {
     const tableKey = mockdbStateDbTableConfigKeyGet( dbName, tableName );
 
     dbState[tableKey] = tableConfig;
@@ -105,8 +90,7 @@ const mockdbStateTableConfigSet = ( dbState, tableName, tableConfig ) => {
     return dbState;
 };
 
-const mockdbStateTableConfigRm = ( dbState, tableName ) => {
-    const dbName = dbState.dbSelected;
+const mockdbStateTableConfigRm = ( dbState, dbName, tableName ) => {
     const tableKey = mockdbStateDbTableConfigKeyGet( dbName, tableName );
 
     delete dbState[tableKey];
@@ -114,10 +98,8 @@ const mockdbStateTableConfigRm = ( dbState, tableName ) => {
     return dbState;
 };
 
-const mockdbStateTableCreate = ( dbState, tableName, config ) => {
-    const dbName = dbState.dbSelected;
-
-    dbState = mockdbStateTableConfigSet( dbState, tableName, {
+const mockdbStateTableCreate = ( dbState, dbName, tableName, config ) => {
+    dbState = mockdbStateTableConfigSet( dbState, dbName, tableName, {
         db: dbState.dbSelected,
         id: uuidv4(),
         durability: 'hard',
@@ -132,49 +114,49 @@ const mockdbStateTableCreate = ( dbState, tableName, config ) => {
         write_hook: null
     });
 
-    dbState = mockdbStateTableSet( dbState, tableName, []);
+    dbState = mockdbStateTableSet( dbState, dbName, tableName, []);
 
     return dbState;
 };
 
-const mockdbStateTableDrop = ( dbState, tableName, config ) => {
-    dbState = mockdbStateTableConfigRm( dbState, tableName );
-    dbState = mockdbStateTableRm( dbState, tableName );
+const mockdbStateTableDrop = ( dbState, dbName, tableName ) => {
+    dbState = mockdbStateTableConfigRm( dbState, dbName, tableName );
+    dbState = mockdbStateTableRm( dbState, dbName, tableName );
 
     return dbState;
 };
 
-const mockdbStateTableGetIndexNames = ( dbState, tableName ) => {
-    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
+const mockdbStateTableGetIndexNames = ( dbState, dbName, tableName ) => {
+    const tableConfig = mockdbStateTableConfigGet( dbState, dbName, tableName );
     
     return tableConfig ? tableConfig.indexes.map( i => i[0]) : [];
 };
 
-const mockdbStateTableGetPrimaryKey = ( dbState, tableName ) => {
-    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
+const mockdbStateTableGetPrimaryKey = ( dbState, dbName, tableName ) => {
+    const tableConfig = mockdbStateTableConfigGet( dbState, dbName, tableName );
 
     return ( tableConfig && tableConfig.primary_key ) || 'id';
 };
 
-const mockdbStateTableIndexExists = ( db, tableName, indexName ) => {
-    const indexNames = mockdbStateTableGetIndexNames( db, tableName );
+const mockdbStateTableIndexExists = ( db, dbName, tableName, indexName ) => {
+    const indexNames = mockdbStateTableGetIndexNames( db, dbName, tableName );
 
     return indexNames.includes( indexName );
 };
 
-const mockdbStateTableGetOrCreate = ( dbState, tableName ) => {
-    const table = mockdbStateTableGet( dbState, tableName );
+const mockdbStateTableGetOrCreate = ( dbState, dbName, tableName ) => {
+    const table = mockdbStateTableGet( dbState, dbName, tableName );
     
     if ( !table )
-        dbState = mockdbStateTableCreate( dbState, tableName );
+        dbState = mockdbStateTableCreate( dbState, dbName, tableName );
 
-    return mockdbStateTableGet( dbState, tableName );
+    return mockdbStateTableGet( dbState, dbName, tableName );
 };
 
-const mockdbStateTableIndexAdd = ( dbState, tableName, indexName, fields, config ) => {
-    mockdbStateTableGetOrCreate( dbState, tableName );
+const mockdbStateTableIndexAdd = ( dbState, dbName, tableName, indexName, fields, config ) => {
+    mockdbStateTableGetOrCreate( dbState, dbName, tableName );
 
-    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );
+    const tableConfig = mockdbStateTableConfigGet( dbState, dbName, tableName );
 
     tableConfig.indexes.push(
         mockdbStateTableCreateIndexTuple( indexName, fields, config ) );
@@ -185,9 +167,8 @@ const mockdbStateTableIndexAdd = ( dbState, tableName, indexName, fields, config
 // by default, a tuple for primaryKey 'id' is returned,
 // this should be changed. ech table config should provide a primary key
 // using 'id' as the defautl for each one.
-const mockdbStateTableGetIndexTuple = ( dbState, tableName, indexName ) => {
-    const db = mockdbStateSelectedDb( dbState );
-    const tableConfig = mockdbStateTableConfigGet( dbState, tableName );    
+const mockdbStateTableGetIndexTuple = ( dbState, dbName, tableName, indexName ) => {
+    const tableConfig = mockdbStateTableConfigGet( dbState, dbName, tableName );
     const indexTuple = ( tableConfig && tableConfig.indexes )
         && tableConfig.indexes.find( i => i[0] === indexName );
 
@@ -198,9 +179,8 @@ const mockdbStateTableGetIndexTuple = ( dbState, tableName, indexName ) => {
     return indexTuple || mockdbStateTableCreateIndexTuple( indexName );
 };
 
-const mockdbStateTableCursorSplice = ( dbState, tableName, cursorIndex ) => {
-    const db = mockdbStateSelectedDb( dbState );
-    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
+const mockdbStateTableCursorSplice = ( dbState, dbName, tableName, cursorIndex ) => {
+    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, dbName );
     const tableCursors = cursorConfig[tableName];
 
     tableCursors.splice( cursorIndex, 1 );
@@ -208,10 +188,9 @@ const mockdbStateTableCursorSplice = ( dbState, tableName, cursorIndex ) => {
     return dbState;
 };
 
-const mockdbStateTableDocCursorSplice = ( dbState, tableName, doc, cursorIndex ) => {
-    const db = mockdbStateSelectedDb( dbState );
-    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
-    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
+const mockdbStateTableDocCursorSplice = ( dbState, dbName, tableName, doc, cursorIndex ) => {
+    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, dbName );
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, dbName, tableName );
     const tableDocId = [ tableName, doc[tablePrimaryKey] ].join( '-' );
     const tableCursors = cursorConfig[tableDocId];
 
@@ -220,10 +199,9 @@ const mockdbStateTableDocCursorSplice = ( dbState, tableName, doc, cursorIndex )
     return dbState;
 };
 
-const mockdbStateTableDocCursorSet = ( dbState, tableName, doc, cursor ) => {
-    const db = mockdbStateSelectedDb( dbState );
-    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
-    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
+const mockdbStateTableDocCursorSet = ( dbState, dbName, tableName, doc, cursor ) => {
+    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, dbName );
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, dbName, tableName );
     const tableDocId = [ tableName, doc[tablePrimaryKey] ].join( '-' );
 
     cursorConfig[tableDocId] = cursorConfig[tableDocId] || [];
@@ -232,10 +210,9 @@ const mockdbStateTableDocCursorSet = ( dbState, tableName, doc, cursor ) => {
     return dbState;
 };
 
-const mockdbStateTableCursorsPushChanges = ( dbState, tableName, changes, changeType ) => {
-    const db = mockdbStateSelectedDb( dbState );
-    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
-    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
+const mockdbStateTableCursorsPushChanges = ( dbState, dbName, tableName, changes, changeType ) => {
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, dbName, tableName );
+    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, dbName );
     const cursors = cursorConfig[tableName] || [];
 
     cursors.forEach( c => {
@@ -253,27 +230,26 @@ const mockdbStateTableCursorsPushChanges = ( dbState, tableName, changes, change
     return dbState;
 };
 
-const mockdbStateTableCursorsGetOrCreate = ( dbState, tableName ) => {
-    const cursors = mockdbStateDbCursorConfigGet( dbState );
+const mockdbStateTableCursorsGetOrCreate = ( dbState, dbName, tableName ) => {
+    const cursors = mockdbStateDbCursorConfigGet( dbState, dbName );
 
     cursors[tableName] = cursors[tableName] || [];
 
     return cursors;
 };
 
-const mockdbStateTableDocCursorsGetOrCreate = ( dbState, tableName, doc ) => {
-    const db = mockdbStateSelectedDb( dbState );
-    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, tableName );
+const mockdbStateTableDocCursorsGetOrCreate = ( dbState, dbName, tableName, doc ) => {
+    const tablePrimaryKey = mockdbStateTableGetPrimaryKey( dbState, dbName, tableName );
     const tableDocId = [ tableName, doc[tablePrimaryKey] ].join( '-' );
-    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, db );
+    const cursorConfig = mockdbStateDbCursorConfigGet( dbState, dbName );
 
     cursorConfig[tableDocId] = cursorConfig[tableDocId] || [];
 
     return cursorConfig[tableDocId];
 };
 
-const mockdbStateTableCursorSet = ( dbState, tableName, cursor ) => {
-    const cursors = mockdbStateDbCursorConfigGet( dbState );
+const mockdbStateTableCursorSet = ( dbState, dbName, tableName, cursor ) => {
+    const cursors = mockdbStateDbCursorConfigGet( dbState, dbName );
     const tableCursors = cursors[tableName];
 
     tableCursors.push( cursor );
@@ -300,7 +276,7 @@ const mockdbStateAggregate = ( oldState, aggState ) => (
 
 export {
     mockdbStateCreate,
-    mockdbStateSelectedDb,
+    mockdbStateDbGet,
     mockdbStateAggregate,
     mockdbStateDbCreate,
     mockdbStateDbDrop,
