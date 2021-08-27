@@ -140,7 +140,7 @@ test( 'expr().getCursor() should return a stream', async t => {
 
     t.true( stream instanceof Readable );
 
-    await new Promise( ( resolve, reject ) => {
+    await new Promise( resolve => {
         let count = 0;
         stream.on( 'data', () => {
             count += 1;
@@ -169,7 +169,7 @@ test( 'expr().changes().getCursor() should return a stream', async t => {
 
     t.true( stream instanceof Readable );
 
-    const promise = new Promise( ( resolve, reject ) => {
+    const promise = new Promise( resolve => {
         let count = 0;
         stream.on( 'data', d => {
             if ( !!d.new_val.n ) {
@@ -212,10 +212,10 @@ test( 'get().changes() should return a stream', async t => {
 
     t.true( stream instanceof Readable );
 
-    const promise = new Promise( ( resolve, reject ) => {
+    const promise = new Promise( resolve => {
         let count = 0;
 
-        stream.on( 'data', n => {
+        stream.on( 'data', () => {
             count += 1;
             if ( count === 3 ) {
                 resolve();
@@ -297,7 +297,7 @@ test( 'Test flowing - event data', async t => {
 
     t.true( stream instanceof Readable );
 
-    await new Promise( ( resolve, reject ) => {
+    await new Promise( resolve => {
         let count = 0;
         stream.on( 'data', () => {
             count += 1;
@@ -346,7 +346,7 @@ test( 'Test read', async t => {
                 );
             }
             let count = 1;
-            stream.on( 'data', data => {
+            stream.on( 'data', () => {
                 count += 1;
                 if ( count === 2 ) {
                     resolve();
@@ -443,7 +443,7 @@ test( 'read with null value', async t => {
     await new Promise( ( resolve, reject ) => {
         stream.once( 'readable', () => {
             let count = 0;
-            stream.on( 'data', data => {
+            stream.on( 'data', () => {
                 count += 1;
                 if ( count === 20 ) {
                     resolve();
@@ -494,7 +494,7 @@ test( 'stream grouped data', async t => {
                 );
             }
             let count = 1;
-            stream.on( 'data', data => {
+            stream.on( 'data', () => {
                 count += 1;
                 if ( count === 2 ) {
                     resolve();

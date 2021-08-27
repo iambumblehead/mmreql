@@ -1,6 +1,5 @@
 import test from 'ava';
 import msfrom from 'milliseconds';
-import timezonemock from 'timezone-mock';
 import rethinkdbMocked from '../src/mockdb.mjs';
 
 test( 'expressions is older than date, true', async t => {

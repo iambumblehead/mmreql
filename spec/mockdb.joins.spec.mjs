@@ -51,8 +51,7 @@ test( '`eqJoin` should return -- pk -- array-stream - row => row', async t => {
 test( '`eqJoin` should return -- pk -- secondary index -- array-stream - row => row', async t => {
     const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
-    const roomInsert = await insertTestRooms( r );
-    const pks = roomInsert.generated_keys;
+    await insertTestRooms( r );
 
     // verified with live test...
     const result = await r
@@ -72,9 +71,6 @@ test( '`eqJoin` should return -- pk -- secondary index -- array-stream - row => 
 test( '`eqJoin` should throw if no argument', async t => {
     const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
-    const roomInsert = await insertTestRooms( r );
-    const pks = roomInsert.generated_keys;
-
     await t.throws( () => ( r
         .expr([ 1, 2, 3 ])
         .eqJoin()
@@ -86,9 +82,6 @@ test( '`eqJoin` should throw if no argument', async t => {
 
 test( '`eqJoin` should throw with a non valid key', async t => {
     const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
-
-    const roomInsert = await insertTestRooms( r );
-    const pks = roomInsert.generated_keys;
 
     await t.throws( () => ( r
         .expr([ 1, 2, 3 ])

@@ -19,7 +19,7 @@ const isResolvingQueryRe = new RegExp( `^(${resolvingQueries.join( '|' )})$` );
 // eslint-disable-next-line security/detect-non-literal-regexp
 const isFirstTermQueryRe = new RegExp( `^(${firstTermQueries.join( '|' )})$` );
 
-const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName, i ) => {
+const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
     prev[queryName] = function ( ...args ) {
         // must not follow another term, ex: r.expr( ... ).desc( 'foo' )
         if ( this.record.length && isFirstTermQueryRe.test( queryName ) ) {
