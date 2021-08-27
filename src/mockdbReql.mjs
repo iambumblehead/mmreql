@@ -130,6 +130,9 @@ export const spend = ( value, reqlChain, doc, type = typeof value, f = null ) =>
     return f;
 };
 
+const mockdbReqlGetDBSelectedOrState = ( queryState, dbState ) => (
+    dbState.db[queryState.db || dbState.dbSelected]);
+
 const reql = {};
 
 reql.connect = ( queryState, args, reqlChain, dbState ) => {
@@ -400,7 +403,7 @@ reql.dbCreate = ( queryState, args, reqlChain, dbState ) => {
 reql.dbDrop = ( queryState, args, reqlChain, dbState ) => {
     const [ dbName ] = args;
     const dbConfig = mockdbStateDbConfigGet( dbState, dbName );
-    const tables = mockdbStateSelectedDb( dbState, dbName );
+    const tables = mockdbReqlGetDBSelectedOrState( queryState, dbState );
 
     if ( args.length !== 1 ) {
         queryState.error = mockdbResErrorArgumentsNumber(
@@ -461,7 +464,7 @@ reql.info = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.tableList = ( queryState, args, reqlChain, dbState ) => {
-    const tables = mockdbStateSelectedDb( dbState, queryState.db );
+    const tables = mockdbReqlGetDBSelectedOrState( queryState, dbState );
 
     queryState.target = Object.keys( tables );
 
@@ -499,7 +502,7 @@ reql.tableCreate = ( queryState, args, reqlChain, dbState ) => {
     }
 
     const dbName = queryState.db || dbState.dbSelected;
-    const tables = mockdbStateSelectedDb( dbState, dbName );
+    const tables = mockdbReqlGetDBSelectedOrState( queryState, dbState );
     if ( tableName in tables ) {
         queryState.error = mockdbResErrorTableExists( dbName, tableName );
         queryState.target = null;
@@ -1741,7 +1744,7 @@ reql.union = ( queryState, args, reqlChain ) => {
 
 reql.table = ( queryState, args, reqlChain, dbState ) => {
     const [ tablename ] = args;
-    const db = mockdbStateSelectedDb( dbState );
+    const db = mockdbReqlGetDBSelectedOrState( queryState, dbState );
     const table = db[tablename];
 
     if ( !Array.isArray( db[tablename]) ) {

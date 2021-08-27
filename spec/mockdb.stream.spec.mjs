@@ -15,7 +15,7 @@ test( 'table().getCursor() should return a stream', async t => {
     ]);
     
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .getCursor();
 
@@ -162,7 +162,7 @@ test( 'expr().changes().getCursor() should return a stream', async t => {
 
     // added include initial, so it won't hang on some extreme cases
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .changes({ includeInitial: true })
         .getCursor();
@@ -183,7 +183,7 @@ test( 'expr().changes().getCursor() should return a stream', async t => {
     });
 
     await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .insert( data )
         .run();
@@ -262,7 +262,7 @@ test( '`table` should return a stream - testing empty SUCCESS_COMPLETE', async t
     });
 
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .getCursor( connection, { maxBatchRows: 1 });
 
@@ -291,7 +291,7 @@ test( 'Test flowing - event data', async t => {
     });
 
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .getCursor( connection, { maxBatchRows: 1 });
 
@@ -329,7 +329,7 @@ test( 'Test read', async t => {
     });
 
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .getCursor( connection, { maxBatchRows: 1 });
 
@@ -377,7 +377,7 @@ test( 'Test flowing - event data (pause, resume)', async t => {
     });
 
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .getCursor( connection, { maxBatchRows: 1 });
 
@@ -476,7 +476,7 @@ test( 'stream grouped data', async t => {
     });
 
     const stream = await r
-        .db( 'cmdb' )
+        .db( 'default' )
         .table( 'Rooms' )
         .group({ index: 'id' })
         .getCursor();

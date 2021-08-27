@@ -3,6 +3,7 @@ import mockdbChain from './mockdbChain.mjs';
 
 import {
     mockdbStateCreate,
+    mockdbStateDbCreate,
     mockdbStateTableSet,
     mockdbStateTableCreate
 } from './mockdbState.mjs';
@@ -50,16 +51,22 @@ const buildChain = ( dbState = {}) => {
     };
 };
 
-export default configList => {
-    const tables = ( configList || []);
-    const dbConfig = mockdbStateCreate(
+const buildDb = ( tables, config ) => {
+    const dbConfig = config || mockdbStateCreate(
         ( tables[0] && tables[0].db ) ? tables[0] : {});
     const dbConfigTables = ( tables[0] && tables[0].db )
         ? tables.slice( 1 )
         : tables;
 
-    const mockdb = dbConfigTables.reduce( ( dbState, tablelist ) => {
+    return dbConfigTables.reduce( ( dbState, tablelist, i, arr ) => {
         const tableConfig = Array.isArray( tablelist[1]) && tablelist[1];
+
+        if ( !Array.isArray( tablelist ) ) {
+            dbState = mockdbStateDbCreate( dbState, tablelist.db );
+            dbState = buildDb( arr.slice( i + 1 ), dbState );
+            arr.splice( 1 );
+            return dbState;
+        }
 
         dbState = mockdbStateTableCreate( dbState, tablelist[0], tableConfig[0]);
         dbState = mockdbStateTableSet(
@@ -67,6 +74,7 @@ export default configList => {
 
         return dbState;
     }, dbConfig );
-
-    return buildChain( mockdb );
 };
+
+export default configList => buildChain(
+    buildDb( configList || []) );
