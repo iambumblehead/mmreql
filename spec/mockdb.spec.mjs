@@ -2753,3 +2753,31 @@ test( 'populates multiple db -- uses connect db as default', async t => {
     t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
     t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
 });
+
+test( 'populates multiple db -- uses connectPool db as default', async t => {
+    const { r } = rethinkdbMocked([
+        { db: 'cmdb' },
+        [ 'User',
+            { id: 'userId-1234', name: 'fred' },
+            { id: 'userId-5678', name: 'jane' }
+        ],
+        { db: 'jobs' },
+        [ 'Spec',
+            { id: 'specId-1234', repo: 'clearvr-transcode' }
+        ]
+    ]);
+
+    await r.connectPool({
+        db: 'cmdb',
+        user: 'admin',
+        host: 'localhost',
+        port: 8000,
+        password: ''
+    });
+
+    const cmdbUser = await r.table( 'User' ).get( 'userId-1234' ).run();
+    const jobsSpec = await r.db( 'jobs' ).table( 'Spec' ).get( 'specId-1234' ).run();
+
+    t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
+    t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
+});
