@@ -67,3 +67,5 @@ build-docs/
 
 package-lockedversion.json
 *dist.js
+
+.DS_Store
