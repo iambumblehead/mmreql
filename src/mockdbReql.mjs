@@ -142,6 +142,10 @@ reql.connect = ( queryState, args, reqlChain, dbState ) => {
         dbState.dbConnections.push( connection );
     }
 
+    if ( connection.db ) {
+        dbState.dbSelected = db;
+    }
+
     return {
         connectionOptions: {
             host,
