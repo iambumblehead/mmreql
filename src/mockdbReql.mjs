@@ -142,9 +142,8 @@ reql.connect = ( queryState, args, reqlChain, dbState ) => {
         dbState.dbConnections.push( connection );
     }
 
-    if ( connection.db ) {
+    if ( connection.db )
         dbState.dbSelected = db;
-    }
 
     return {
         connectionOptions: {
@@ -194,6 +193,9 @@ reql.connectPool = ( queryState, args, reqlChain, dbState ) => {
     if ( dbState.dbConnections.every( c => c.db !== connection.db ) ) {
         dbState.dbConnections.push( connection );
     }
+
+    if ( connection.db )
+        dbState.dbSelected = db;
 
     return {
         draining: false,
