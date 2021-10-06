@@ -2781,3 +2781,13 @@ test( 'populates multiple db -- uses connectPool db as default', async t => {
     t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
     t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
 });
+
+test( 'dbCreate should use r expressions', async t => {
+    const { r } = rethinkdbMocked();
+    const dbs = [ 'db1', 'db2' ];
+
+    await r( dbs ).difference( r.dbList() ).forEach( db => r.dbCreate( db ) ).run();
+
+    // when rethinkdbMocked is called without any db, 'default' db is created
+    t.deepEqual( await r.dbList().run(), [ 'default' ].concat( dbs ) );
+});
