@@ -382,7 +382,7 @@ reql.dbList = ( queryState, args, reqlChain, dbState ) => {
 };
 
 reql.dbCreate = ( queryState, args, reqlChain, dbState ) => {
-    const [ dbName ] = args;
+    const dbName = spend( args[0], reqlChain );
 
     if ( !args.length ) {
         queryState.error = mockdbResErrorArgumentsNumber(
