@@ -40,7 +40,7 @@
       ],
       "indent": [
          "error",
-         4,
+         2,
          {
             "flatTernaryExpressions": true
          }
