@@ -2791,3 +2791,107 @@ test( 'dbCreate should use r expressions', async t => {
   // when rethinkdbMocked is called without any db, 'default' db is created
   t.deepEqual( await r.dbList().run(), [ 'default' ].concat( dbs ) );
 });
+
+test( 'handles subquery for single eqJoin query', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'players',
+      { id: 1, player: 'George', game: { id: 1 } },
+      { id: 2, player: 'Agatha', game: { id: 3 } },
+      { id: 3, player: 'Fred', game: { id: 2 } },
+      { id: 4, player: 'Marie', game: { id: 2 } },
+      { id: 5, player: 'Earnest', game: { id: 1 } },
+      { id: 6, player: 'Beth', game: { id: 3 } } ],
+    [ 'games',
+      { id: 1, field: 'Little Delving' },
+      { id: 2, field: 'Rushock Bog' },
+      { id: 3, field: 'Bucklebury' } ]
+  ]);
+
+  const result = await r
+    .table( 'players' )
+    .eqJoin( r.row( 'game' )( 'id' ), r.table( 'games' ) )
+    .without({ right: 'id' })
+    .zip()
+    .run();
+
+  t.deepEqual( result, [
+    { field: 'Little Delving', game: { id: 1 }, id: 1, player: 'George' },
+    { field: 'Bucklebury', game: { id: 3 }, id: 2, player: 'Agatha' },
+    { field: 'Rushock Bog', game: { id: 2 }, id: 3, player: 'Fred' },
+    { field: 'Rushock Bog', game: { id: 2 }, id: 4, player: 'Marie' },    
+    { field: 'Little Delving', game: { id: 1 }, id: 5, player: 'Earnest' },
+    { field: 'Bucklebury', game: { id: 3 }, id: 6, player: 'Beth' }
+  ]);
+});
+
+test( 'handles list variation of .without query on eqJoin left and right', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'players',
+      { id: 1, player: 'George', favorites: [ 3, 2 ], gameId: 1 },
+      { id: 2, player: 'Agatha', favorites: [ 1, 2 ], gameId: 3 },
+      { id: 3, player: 'Fred', favorites: [ 3, 1, 2 ], gameId: 2 },
+      { id: 4, player: 'Marie', favorites: [ 1, 3, 2 ], gameId: 2 },
+      { id: 5, player: 'Earnest', favorites: [ 3, 2 ], gameId: 1 },
+      { id: 6, player: 'Beth', favorites: [ 2, 3, 1 ], gameId: 3 } ],
+    [ 'games',
+      { id: 1, field: 'Little Delving' },
+      { id: 2, field: 'Rushock Bog' },
+      { id: 3, field: 'Bucklebury' } ]
+  ]);
+
+  const result = await r
+    .table( 'players' )
+    .eqJoin( player => player( 'favorites' ).nth( 0 ), r.table( 'games' ) )
+    .without({ left: [ 'favorites', 'gameId', 'id' ] }, { right: 'id ' })
+    .zip()
+    .run();
+
+  t.deepEqual( result, [
+    { player: 'George', id: 3, field: 'Bucklebury' },
+    { player: 'Agatha', id: 1, field: 'Little Delving' },
+    { player: 'Fred', id: 3, field: 'Bucklebury' },
+    { player: 'Marie', id: 1, field: 'Little Delving' },
+    { player: 'Earnest', id: 3, field: 'Bucklebury' },
+    { player: 'Beth', id: 2, field: 'Rushock Bog' }
+  ]);
+});
+
+test( 'eqJoin can use nested sub query as first param', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Users',
+      { id: 'userId-1234', name: 'fred' },
+      { id: 'userId-5678', name: 'jane' }
+    ],
+    [ 'Rooms', [ { primaryKey: 'room_id' } ],
+      { room_id: 'roomId-1234', name: 'the room' }
+    ],
+    [ 'Memberships', {
+      user_id: 'userId-1234',
+      room_membership_type: 'INVITE',
+      user_sender_id: 'userId-5678',
+      room_id: 'roomId-1234'
+    } ]
+  ]);
+
+  await r.table( 'Memberships' ).indexCreate( 'user_id' ).run();
+  
+  const result = await r
+    .table( 'Memberships' )
+    .getAll( 'userId-1234', { index: 'user_id' })
+    .filter({ room_membership_type: 'INVITE' })
+    .eqJoin( 'room_id', r.table( 'Rooms' ) )
+    .eqJoin( r.row( 'left'  )( 'user_sender_id' ), r.table( 'Users' ) )
+    .map( row => row( 'left' ).getField( 'left' ).merge({
+      user: row( 'right' ),
+      room: row( 'left' ).getField( 'right' )
+    }) ).run();
+
+  t.deepEqual( result, [ {
+    user_id: 'userId-1234',
+    room_membership_type: 'INVITE',
+    user_sender_id: 'userId-5678',
+    room_id: 'roomId-1234',
+    user: { id: 'userId-5678', name: 'jane' },
+    room: { room_id: 'roomId-1234', name: 'the room' }
+  } ]);
+});

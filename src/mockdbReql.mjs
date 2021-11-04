@@ -902,6 +902,13 @@ reql.row = ( queryState, args, reqlChain ) => {
   return queryState;
 };
 
+reql.row.fn = ( queryState, args, reqlChain ) => {
+  queryState.target = reqlChain()
+    .expr( queryState.target ).getField( args[0]).run();
+
+  return queryState;
+};
+
 reql.default = ( queryState, args, reqlChain ) => {
   if ( queryState.target === null ) {
     queryState.error = null;
@@ -1155,7 +1162,8 @@ reql.eqJoin = ( queryState, args, reqlChain ) => {
 
     return joins;
   }, []);
-    
+
+  queryState.eqJoinBranch = true;
   return queryState;
 };
 
@@ -1596,6 +1604,14 @@ reql.map = ( queryState, args, reqlChain ) => {
 
 reql.without = ( queryState, args, reqlChain ) => {
   const queryTarget = queryState.target;
+  const withoutFromDoc = ( doc, withoutlist ) => withoutlist
+    .reduce( ( prev, arg ) => {
+      delete prev[arg];
+
+      return prev;
+    }, doc );
+  const withoutFromDocList = ( doclist, withoutlist ) => doclist
+    .map( doc => withoutFromDoc( doc, withoutlist ) );
 
   if ( args.length === 0 ) {
     queryState.error = mockdbResErrorArgumentsNumber(
@@ -1607,19 +1623,29 @@ reql.without = ( queryState, args, reqlChain ) => {
 
   args = spend( args, reqlChain );
 
-  queryState.target = args.reduce( ( prev, arg ) => {
-    if ( Array.isArray( prev ) ) {
-      prev = prev.map( p => {
-        delete p[arg];
+  if ( queryState.eqJoinBranch ) {
+    const toArr = val => Array.isArray( val ) ? val : [ val ];
+    const isleft = 'left' in args[0];
+    const isright = 'right' in args[0];
+    const leftArgs = isleft && toArr( args[0].left );
+    const rightArgs = isright && toArr( args[0].right );
 
-        return p;
+    if ( isleft || isright ) {
+      queryState.target = queryTarget.map( qt => {
+        if ( isright )
+          qt.right = withoutFromDoc( qt.right, rightArgs );
+
+        if ( isleft )
+          qt.left = withoutFromDoc( qt.left, leftArgs );
+
+        return qt;
       });
-    } else {
-      delete prev[arg];
     }
-
-    return prev;
-  }, queryTarget );
+  } else {
+    queryState.target = Array.isArray( queryTarget )
+      ? withoutFromDocList( queryTarget, args )
+      : withoutFromDoc( queryTarget, args );
+  }
 
   return queryState;
 };
