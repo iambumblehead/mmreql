@@ -2895,3 +2895,31 @@ test( 'eqJoin can use nested sub query as first param', async t => {
     room: { room_id: 'roomId-1234', name: 'the room' }
   } ]);
 });
+
+test( '.eqJoin()( "right" ) can be used to return eqJoin destination table', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Users',
+      { id: 'userId-1234', name: 'fred' },
+      { id: 'userId-5678', name: 'jane' }
+    ],
+    [ 'Rooms', [ { primaryKey: 'room_id' } ],
+      { room_id: 'roomId-1234', name: 'the room' }
+    ],
+    [ 'Memberships', {
+      user_id: 'userId-1234',
+      room_membership_type: 'INVITE',
+      user_sender_id: 'userId-5678',
+      room_id: 'roomId-1234'
+    } ]
+  ]);
+
+  const roomsJoined = await r
+    .table( 'Memberships' )
+    .getAll( 'userId-1234', { index: 'user_id' })
+    .eqJoin( 'room_id', r.table( 'Rooms' ) )( 'right' )
+    .run();
+
+  t.deepEqual( roomsJoined, [
+    { room_id: 'roomId-1234', name: 'the room' }
+  ]);
+});
