@@ -1180,6 +1180,8 @@ reql.eqJoin = ( queryState, args, reqlChain ) => {
   return queryState;
 };
 
+reql.eqJoin.fn = reql.getField;
+
 // Used to ‘zip’ up the result of a join by merging the ‘right’ fields into
 // ‘left’ fields of each member of the sequence.
 reql.zip = queryState => {
