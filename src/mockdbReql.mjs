@@ -1023,6 +1023,19 @@ reql.contains = ( queryState, args, reqlChain ) => {
 reql.getField = ( queryState, args, reqlChain ) => {
   const [ fieldName ] = spend( args, reqlChain );
 
+  if ( args.length === 0 ) {
+    queryState.error = mockdbResErrorArgumentsNumber( '(...)', 1, args.length );
+    queryState.target = null;
+
+    return queryState;
+  }
+
+  // if ( Array.isArray( queryState.target ) ) {
+  //  queryState.error = 'Expected type DATUM but found SEQUENCE"';
+  //  queryState.target = null;
+  //   return queryState;
+  // }
+
   queryState.target = Array.isArray( queryState.target )
     ? queryState.target.map( t => t[fieldName])
     : queryState.target[fieldName];
@@ -1559,7 +1572,9 @@ reql.expr = ( queryState, args ) => {
 };
 
 reql.expr.fn = ( queryState, args ) => {
-  if ( args[0] in queryState.target ) {
+  if ( Array.isArray( queryState.target ) ) {
+    queryState.target = queryState.target.map( t => t[args[0]]);
+  } else if ( args[0] in queryState.target ) {
     queryState.target = queryState.target[args[0]];
   } else {
     queryState.error = mockDbResErrorNoAttributeInObject( args[0]);
@@ -1805,6 +1820,8 @@ reql.table = ( queryState, args, reqlChain, dbState ) => {
 
   return queryState;
 };
+
+reql.table.fn = reql.getField;
 
 // r.args(array) → special
 reql.args = ( queryState, args, reqlChain ) => {

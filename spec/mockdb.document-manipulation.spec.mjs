@@ -86,6 +86,30 @@ test( '`difference` should work with table names', async t => {
   t.deepEqual( result, [ 'Users' ]);
 });
 
+test( '`getField` should work', async t => {
+  const { r } = rethinkdbMocked();
+
+  t.is( await r.expr({ a: 0, b: 1 })( 'a' ).run(), 0 );
+  t.is( await r.expr({ a: 0, b: 1 }).getField( 'a' ).run(), 0 );
+  t.deepEqual( await r.expr([ { a: 0, b: 1 }, { a: 1 } ])( 'a' ).run(), [ 0, 1 ]);
+});
+
+test( '`(...)` should throw if no argument has been passed', async t => {
+  const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+
+  await t.throws( () => r.table( 'Rooms' )().run(), {
+    message: '`(...)` takes 1 argument, 0 provided.'
+  });
+});
+
+test( '`getField` should throw if no argument has been passed', async t => {
+  const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+
+  await t.throws( () => r.table( 'Rooms' ).getField().run(), {
+    message: '`(...)` takes 1 argument, 0 provided.'
+  });
+});
+
 test( '`merge` should work', async t => {
   const { r } = rethinkdbMocked();
   let result;
