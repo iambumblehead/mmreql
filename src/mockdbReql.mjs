@@ -1061,6 +1061,8 @@ reql.filter = ( queryState, args, reqlChain ) => {
   return queryState;
 };
 
+reql.filter.fn = reql.getField;
+
 reql.count = queryState => {
   queryState.target = queryState.target.length;
 
@@ -1705,6 +1707,10 @@ reql.or = ( queryState, args, reqlChain ) => {
 };
 
 reql.and = ( queryState, args, reqlChain ) => {
+  const startValue = typeof queryState.target === 'boolean'
+    ? queryState.target
+    : true;
+
   if ( args[0] && args[0].queryName === 'row' ) {
     queryState.error = mockDbResErrorCannotUseNestedRow();
     queryState.target = null;
@@ -1712,9 +1718,9 @@ reql.and = ( queryState, args, reqlChain ) => {
     return queryState;
   }
 
-  queryState.target = args.reduce( ( current, value ) => Boolean(
+  queryState.target = args.reduce( ( current, value ) => (
     current && spend( value, reqlChain, queryState.row )
-  ), queryState.target );
+  ), startValue );
 
   return queryState;
 };
@@ -1790,7 +1796,7 @@ reql.union = ( queryState, args, reqlChain ) => {
     value = spend( value, reqlChain );
 
     return argData.concat( value );
-  }, queryState.target );
+  }, queryState.target || []);
 
   if ( queryOptions && queryOptions.interleave ) {
     res = res.sort(

@@ -2923,3 +2923,130 @@ test( '.eqJoin()( "right" ) can be used to return eqJoin destination table', asy
     { room_id: 'roomId-1234', name: 'the room' }
   ]);
 });
+
+test( '.filter( ... )( "val" ) attribute getField call is supported', async t => {
+  const tableRoomMemberships = 'Memberships';
+  const userId = 'userId-1234';
+  const friendId = 'userId-5677';
+  const { r } = rethinkdbMocked([
+    [ 'Users',
+      { id: userId, name: 'fred' },
+      { id: friendId, name: 'jane' }
+    ],
+    [ 'Rooms', [ { primaryKey: 'room_id' } ],
+      { room_id: 'roomId-1234', name: 'the room' }
+    ],
+    [ 'Memberships', {
+      id: 'memberid-111',
+      user_id: userId,
+      room_membership_type: 'JOIN',
+      user_sender_id: userId,
+      room_id: 'roomId-1234'
+    }, {
+      id: 'memberid-222-FRIEND',
+      user_id: friendId,
+      room_membership_type: 'JOIN',
+      user_sender_id: userId,
+      room_id: 'roomId-1234'
+    } ]
+  ]);
+
+  await r.table( 'Memberships' ).indexCreate( 'user_id' ).run();
+  await r.table( 'Memberships' ).indexCreate( 'user_sender_id' ).run();
+  await r.table( 'Memberships' ).indexCreate( 'room_id' ).run();
+
+  const userFriendIds = await r
+    .union(
+      r.table( tableRoomMemberships )
+        .getAll( userId, { index: 'user_id' })
+        .filter( row => r.and(
+          row( 'room_membership_type' ).eq( 'JOIN' ) ) )
+        .merge( row => ({ friend_id: row( 'user_sender_id' ) }) ),
+      r.table( tableRoomMemberships )
+        .getAll( userId, { index: 'user_sender_id' })
+        .filter( row => r.and(
+          row( 'room_membership_type' ).eq( 'JOIN' ),
+          row( 'user_id' ).ne( userId ) ) )
+        .merge( row => ({ friend_id: row( 'user_id' ) }) )
+    )
+    .eqJoin( r.row( 'friend_id' ), r.table( tableRoomMemberships ), { index: 'user_id' })
+    .getField( 'right' )
+    .filter( row => r.and(
+      row( 'room_membership_type' ).eq( 'JOIN' ),
+      row( 'user_id' ).ne( userId )
+    ) )( 'user_id' ).run();
+
+  t.deepEqual( userFriendIds, [ friendId ]);
+});
+
+test( 'supports complex filtering', async t => {
+  const tableRoomMemberships = 'Memberships';
+  const userId = 'userId-1234';
+  const friendAId = 'userId-friend-AAAA';
+  const friendBId = 'userId-friend-BBBB';
+  const friendARoomId = 'roomId-with-friendA';
+  const friendBRoomId = 'roomId-with-friendB';
+  const { r } = rethinkdbMocked([
+    [ 'Users',
+      { id: userId, name: 'fred' },
+      { id: friendAId, name: 'jane' },
+      { id: friendBId, name: 'jones' }
+    ],
+    [ 'Rooms', [ { primaryKey: 'room_id' } ],
+      { room_id: friendARoomId, name: 'user and friend A' },
+      { room_id: friendBRoomId, name: 'user and friend B' }
+    ],
+    [ 'Memberships', {
+      id: 'memberid-111',
+      user_id: userId,
+      room_membership_type: 'JOIN',
+      user_sender_id: userId,
+      room_id: friendARoomId
+    }, {
+      id: 'memberid-222-FRIEND',
+      user_id: friendAId,
+      room_membership_type: 'JOIN',
+      user_sender_id: userId,
+      room_id: friendARoomId
+    }, {
+      id: 'memberid-333',
+      user_id: friendBId,
+      room_membership_type: 'JOIN',
+      user_sender_id: friendBId,
+      room_id: friendBRoomId
+    }, {
+      id: 'memberid-444',
+      user_id: userId,
+      room_membership_type: 'JOIN',
+      user_sender_id: friendBId,
+      room_id: friendBRoomId
+    } ]
+  ]);
+
+  await r.table( 'Memberships' ).indexCreate( 'user_id' ).run();
+  await r.table( 'Memberships' ).indexCreate( 'user_sender_id' ).run();
+  await r.table( 'Memberships' ).indexCreate( 'room_id' ).run();
+
+  const userFriendIds = await r
+    .union(
+      r.table( tableRoomMemberships )
+        .getAll( userId, { index: 'user_id' })
+        .filter( row => r.and(
+          row( 'room_membership_type' ).eq( 'JOIN' ) ) )
+        .merge( row => ({ friend_id: row( 'user_sender_id' ) }) ),
+      r.table( tableRoomMemberships )
+        .getAll( userId, { index: 'user_sender_id' })
+        .filter( row => r.and(
+          row( 'room_membership_type' ).eq( 'JOIN' ),
+          row( 'user_id' ).ne( userId ) ) )
+        .merge( row => ({ friend_id: row( 'user_id' ) }) )
+    )
+    .eqJoin( r.row( 'friend_id' ), r.table( tableRoomMemberships ), { index: 'user_id' })
+    .getField( 'right' )
+    .filter( row => r.and(
+      row( 'room_membership_type' ).eq( 'JOIN' ),
+      row( 'user_id' ).ne( userId )
+    ) )( 'user_id' ).run();
+
+  t.deepEqual( userFriendIds.sort(), [ friendAId, friendBId ].sort() );
+});
