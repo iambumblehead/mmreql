@@ -53,6 +53,7 @@ import {
   mockdbResErrorNotATIMEpsudotype,
   mockDbResErrorCannotUseNestedRow,
   mockDbResErrorNoAttributeInObject,
+  mockdbResErrorExpectedTypeFOOButFoundBAR,
   mockdbResTableStatus,
   mockdbResTableInfo
 } from './mockdbRes.mjs';
@@ -1005,6 +1006,14 @@ reql.contains = ( queryState, args, reqlChain ) => {
     throw new Error( 'Rethink supports contains(0) but rethinkdbdash does not.' );
   }
 
+  if ( !Array.isArray( queryState.target ) ) {
+    queryState.error = mockdbResErrorExpectedTypeFOOButFoundBAR(
+      'SEQUENCE', 'SINGLE_SELECTION' );
+    queryState.target = null;
+
+    return queryState;
+  }
+
   if ( typeof queryRowFn === 'function' ) {
     queryState.target = queryTarget.some( target => (
       spend( queryRowFn, reqlChain, target ) ) );
@@ -1404,7 +1413,7 @@ reql.merge = ( queryState, args, reqlChain ) => {
   } else {
     const merges = args.map( arg => spend( arg, reqlChain ) );
     const mergeTarget = ( marge, target ) => merges
-      .reduce( ( p, next ) => Object.assign( p, next ), target );
+      .reduce( ( p, next ) => Object.assign( p, next ), { ...target });
 
     queryState.target = Array.isArray( queryTarget )
       ? queryTarget.map( qt => mergeTarget( merges, qt ) )

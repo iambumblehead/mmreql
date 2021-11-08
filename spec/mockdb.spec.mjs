@@ -1270,6 +1270,23 @@ test( 'supports .merge()', async t => {
   t.deepEqual( res, { id: 'pimento_sandwich', name: 'thor', type: 'dream' });
 });
 
+test( 'supports .merge(), does not mutate document in table', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'marvel',
+      { id: 'thor', name: 'thor' },
+      { id: 'xavier', name: 'xavier' } ]
+  ]);
+
+  await r.table( 'marvel' ).get( 'thor' ).merge({
+    yummy: 'cupcake'
+  }).run();
+
+  t.deepEqual( await r.table( 'marvel' ).get( 'thor' ).run(), {
+    id: 'thor',
+    name: 'thor'
+  });
+});
+
 test( 'supports .orderBy()', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',

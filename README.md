@@ -49,6 +49,8 @@ console.log(appDoc);
 
 **v1.0.0** adds completed stream, changefeed and cursor support. adds basic support for 'multi' index. adds support for initializing mulitple databases.
 
+**v1.1.0** adds more error messages that match those from rethinkdb, more support for attribute short hand `r.row('user')('nameattr')`, improved support for sub queries used with `eqJoin` and added more complex `eqJoin` tests. Prevent `merge( ... )` queries from mutating documents stored in table.
+
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js
 [1]: https://rethinkdb.com/docs/changefeeds/javascript/
