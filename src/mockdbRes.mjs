@@ -122,6 +122,9 @@ const mockDbResErrorNoAttributeInObject = propertyName => (
   'No attribute `:propertyName` in object'
     .replace( /:propertyName/, propertyName ) );
 
+const mockdbResErrorExpectedTypeFOOButFoundBAR = ( foo, bar ) => (
+  `Expected type ${foo} but found ${bar}` );
+
 export {
   mockdbResChangeTypeADD,
   mockdbResChangeTypeREMOVE,
@@ -147,5 +150,6 @@ export {
   mockdbResErrorNotATIMEpsudotype,
   mockDbResErrorCannotUseNestedRow,
   mockDbResErrorNoMoreRowsInCursor,
-  mockDbResErrorNoAttributeInObject
+  mockDbResErrorNoAttributeInObject,
+  mockdbResErrorExpectedTypeFOOButFoundBAR
 };
