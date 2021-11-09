@@ -1904,6 +1904,31 @@ test( 'supports .insert(, {})', async t => {
   });
 });
 
+test( 'should only return generated_keys from .insert() if db defines key', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'posts', {
+      id: 'post-1234',
+      title: 'post title',
+      content: 'post content'
+    } ]
+  ]);
+
+  const insertRes = await r.table( 'posts' ).insert({
+    title: 'Lorem ipsum',
+    content: 'Dolor sit amet'
+  }).run();
+
+  t.true( 'generated_keys' in insertRes );
+
+  const insertResWithKey = await r.table( 'posts' ).insert({
+    id: 'post-7777',
+    title: 'with primary key',
+    content: 'best of times and worst of times'
+  }).run();
+
+  t.false( 'generated_keys' in insertResWithKey );
+});
+
 test( 'supports .insert([ doc1, doc2 ], {})', async t => {
   const { r } = rethinkdbMocked([
     [ 'posts', {

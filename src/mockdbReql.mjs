@@ -638,6 +638,9 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
     return queryState;
   }
 
+  const documentIsPrimaryKeyPredefined = documents
+    .some( d => primaryKey in d );
+
   documents = documents
     .map( doc => mockdbTableDocEnsurePrimaryKey( doc, primaryKey ) );
 
@@ -700,8 +703,10 @@ reql.insert = ( queryState, args, reqlChain, dbState ) => {
     dbState, dbName, queryState.tablename, changes, mockdbResChangeTypeADD );
 
   queryState.target = mockdbResChangesFieldCreate({
+    ...( documentIsPrimaryKeyPredefined || {
+      generated_keys: documents.map( doc => doc[primaryKey])
+    }),
     inserted: documents.length,
-    generated_keys: documents.map( doc => doc[primaryKey]),
     changes: options.returnChanges === true ? changes : undefined
   });
 
