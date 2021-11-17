@@ -2137,6 +2137,19 @@ test( '.delete() should delete all documents', async t => {
   });
 });
 
+test( '.delete() should delete all documents, no args, custom primaryKey', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Presence', [ { primaryKey: 'user_id' } ], {
+      user_id: 0,
+      state: 'UNHAPPY',
+      status_msg: ''
+    } ] ]);
+
+  await r.table( 'Presence' ).delete().run();
+
+  t.is( await r.table( 'Presence' ).count().run(), 0 );
+});
+
 test( '.delete() should delete filtered documents', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserTest', {
