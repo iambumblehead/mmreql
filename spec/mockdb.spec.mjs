@@ -3,6 +3,7 @@ import timezonemock from 'timezone-mock';
 import { validate as uuidValidate } from 'uuid';
 import rethinkdbMocked from '../src/mockdb.mjs';
 import {
+  mockdbResErrorExpectedTypeFOOButFoundBAR,
   mockdbResErrorDuplicatePrimaryKey,
   mockDbResErrorCannotUseNestedRow
 } from '../src/mockdbRes.mjs';
@@ -1845,6 +1846,26 @@ test( 'supports .match()', async t => {
     id: 'userid-jonathan-1234',
     name: 'johnathan doe'
   } ]);
+});
+
+test( 'throws error when .match() used on NUMBER type', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'users', {
+      id: 'userid-john-1234',
+      number: 1234
+    }, {
+      id: 'userid-jonathan-1234',
+      number: 5678
+    }, {
+      id: 'userid-jane-1234',
+      number: 9012
+    } ]
+  ]);
+
+  await t.throws( () => r
+    .table( 'users' )
+    .filter( doc => doc( 'number' ).match( '(?i)^john' ) )
+    .run(), { message: mockdbResErrorExpectedTypeFOOButFoundBAR( 'STRING', 'NUMBER' ) });
 });
 
 test( 'supports .append()', async t => {
