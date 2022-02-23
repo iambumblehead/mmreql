@@ -962,6 +962,16 @@ reql.match = ( queryState, args, reqlChain ) => {
   // eslint-disable-next-line security/detect-non-literal-regexp
   const regex = new RegExp( regexString, flags );
 
+  if ( typeof queryState.target === 'number' ) {
+    mockdbResErrorExpectedTypeFOOButFoundBAR,
+
+    queryState.error = mockdbResErrorExpectedTypeFOOButFoundBAR(
+      'STRING', 'NUMBER' );
+    queryState.target = null;
+
+    return queryState;
+  }
+
   queryState.target = regex.test( queryState.target );
 
   return queryState;
