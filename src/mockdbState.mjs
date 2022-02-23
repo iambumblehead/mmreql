@@ -216,7 +216,17 @@ const mockdbStateTableCursorsPushChanges = ( dbState, dbName, tableName, changes
   const cursors = cursorConfig[tableName] || [];
 
   cursors.forEach( c => {
-    changes.forEach( d => c.push({ ...d, type: changeType }) );
+    changes.forEach( d => {
+      const data = { ...d, type: changeType };
+
+      if ( typeof c.streamFilter === 'function' ) {
+        if ( c.streamFilter( data ) ) {
+          c.push( data );
+        }
+      } else {
+        c.push( data );
+      }
+    });
   });
 
   changes.forEach( c => {

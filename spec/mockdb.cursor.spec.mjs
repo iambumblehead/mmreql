@@ -77,6 +77,53 @@ test( '`on` should work on feed', async t => {
   t.pass();
 });
 
+test( '`on` should work on feed that is filtered, changes().filter()', async t => {
+  const smallNumDocs = 1;
+  const { r } = rethinkdbMocked([
+    [ 'Presence', [ { primaryKey: 'user_id' } ], {
+      user_id: 'userId-1234',
+      state: 'OFFLINE',
+      time_last_seen: new Date()
+    }, {
+      user_id: 'userId-5678',
+      state: 'ONLINE',
+      time_last_seen: new Date()
+    } ]
+  ]);
+
+  const feed = await r
+    .table( 'Presence' )
+    .changes()
+    .filter( row => row( 'old_val' ).eq( null ).or(
+      row( 'old_val' ).getField( 'state' ).ne(
+        row( 'new_val' ).getField( 'state' ) ) )
+    ).run();
+
+  const promise = new Promise( ( resolve, reject ) => {
+    let i = 0;
+
+    feed.on( 'data', data => {
+      if ( data.new_val.state === data.old_val.state )
+        throw new Error( 'filter failed: old_val.state should not equal new_val.state' );
+
+      i = i + 1;
+      if ( i === smallNumDocs ) {
+        // eslint-disable-next-line promise/prefer-await-to-then
+        feed.close().then( resolve ).catch( reject );
+      }
+    });
+    feed.on( 'error', reject );
+  });
+
+  await r.table( 'Presence' ).update({
+    state: 'OFFLINE',
+    time_last_seen: new Date()
+  }).run();
+
+  await promise;
+  t.pass();
+});
+
 test( '`on` should work on cursor - a `end` event shoul be eventually emitted on a cursor', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence',  {
