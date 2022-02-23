@@ -1070,17 +1070,24 @@ reql.getField = ( queryState, args, reqlChain ) => {
 reql.filter = ( queryState, args, reqlChain ) => {
   const [ predicate ] = args;
 
-  queryState.target = queryState.target.filter( item => {
-    const finitem = spend( predicate, reqlChain, item );
+  if ( queryState.target instanceof Readable
+    && 'changesTarget' in queryState ) {
+    // eg, changes().filter( filterQuery )
+    queryState.target.streamFilter = item => (
+      spend( predicate, reqlChain, item ) );
+  } else {
+    queryState.target = queryState.target.filter( item => {
+      const finitem = spend( predicate, reqlChain, item );
 
-    if ( finitem && typeof finitem === 'object' ) {
-      return Object
-        .keys( finitem )
-        .every( key => finitem[key] === item[key]);
-    }
+      if ( finitem && typeof finitem === 'object' ) {
+        return Object
+          .keys( finitem )
+          .every( key => finitem[key] === item[key]);
+      }
 
-    return finitem;
-  });
+      return finitem;
+    });
+  }
 
   return queryState;
 };
