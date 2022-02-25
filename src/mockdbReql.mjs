@@ -1029,7 +1029,7 @@ reql.contains = ( queryState, args, reqlChain ) => {
     return queryState;
   }
 
-  if ( typeof queryRowFn === 'function' ) {
+  if ( typeof queryRowFn === 'function' && !isReqlObj( queryRowFn ) ) {
     queryState.target = queryTarget.some( target => (
       spend( queryRowFn, reqlChain, target ) ) );
   } else {

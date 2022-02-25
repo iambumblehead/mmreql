@@ -2444,6 +2444,27 @@ test( 'or()', async t => {
   } ]);
 });
 
+test( 'nested row("field")("subField") equivalent row("field").getField("subfield")', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Presence', [ { primaryKey: 'user_id' } ], {
+      user_id: 'userId-1234',
+      state: { value: 'OFFLINE' },
+      time_last_seen: new Date()
+    }, {
+      user_id: 'userId-5678',
+      state: { value: 'ONLINE' },
+      time_last_seen: new Date()
+    } ]
+  ]);
+
+  const presencesOffline = await r
+    .table( 'Presence' )
+    .filter( row => row( 'state' )( 'value' ).eq( 'OFFLINE' ) )
+    .run();
+
+  t.is( presencesOffline.length, 1 );
+});
+
 test( 'and()', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
