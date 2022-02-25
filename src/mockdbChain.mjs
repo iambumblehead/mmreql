@@ -56,7 +56,20 @@ const staleChains = Object.keys( queryReql ).reduce( ( prev, queryName ) => {
         queryArgs: fnargs
       });
 
-      return { ...this, record, ...staleChains };
+      // this is called when using row attrbute look ex,
+      // .filter( row => row( 'field' )( 'attribute' ).eq( 'OFFLINE' ) )
+      function attributeFn ( ...attributeFnArgs ) {
+        record.push({
+          queryName: 'getField',
+          queryArgs: attributeFnArgs
+        });
+
+        return { ...attributeFn, record, ...staleChains };
+      }
+
+      Object.assign( attributeFn, { ...this, record, ...staleChains });
+
+      return attributeFn;
     }, this, staleChains );
   };
 
