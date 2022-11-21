@@ -988,9 +988,9 @@ reql.delete = (queryState, args, reqlChain, dbState) => {
     .map(doc => mockdbTableDocGetIndexValue(doc, tableIndexTuple, spend));
     // eslint-disable-next-line security/detect-non-literal-regexp
   const targetIdRe = new RegExp(`^(${targetIds.join('|')})$`);
+  const options = queryArgsOptions(args);
   const tableFiltered = queryTable.filter(doc => !targetIdRe.test(
     mockdbTableDocGetIndexValue(doc, tableIndexTuple, spend)));
-  const deleted = queryTable.length - tableFiltered.length;
   const queryConfig = queryArgsOptions(args);
   const isValidConfigKeyRe = /^(durability|returnChanges|ignoreWriteHook)$/;
   const invalidConfigKey = Object.keys(queryConfig)
@@ -1004,10 +1004,29 @@ reql.delete = (queryState, args, reqlChain, dbState) => {
     return queryState;
   }
 
+  const changesDocs = (
+    Array.isArray(queryTarget)
+      ? queryTarget
+      : [ queryTarget ]
+  ).reduce((changes, targetDoc) => {
+    if (targetDoc) {
+      changes.push({
+        new_val: null,
+        old_val: targetDoc
+      });
+    }
+
+    return changes;
+  }, []);
+
   mockdbTableSet(queryTable, tableFiltered);
 
+  dbState = mockdbStateTableCursorsPushChanges(
+    dbState, dbName, queryState.tablename, changesDocs);
+
   queryState.target = mockdbResChangesFieldCreate({
-    deleted
+    deleted: changesDocs.length,
+    changes: options.returnChanges === true ? changesDocs : undefined
   });
 
   return queryState;

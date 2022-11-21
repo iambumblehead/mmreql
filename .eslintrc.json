@@ -1,155 +1,156 @@
 {
-   "root": true,
-   "extends": [
-      "plugin:ava/recommended",
-      "plugin:promise/recommended",
-      "plugin:security/recommended"
-   ],
-   "plugins": [
-      "import",
-      "ava",
-      "promise",
-      "security"
-   ],
-   "parser": "@babel/eslint-parser",
-   "parserOptions": {
-      "sourceType": "module",
-      "allowImportExportEverywhere": true
-   },
-   "settings": {
-      "import/resolver": {
-         "node": {
-            "extensions": [
-               ".js",
-               ".mjs"
-            ]
-         }
+  "root": true,
+  "extends": [
+    "plugin:ava/recommended",
+    "plugin:promise/recommended",
+    "plugin:security/recommended"
+  ],
+  "plugins": [
+    "import",
+    "ava",
+    "promise",
+    "security"
+  ],
+  "parser": "@babel/eslint-parser",
+  "parserOptions": {
+    "sourceType": "module",
+    "allowImportExportEverywhere": true
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [
+          ".js",
+          ".mjs"
+        ]
       }
-   },
-   "rules": {
-      "import/extensions": [ "error", "always" ],
-      "space-in-parens": [
-         "error",
-         "never",
-         {
-            "exceptions": [
-            ]
-         }
-      ],
-      "indent": [
-         "error",
-         2,
-         {
-            "flatTernaryExpressions": true
-         }
-      ],
-      "func-names": "off",
-      "max-len": [
-         "error",
-         200
-      ],
-      "comma-dangle": [
-         "error",
-         "never"
-      ],
-      "no-console": "off",
-      "arrow-parens": [
-         "error",
-         "as-needed"
-      ],
-      "space-before-function-paren": [
-         "error",
-         "always"
-      ],
-      "prefer-const": "error",
-      "curly": "off",
-      "camelcase": [
-         "error",
-         {
-            "ignoreDestructuring": true,
-            "properties": "never"
-         }
-      ],
-      "no-param-reassign": "off",
-      "no-shadow": [
-         "warn",
-         {
-            "allow": [
-               "err"
-            ]
-         }
-      ],
-      "prefer-arrow-callback": [
-         "error",
-         {
-            "allowNamedFunctions": true
-         }
-      ],
-      "no-unused-vars": [
-          "error", { "vars": "all", "args": "after-used", "ignoreRestSiblings": false
+    }
+  },
+  "rules": {
+    "import/extensions": [ "error", "always" ],
+    "space-in-parens": [
+      "error",
+      "never",
+      {
+        "exceptions": [
+        ]
+      }
+    ],
+    "indent": [
+      "error",
+      2,
+      {
+        "flatTernaryExpressions": true
+      }
+    ],
+    "func-names": "off",
+    "max-len": [
+      "error",
+      200
+    ],
+    "comma-dangle": [
+      "error",
+      "never"
+    ],
+    "no-console": "off",
+    "arrow-parens": [
+      "error",
+      "as-needed"
+    ],
+    "space-before-function-paren": [
+      "error",
+      "always"
+    ],
+    "prefer-const": "error",
+    "curly": "off",
+    "camelcase": [
+      "error",
+      {
+        "ignoreDestructuring": true,
+        "properties": "never"
+      }
+    ],
+    "no-param-reassign": "off",
+    "no-shadow": [
+      "warn",
+      {
+        "allow": [
+          "err"
+        ]
+      }
+    ],
+    "prefer-arrow-callback": [
+      "error",
+      {
+        "allowNamedFunctions": true
+      }
+    ],
+    "no-unused-vars": [
+      "error", { "vars": "all", "args": "after-used", "ignoreRestSiblings": false
       }],
-      "no-use-before-define": [
-         "error",
-         "nofunc"
-      ],
-      "no-nested-ternary": "off",
-      "array-bracket-spacing": [
-         "error",
-         "always"
-      ],
-      "prefer-destructuring": "error",
-      "import/no-extraneous-dependencies": [
-         "error",
-         {
-            "devDependencies": true
-         }
-      ],
-      "object-curly-newline": [
-         "error",
-         {
-            "ObjectExpression": {
-               "multiline": true,
-               "minProperties": 6,
-               "consistent": true
-            },
-            "ObjectPattern": {
-               "multiline": true,
-               "consistent": true
-            }
-         }
-      ],
-      "function-paren-newline": "off",
-      "no-restricted-syntax": [
-         "error",
-         {
-            "selector": "ForInStatement",
-            "message": "for..in loops iterate over the entire prototype chain, which is virtually never what you want. Use Object.{keys,values,entries}, and iterate over the resulting array.\n"
-         },
-         {
-            "selector": "LabeledStatement",
-            "message": "Labels are a form of GOTO; using them makes code confusing and hard to maintain and understand."
-         },
-         {
-            "selector": "WithStatement",
-            "message": "`with` is disallowed in strict mode because it makes code impossible to predict and optimize."
-         }
-      ],
-      "no-await-in-loop": "off",
-      "no-plusplus": [
-         "error",
-         {
-            "allowForLoopAfterthoughts": true
-         }
-      ],
-      "nonblock-statement-body-position": [
-         "error",
-         "any"
-      ],
-      "no-warning-comments": "warn",
-      "promise/prefer-await-to-then": "error",
-      "promise/prefer-await-to-callbacks": "error",
-      "security/detect-object-injection": "off",
-      "security/detect-non-literal-fs-filename": "off",
-      "security/detect-child-process": "off"
-   }
+    "no-use-before-define": [
+      "error",
+      "nofunc"
+    ],
+    "no-nested-ternary": "off",
+    "array-bracket-spacing": [
+      "error",
+      "always"
+    ],
+    "prefer-destructuring": "error",
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": true
+      }
+    ],
+    "object-curly-newline": [
+      "error",
+      {
+        "ObjectExpression": {
+          "multiline": true,
+          "minProperties": 6,
+          "consistent": true
+        },
+        "ObjectPattern": {
+          "multiline": true,
+          "consistent": true
+        }
+      }
+    ],
+    "function-paren-newline": "off",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "ForInStatement",
+        "message": "for..in loops iterate over the entire prototype chain, which is virtually never what you want. Use Object.{keys,values,entries}, and iterate over the resulting array.\n"
+      },
+      {
+        "selector": "LabeledStatement",
+        "message": "Labels are a form of GOTO; using them makes code confusing and hard to maintain and understand."
+      },
+      {
+        "selector": "WithStatement",
+        "message": "`with` is disallowed in strict mode because it makes code impossible to predict and optimize."
+      }
+    ],
+    "no-await-in-loop": "off",
+    "no-plusplus": [
+      "error",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
+    "nonblock-statement-body-position": [
+      "error",
+      "any"
+    ],
+    "no-warning-comments": "warn",
+    "promise/prefer-await-to-then": "error",
+    "promise/prefer-await-to-callbacks": "error",
+    "security/detect-object-injection": "off",
+    "security/detect-non-literal-fs-filename": "off",
+    "security/detect-child-process": "off",
+    "ava/no-only-test": "warn"
+  }
 }

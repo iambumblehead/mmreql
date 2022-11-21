@@ -2198,6 +2198,39 @@ test('.delete() should delete filtered documents', async t => {
   });
 });
 
+test('supports .delete(, { returnChanges: true })', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'posts', {
+      id: 'post-1234',
+      title: 'post title',
+      content: 'post content'
+    } ]
+  ]);
+
+  const deleteRes = await r
+    .table('posts')
+    .get('post-1234')
+    .delete({ returnChanges: true })
+    .run();
+
+  t.deepEqual(deleteRes, {
+    unchanged: 0,
+    skipped: 0,
+    replaced: 0,
+    inserted: 0,
+    errors: 0,
+    deleted: 1,
+    changes: [ {
+      old_val: {
+        id: 'post-1234',
+        title: 'post title',
+        content: 'post content'
+      },
+      new_val: null
+    } ]
+  });
+});
+
 test('.contains() should return containing documents', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
