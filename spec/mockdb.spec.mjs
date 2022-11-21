@@ -8,40 +8,40 @@ import {
   mockDbResErrorCannotUseNestedRow
 } from '../src/mockdbRes.mjs';
 
-timezonemock.register( 'US/Pacific' );
+timezonemock.register('US/Pacific');
 
 // use when order not important and sorting helps verify a list
-const compare = ( a, b, prop ) => {
-  if ( a[prop] < b[prop]) return -1;
-  if ( a[prop] > b[prop]) return 1;
+const compare = (a, b, prop) => {
+  if (a[prop] < b[prop]) return -1;
+  if (a[prop] > b[prop]) return 1;
   return 0;
 };
 
-test( 'supports add(), numbers', async t => {
+test('supports add(), numbers', async t => {
   const { r } = rethinkdbMocked();
 
-  t.is( await r.expr( 2 ).add( 3 ).run(), 5 );
+  t.is(await r.expr(2).add(3).run(), 5);
 });
 
-test( 'supports add(), strings', async t => {
+test('supports add(), strings', async t => {
   const { r } = rethinkdbMocked();
 
-  t.is( await r.expr( 'foo' ).add( 'bar', 'baz' ).run(), 'foobarbaz' );
+  t.is(await r.expr('foo').add('bar', 'baz').run(), 'foobarbaz');
 });
 
-test( 'supports add(), args strings', async t => {
+test('supports add(), args strings', async t => {
   const { r } = rethinkdbMocked();
 
-  t.is( await r.add( r.args([ 'bar', 'baz' ]) ).run(), 'barbaz' );
+  t.is(await r.add(r.args([ 'bar', 'baz' ])).run(), 'barbaz');
 });
 
-test( 'supports uuid()', async t => {
+test('supports uuid()', async t => {
   const { r } = rethinkdbMocked();
 
-  t.true( uuidValidate( await r.uuid().run() ) );
+  t.true(uuidValidate(await r.uuid().run()));
 });
 
-test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
+test('rethinkdbMocked(), returns table mapping used by mockdb', t => {
   const { dbState } = rethinkdbMocked([
     [ 'marvel',
       { name: 'Iron Man', victories: 214 },
@@ -53,7 +53,7 @@ test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
       { id: 3, name: 'fiery', strength: 5 } ]
   ]);
 
-  t.deepEqual( dbState.db.default, {
+  t.deepEqual(dbState.db.default, {
     marvel: [
       { name: 'Iron Man', victories: 214 },
       { name: 'Jubilee', victories: 49 },
@@ -67,13 +67,13 @@ test( 'rethinkdbMocked(), returns table mapping used by mockdb', t => {
   });
 });
 
-test( 'branch(), simple', async t => {
+test('branch(), simple', async t => {
   const { r } = rethinkdbMocked();
 
-  t.is( await r.branch( r.expr( 10 ).gt( 5 ), 'big', 'small' ).run(), 'big' );
+  t.is(await r.branch(r.expr(10).gt(5), 'big', 'small').run(), 'big');
 });
 
-test( 'branch(), complex', async t => {
+test('branch(), complex', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { name: 'Iron Man', victories: 214 },
@@ -82,37 +82,37 @@ test( 'branch(), complex', async t => {
     ]
   ]);
 
-  const res = await r.table( 'marvel' ).map(
+  const res = await r.table('marvel').map(
     r.branch(
-      r.row( 'victories' ).gt( 100 ),
-      r.row( 'name' ).add( ' is a superhero' ),
-      r.row( 'victories' ).gt( 10 ),
-      r.row( 'name' ).add( ' is a hero' ),
-      r.row( 'name' ).add( ' is very nice' )
+      r.row('victories').gt(100),
+      r.row('name').add(' is a superhero'),
+      r.row('victories').gt(10),
+      r.row('name').add(' is a hero'),
+      r.row('name').add(' is very nice')
     )
   ).run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     'Iron Man is a superhero',
     'Jubilee is a hero',
     'Slava is very nice'
   ]);
 });
 
-test( 'supports many expressions, same instance', async t => {
+test('supports many expressions, same instance', async t => {
   const { r } = rethinkdbMocked();
   const start = Date.now();
 
-  t.is( await r.expr( 2 ).add( 2 ).run(), 4 );
-  t.is( await r.expr( 'foo' ).add( 'bar', 'baz' ).run(), 'foobarbaz' );
-  t.is( await r.add( r.args([ 'bar', 'baz' ]) ).run(), 'barbaz' );
+  t.is(await r.expr(2).add(2).run(), 4);
+  t.is(await r.expr('foo').add('bar', 'baz').run(), 'foobarbaz');
+  t.is(await r.add(r.args([ 'bar', 'baz' ])).run(), 'barbaz');
 
-  t.true( ( await r.now().toEpochTime().run() ) >= start / 1000 );
+  t.true((await r.now().toEpochTime().run()) >= start / 1000);
 
-  t.deepEqual( await r.epochTime( 531360000 ).run(), new Date( 531360000 * 1000 ) );
+  t.deepEqual(await r.epochTime(531360000).run(), new Date(531360000 * 1000));
 });
 
-test( 'r.serialize() returns a call record', t => {
+test('r.serialize() returns a call record', t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -120,15 +120,15 @@ test( 'r.serialize() returns a call record', t => {
     } ]
   ]);
 
-  const recording = r.row( 'name' ).serialize();
+  const recording = r.row('name').serialize();
 
-  t.is( recording, JSON.stringify([
+  t.is(recording, JSON.stringify([
     { queryName: 'row', queryArgs: [ 'name' ] },
     { queryName: 'serialize', queryArgs: [] }
-  ]) );
+  ]));
 });
 
-test( 'supports add()', async t => {
+test('supports add()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -137,14 +137,14 @@ test( 'supports add()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )( 'name' )
-    .add( 'bar', 'baz' ).run();
+    .table('marvel')
+    .get('IronMan')('name')
+    .add('bar', 'baz').run();
 
-  t.is( res, 'ironbarbaz' );
+  t.is(res, 'ironbarbaz');
 });
 
-test( 'supports add(), array', async t => {
+test('supports add(), array', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -153,28 +153,28 @@ test( 'supports add(), array', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )( 'names' )
-    .add( 'bar', 'baz' ).run();
+    .table('marvel')
+    .get('IronMan')('names')
+    .add('bar', 'baz').run();
 
-  t.deepEqual( res, [ 'iron', 'bar', 'baz' ]);
+  t.deepEqual(res, [ 'iron', 'bar', 'baz' ]);
 });
 
-test( 'supports row.add()', async t => {
+test('supports row.add()', async t => {
   const { r } = rethinkdbMocked();
 
-  const res = await r.expr([ 1, 2, 3 ]).map( r.row.add( 1 ) ).run();
+  const res = await r.expr([ 1, 2, 3 ]).map(r.row.add(1)).run();
 
-  t.deepEqual( res, [ 2, 3, 4 ]);
+  t.deepEqual(res, [ 2, 3, 4 ]);
 });
 
-test( 'supports r.args()', async t => {
+test('supports r.args()', async t => {
   const { r } = rethinkdbMocked();
 
-  t.is( await r.add( r.args([ 'bar', 'baz' ]) ).run(), 'barbaz' );
+  t.is(await r.add(r.args([ 'bar', 'baz' ])).run(), 'barbaz');
 });
 
-test( 'provides a faux connect function', async t => {
+test('provides a faux connect function', async t => {
   const { r } = rethinkdbMocked([
     [ 'table', { id: 'id-document-1234' } ]
   ]);
@@ -187,7 +187,7 @@ test( 'provides a faux connect function', async t => {
     password: ''
   });
 
-  t.like( res, {
+  t.like(res, {
     db: 'cmdb',        
     socket: {
       user: 'admin'
@@ -199,7 +199,7 @@ test( 'provides a faux connect function', async t => {
   });
 });
 
-test( 'provides a faux connectPool function', async t => {
+test('provides a faux connectPool function', async t => {
   const { r } = rethinkdbMocked([
     [ 'table', { id: 'id-document-1234' } ]
   ]);
@@ -212,7 +212,7 @@ test( 'provides a faux connectPool function', async t => {
     password: ''
   });
 
-  t.like( res, {
+  t.like(res, {
     connParam: {
       db: 'cmdb',
       user: 'admin',
@@ -225,7 +225,7 @@ test( 'provides a faux connectPool function', async t => {
   });
 });
 
-test( 'getAll().filter({ device_id })', async t => {
+test('getAll().filter({ device_id })', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserDevices', {
       id: 'id-document-1234',
@@ -236,16 +236,16 @@ test( 'getAll().filter({ device_id })', async t => {
   ]);
 
   const AppUserDevice = await r
-    .table( 'AppUserDevices' )
-    .getAll( 'id-document-1234' )
+    .table('AppUserDevices')
+    .getAll('id-document-1234')
     .filter({ device_id: 'device-1234' })
-    .limit( 1 )
+    .limit(1)
     .run();
 
-  t.is( AppUserDevice[0].id, 'id-document-1234' );
+  t.is(AppUserDevice[0].id, 'id-document-1234');
 });
 
-test( 'getAll should use special primaryKey', async t => {
+test('getAll should use special primaryKey', async t => {
   const { r } = rethinkdbMocked([
     [ 'Rooms', [ { primaryKey: 'room_id' } ], {
       room_id: 'roomAId-1234',
@@ -260,20 +260,20 @@ test( 'getAll should use special primaryKey', async t => {
   ]);
 
   const roomDocs = await r
-    .table( 'Rooms' )
-    .getAll( 'roomAId-1234', 'roomBId-1234' )
+    .table('Rooms')
+    .getAll('roomAId-1234', 'roomBId-1234')
     .run();
 
-  t.deepEqual( roomDocs.sort( ( a, b ) => compare( a, b, 'room_id' ) ), [ {
+  t.deepEqual(roomDocs.sort((a, b) => compare(a, b, 'room_id')), [ {
     room_id: 'roomAId-1234',
     numeric_id: 755090
   }, {
     room_id: 'roomBId-1234',
     numeric_id: 123321
-  } ].sort( ( a, b ) => compare( a, b, 'room_id' ) ) );
+  } ].sort((a, b) => compare(a, b, 'room_id')));
 });
 
-test( 'getAll should support nested args query getAll( r.args(...) )', async t => {
+test('getAll should support nested args query getAll( r.args(...) )', async t => {
   const { r } = rethinkdbMocked([
     [ 'people', {
       id: 'Alice',
@@ -288,12 +288,12 @@ test( 'getAll should support nested args query getAll( r.args(...) )', async t =
   ]);
 
   const children = await r
-    .table( 'people' )
-    .getAll( r.args(
-      r.table( 'people' ).get( 'Alice' )( 'children' )
-    ) ).orderBy( 'id' ).run();
+    .table('people')
+    .getAll(r.args(
+      r.table('people').get('Alice')('children')
+    )).orderBy('id').run();
 
-  t.deepEqual( children, [ {
+  t.deepEqual(children, [ {
     id: 'Bobby',
     children: []
   }, {
@@ -302,7 +302,7 @@ test( 'getAll should support nested args query getAll( r.args(...) )', async t =
   } ]);
 });
 
-test( 'getAll should return empty when nested args query getAll( r.args([]) )', async t => {
+test('getAll should return empty when nested args query getAll( r.args([]) )', async t => {
   const { r } = rethinkdbMocked([
     [ 'people', {
       id: 'Alice',
@@ -317,21 +317,21 @@ test( 'getAll should return empty when nested args query getAll( r.args([]) )', 
   ]);
 
   const children = await r
-    .table( 'people' )
-    .getAll( r.args([]) )
+    .table('people')
+    .getAll(r.args([]))
     .run();
 
-  t.deepEqual( children, []);
+  t.deepEqual(children, []);
 
   const childrenNoArgs = await r
-    .table( 'people' )
+    .table('people')
     .getAll()
     .run();
 
-  t.deepEqual( childrenNoArgs, []);
+  t.deepEqual(childrenNoArgs, []);
 });
 
-test( 'indexCreate should add index to dbState', async t => {
+test('indexCreate should add index to dbState', async t => {
   const { r, dbState } = rethinkdbMocked([
     [ 'Rooms', {
       id: 'roomAId-1234',
@@ -342,17 +342,17 @@ test( 'indexCreate should add index to dbState', async t => {
     } ]
   ]);
 
-  await r.table( 'Rooms' ).indexCreate( 'numeric_id' ).run();
+  await r.table('Rooms').indexCreate('numeric_id').run();
 
-  t.deepEqual( await r.table( 'Rooms' ).indexList().run(), [
+  t.deepEqual(await r.table('Rooms').indexList().run(), [
     'numeric_id'
   ]);
 
-  t.true( dbState.dbConfig_default_Rooms.indexes
-    .some( ([ indexName ]) => indexName === 'numeric_id' ) );
+  t.true(dbState.dbConfig_default_Rooms.indexes
+    .some(([ indexName ]) => indexName === 'numeric_id'));
 });
 
-test( 'indexList should return indexes added by indexCreate', async t => {
+test('indexList should return indexes added by indexCreate', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserDevices', {
       id: 'roomAId-1234',
@@ -363,19 +363,19 @@ test( 'indexList should return indexes added by indexCreate', async t => {
     } ]
   ]);
 
-  const indexList = await r.table( 'AppUserDevices' ).indexList().run();
+  const indexList = await r.table('AppUserDevices').indexList().run();
 
-  if ( !indexList.includes( 'app_user_id' ) ) {
-    await r.table( 'AppUserDevices' ).indexCreate( 'app_user_id' ).run();
-    await r.table( 'AppUserDevices' ).indexWait( 'app_user_id' ).run();
+  if (!indexList.includes('app_user_id')) {
+    await r.table('AppUserDevices').indexCreate('app_user_id').run();
+    await r.table('AppUserDevices').indexWait('app_user_id').run();
   }
 
-  t.deepEqual( await r.table( 'AppUserDevices' ).indexList().run(), [
+  t.deepEqual(await r.table('AppUserDevices').indexList().run(), [
     'app_user_id'
   ]);
 });
 
-test( 'indexCreate should add compound index to dbState', async t => {
+test('indexCreate should add compound index to dbState', async t => {
   const { r, dbState } = rethinkdbMocked([
     [ 'Rooms', {
       id: 'roomAId-1234',
@@ -386,22 +386,22 @@ test( 'indexCreate should add compound index to dbState', async t => {
     } ]
   ]);
 
-  await r.table( 'Rooms' ).indexCreate( 'id_numeric_cid', [
-    r.row( 'id' ),
-    r.row( 'numeric_id' )
+  await r.table('Rooms').indexCreate('id_numeric_cid', [
+    r.row('id'),
+    r.row('numeric_id')
   ]).run();
 
   const isReqlObj = obj => Boolean(
-    obj && /object|function/.test( typeof obj ) && obj.isReql );
+    obj && /object|function/.test(typeof obj) && obj.isReql);
   const dbStateIndexes = dbState.dbConfig_default_Rooms.indexes;
-  const dbStateIndex = dbStateIndexes.find( i => i[0] === 'id_numeric_cid' );
+  const dbStateIndex = dbStateIndexes.find(i => i[0] === 'id_numeric_cid');
 
-  t.is( dbStateIndex[0], 'id_numeric_cid' );
-  t.true( isReqlObj( dbStateIndex[1][0]) );
-  t.true( isReqlObj( dbStateIndex[1][1]) );
+  t.is(dbStateIndex[0], 'id_numeric_cid');
+  t.true(isReqlObj(dbStateIndex[1][0]));
+  t.true(isReqlObj(dbStateIndex[1][1]));
 });
 
-test( 'indexCreate should add compound index to dbState, function generated', async t => {
+test('indexCreate should add compound index to dbState, function generated', async t => {
   const { r, dbState } = rethinkdbMocked([
     [ 'Users', {
       id: 'userAId-1234',
@@ -415,19 +415,19 @@ test( 'indexCreate should add compound index to dbState, function generated', as
   ]);
 
   await r
-    .table( 'Users' )
-    .indexCreate( 'name_numeric', row => [
-      row( 'name' ), row( 'numeric_id' ) ])
+    .table('Users')
+    .indexCreate('name_numeric', row => [
+      row('name'), row('numeric_id') ])
     .run();
 
   const dbStateIndexes = dbState.dbConfig_default_Users.indexes;
-  const dbStateIndex = dbStateIndexes.find( i => i[0] === 'name_numeric' );
+  const dbStateIndex = dbStateIndexes.find(i => i[0] === 'name_numeric');
 
-  t.is( dbStateIndex[0], 'name_numeric' );
-  t.true( typeof dbStateIndex[1] === 'function' );
+  t.is(dbStateIndex[0], 'name_numeric');
+  t.true(typeof dbStateIndex[1] === 'function');
 });
 
-test( 'indexCreate should return results from compound index, function generated', async t => {
+test('indexCreate should return results from compound index, function generated', async t => {
   const { r } = rethinkdbMocked([
     [ 'Users', {
       id: 'userAId-1234',
@@ -441,26 +441,26 @@ test( 'indexCreate should return results from compound index, function generated
   ]);
 
   await r
-    .table( 'Users' )
-    .indexCreate( 'name_numeric', row => [
-      row( 'name_screenname' ), row( 'numeric_id' ) ])
+    .table('Users')
+    .indexCreate('name_numeric', row => [
+      row('name_screenname'), row('numeric_id') ])
     .run();
 
-  await r.table( 'Users' ).indexWait().run();
+  await r.table('Users').indexWait().run();
 
   const users = await r
-    .table( 'Users' )
+    .table('Users')
     .getAll([ 'userA', 1234 ], { index: 'name_numeric' })
     .run();
 
-  t.deepEqual( users, [ {
+  t.deepEqual(users, [ {
     id: 'userAId-1234',
     name_screenname: 'userA',
     numeric_id: 1234
   } ]);
 });
 
-test( 'provides secondary index methods and lookups', async t => {
+test('provides secondary index methods and lookups', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserDevices', {
       id: 'id-document-1234',
@@ -470,24 +470,24 @@ test( 'provides secondary index methods and lookups', async t => {
     } ]
   ]);
 
-  const indexList = await r.table( 'AppUserDevices' ).indexList().run();
+  const indexList = await r.table('AppUserDevices').indexList().run();
 
-  if ( !indexList.includes( 'app_user_id' ) ) {
-    await r.table( 'AppUserDevices' ).indexCreate( 'app_user_id' ).run();
-    await r.table( 'AppUserDevices' ).indexWait( 'app_user_id' ).run();
+  if (!indexList.includes('app_user_id')) {
+    await r.table('AppUserDevices').indexCreate('app_user_id').run();
+    await r.table('AppUserDevices').indexWait('app_user_id').run();
   }
 
   const AppUserDevice = await r
-    .table( 'AppUserDevices' )
-    .getAll( 'appuser-1234', { index: 'app_user_id' })
+    .table('AppUserDevices')
+    .getAll('appuser-1234', { index: 'app_user_id' })
     .filter({ device_id: 'device-1234' })
-    .limit( 1 )
+    .limit(1)
     .run();
 
-  t.is( AppUserDevice[0].id, 'id-document-1234' );
+  t.is(AppUserDevice[0].id, 'id-document-1234');
 });
 
-test( 'provides secondary index methods and lookups, numeric', async t => {
+test('provides secondary index methods and lookups, numeric', async t => {
   const { r } = rethinkdbMocked([
     [ 'Rooms', {
       id: 'roomAId-1234',
@@ -498,18 +498,18 @@ test( 'provides secondary index methods and lookups, numeric', async t => {
     } ]
   ]);
 
-  await r.table( 'Rooms' ).indexCreate( 'numeric_id' ).run();
-  await r.table( 'Rooms' ).indexWait( 'numeric_id' ).run();
+  await r.table('Rooms').indexCreate('numeric_id').run();
+  await r.table('Rooms').indexWait('numeric_id').run();
   const room = await r
-    .table( 'Rooms' )
-    .getAll( 755090, { index: 'numeric_id' })
-    .nth( 0 )
+    .table('Rooms')
+    .getAll(755090, { index: 'numeric_id' })
+    .nth(0)
     .run();
 
-  t.is( room.id, 'roomAId-1234' );
+  t.is(room.id, 'roomAId-1234');
 });
 
-test( 'provides compound index methods and lookups', async t => {
+test('provides compound index methods and lookups', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -522,25 +522,25 @@ test( 'provides compound index methods and lookups', async t => {
     } ]
   ]);
 
-  const indexList = await r.table( 'UserSocial' ).indexList().run();
+  const indexList = await r.table('UserSocial').indexList().run();
 
-  if ( !indexList.includes( 'app_user_id' ) ) {
-    await r.table( 'UserSocial' ).indexCreate( 'screenname_numeric_cid', [
-      r.row( 'name_screenname' ),
-      r.row( 'numeric_id' )
+  if (!indexList.includes('app_user_id')) {
+    await r.table('UserSocial').indexCreate('screenname_numeric_cid', [
+      r.row('name_screenname'),
+      r.row('numeric_id')
     ]).run();
-    await r.table( 'UserSocial' ).indexWait( 'screenname_numeric_cid' ).run();
+    await r.table('UserSocial').indexWait('screenname_numeric_cid').run();
   }
 
   const userSocialDocs = await r
-    .table( 'UserSocial' )
+    .table('UserSocial')
     .getAll([ 'screenname', 5848 ], { index: 'screenname_numeric_cid' })
     .run();
 
-  t.is( userSocialDocs.length, 1 );
+  t.is(userSocialDocs.length, 1);
 });
 
-test( 'get( id ) returns an app document', async t => {
+test('get( id ) returns an app document', async t => {
   const { r } = rethinkdbMocked([
     [ 'Applications', {
       id: 'appid-1234',
@@ -556,16 +556,16 @@ test( 'get( id ) returns an app document', async t => {
     } ]
   ]);
 
-  const appDoc = await r.table( 'Applications' ).get( 'appid-1234' ).run();
+  const appDoc = await r.table('Applications').get('appid-1234').run();
 
-  t.is( appDoc.id, 'appid-1234' );
+  t.is(appDoc.id, 'appid-1234');
 
-  const usersDoc = await r.table( 'Users' ).run();
+  const usersDoc = await r.table('Users').run();
 
-  t.is( usersDoc.length, 2 );
+  t.is(usersDoc.length, 2);
 });
 
-test( 'supports .get()', async t => {
+test('supports .get()', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -574,19 +574,19 @@ test( 'supports .get()', async t => {
     } ]
   ]);
 
-  const res = await r.table( 'UserSocial' )
-    .get( 'userSocialId-1234' )
+  const res = await r.table('UserSocial')
+    .get('userSocialId-1234')
     .default({ defaultValue: true })
     .run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     id: 'userSocialId-1234',
     numeric_id: 5848,
     name_screenname: 'screenname'
   });
 });
 
-test( '.get(), uses table-pre-configured primaryKey', async t => {
+test('.get(), uses table-pre-configured primaryKey', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', [ { primaryKey: 'numeric_id' } ], {
       numeric_id: 5848,
@@ -594,27 +594,27 @@ test( '.get(), uses table-pre-configured primaryKey', async t => {
     } ]
   ]);
 
-  const res = await r.table( 'UserSocial' )
-    .get( 5848 )
+  const res = await r.table('UserSocial')
+    .get(5848)
     .default({ defaultValue: true })
     .run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     numeric_id: 5848,
     name_screenname: 'screenname'
   });
 });
 
-test( 'tableCreate should evaluate reql-defined table name', async t => {
+test('tableCreate should evaluate reql-defined table name', async t => {
   const { r } = rethinkdbMocked();
 
-  await r.dbCreate( 'cmdb' ).run();
+  await r.dbCreate('cmdb').run();
   const res = await r([ 'Users', 'Devices' ])
-    .difference( r.db( 'default' ).tableList() )
-    .forEach( table => r.db( 'cmdb' ).tableCreate( table ) )
+    .difference(r.db('default').tableList())
+    .forEach(table => r.db('cmdb').tableCreate(table))
     .run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     tables_created: 2,
     config_changes: [
       { new_val: res.config_changes[0].new_val, old_val: null },
@@ -623,72 +623,72 @@ test( 'tableCreate should evaluate reql-defined table name', async t => {
   });
 });
 
-test( '.get(), uses table-configured primaryKey', async t => {
+test('.get(), uses table-configured primaryKey', async t => {
   const { r } = rethinkdbMocked();
   await r
-    .db( 'default' )
-    .tableCreate( 'UserSocial', { primaryKey: 'numeric_id' })
+    .db('default')
+    .tableCreate('UserSocial', { primaryKey: 'numeric_id' })
     .run();
 
   const tableInfo = await r
-    .db( 'default' )
-    .table( 'UserSocial' )
+    .db('default')
+    .table('UserSocial')
     .info()
     .run();
 
-  t.is( tableInfo.primary_key, 'numeric_id' );
+  t.is(tableInfo.primary_key, 'numeric_id');
     
   await r
-    .db( 'default' )
-    .table( 'UserSocial' )
+    .db('default')
+    .table('UserSocial')
     .insert({
       numeric_id: 5848,
       name_screenname: 'screenname'
     }).run();    
 
-  const res = await r.table( 'UserSocial' )
-    .get( 5848 )
+  const res = await r.table('UserSocial')
+    .get(5848)
     .default({ defaultValue: true })
     .run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     numeric_id: 5848,
     name_screenname: 'screenname'
   });
 });
 
-test( 'should drop and (re)create a table with a different primaryKey', async t => {
+test('should drop and (re)create a table with a different primaryKey', async t => {
   const { r } = rethinkdbMocked();
   await r
-    .db( 'default' )
-    .tableCreate( 'UserSocial' )
+    .db('default')
+    .tableCreate('UserSocial')
     .run();
 
   const tableInfo = await r
-    .db( 'default' )
-    .table( 'UserSocial' )
+    .db('default')
+    .table('UserSocial')
     .info()
     .run();
 
-  t.is( tableInfo.primary_key, 'id' );
+  t.is(tableInfo.primary_key, 'id');
 
-  await r.db( 'default' ).tableDrop( 'UserSocial' ).run();
+  await r.db('default').tableDrop('UserSocial').run();
 
   await r
-    .db( 'default' )
-    .tableCreate( 'UserSocial', { primaryKey: 'numeric_id' })
+    .db('default')
+    .tableCreate('UserSocial', { primaryKey: 'numeric_id' })
     .run();
 
   const tableCreatedInfo = await r
-    .db( 'default' )
-    .table( 'UserSocial' )
+    .db('default')
+    .table('UserSocial')
     .info()
     .run();
 
-  t.is( tableCreatedInfo.primary_key, 'numeric_id' );
+  t.is(tableCreatedInfo.primary_key, 'numeric_id');
 });
 
-test( '.get(), throws error if called with no arguments', async t => {
+test('.get(), throws error if called with no arguments', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -697,14 +697,14 @@ test( '.get(), throws error if called with no arguments', async t => {
     } ]
   ]);
 
-  await t.throws( () => (
-    r.table( 'UserSocial' ).get().run()
+  await t.throws(() => (
+    r.table('UserSocial').get().run()
   ), {
     message: '`get` takes 1 argument, 0 provided.'
   });
 });
 
-test( '.get(), throws error if called argument of wrong type', async t => {
+test('.get(), throws error if called argument of wrong type', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -713,14 +713,14 @@ test( '.get(), throws error if called argument of wrong type', async t => {
     } ]
   ]);
 
-  await t.throws( () => (
-    r.table( 'UserSocial' ).get( undefined ).run()
+  await t.throws(() => (
+    r.table('UserSocial').get(undefined).run()
   ), {
     message: 'Primary keys must be either a number, string, bool, pseudotype or array (got type UNDEFINED)'
   });
 });
 
-test( 'supports .get(), returns null if document not found', async t => {
+test('supports .get(), returns null if document not found', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -729,14 +729,14 @@ test( 'supports .get(), returns null if document not found', async t => {
     } ]
   ]);
 
-  const resNoDoc = await r.table( 'UserSocial' )
-    .get( 'userSocialId-7575' )
+  const resNoDoc = await r.table('UserSocial')
+    .get('userSocialId-7575')
     .run();
 
-  t.is( resNoDoc, null );
+  t.is(resNoDoc, null);
 });
 
-test( 'supports .replace()', async t => {
+test('supports .replace()', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 1,
@@ -745,13 +745,13 @@ test( 'supports .replace()', async t => {
     } ]
   ]);
 
-  const replaceRes = await r.table( 'UserSocial' ).get( 1 ).replace({
+  const replaceRes = await r.table('UserSocial').get(1).replace({
     id: 1,
     numeric_id: 2332,
     name_screenname: 'yay'
   }).run();
 
-  t.deepEqual( replaceRes, {
+  t.deepEqual(replaceRes, {
     deleted: 0,
     errors: 0,
     inserted: 0,
@@ -760,16 +760,16 @@ test( 'supports .replace()', async t => {
     unchanged: 0
   });
 
-  const updatedDoc = await r.table( 'UserSocial' ).get( 1 ).run();
+  const updatedDoc = await r.table('UserSocial').get(1).run();
 
-  t.deepEqual( updatedDoc, {
+  t.deepEqual(updatedDoc, {
     id: 1,
     numeric_id: 2332,
     name_screenname: 'yay'
   });
 });
 
-test( 'supports .count()', async t => {
+test('supports .count()', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -787,15 +787,15 @@ test( 'supports .count()', async t => {
   ]);
 
   const res = await r
-    .table( 'UserSocial' )
-    .filter( hero => hero( 'numeric_id' ).lt( 4000 ) )
+    .table('UserSocial')
+    .filter(hero => hero('numeric_id').lt(4000))
     .count()
     .run();
 
-  t.is( res, 2 );
+  t.is(res, 2);
 });
 
-test( 'supports .isEmpty()', async t => {
+test('supports .isEmpty()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
@@ -804,11 +804,11 @@ test( 'supports .isEmpty()', async t => {
     [ 'emptytable' ]
   ]);
 
-  t.is( await r.table( 'marvel' ).isEmpty().run(), false );
-  t.is( await r.table( 'emptytable' ).isEmpty().run(), true );
+  t.is(await r.table('marvel').isEmpty().run(), false);
+  t.is(await r.table('emptytable').isEmpty().run(), true);
 });
 
-test( 'supports .max()', async t => {
+test('supports .max()', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -817,14 +817,14 @@ test( 'supports .max()', async t => {
       { id: 12, player: 'Alice', points: 2, type: 'free' } ]
   ]);
 
-  const res = await r.table( 'games' ).max( 'points' ).run();
+  const res = await r.table('games').max('points').run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     id: 2, player: 'Bob', points: 15, type: 'ranked'
   });
 });
 
-test( 'supports .max()()', async t => {
+test('supports .max()()', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -834,14 +834,14 @@ test( 'supports .max()()', async t => {
   ]);
 
   const res = await r
-    .table( 'games' )
-    .max( 'points' )( 'points' )
+    .table('games')
+    .max('points')('points')
     .run();
 
-  t.is( res, 15 );
+  t.is(res, 15);
 });
 
-test( 'supports .min()', async t => {
+test('supports .min()', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -850,14 +850,14 @@ test( 'supports .min()', async t => {
       { id: 12, player: 'Alice', points: 2, type: 'free' } ]
   ]);
 
-  const res = await r.table( 'games' ).min( 'points' ).run();
+  const res = await r.table('games').min('points').run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     id: 12, player: 'Alice', points: 2, type: 'free'
   });
 });
 
-test( 'supports .pluck() from document', async t => {
+test('supports .pluck() from document', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -875,18 +875,18 @@ test( 'supports .pluck() from document', async t => {
   ]);
 
   const res = await r
-    .table( 'UserSocial' )
-    .get( 'userSocialId-1234' )
-    .pluck( 'numeric_id', 'id' )
+    .table('UserSocial')
+    .get('userSocialId-1234')
+    .pluck('numeric_id', 'id')
     .run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     id: 'userSocialId-1234',
     numeric_id: 3333
   });
 });
 
-test( 'supports .pluck() (from list)', async t => {
+test('supports .pluck() (from list)', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -904,11 +904,11 @@ test( 'supports .pluck() (from list)', async t => {
   ]);
 
   const res = await r
-    .table( 'UserSocial' )
-    .pluck( 'numeric_id', 'id' )
+    .table('UserSocial')
+    .pluck('numeric_id', 'id')
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'userSocialId-1234',
     numeric_id: 3333
   }, {
@@ -920,7 +920,7 @@ test( 'supports .pluck() (from list)', async t => {
   } ]);
 });
 
-test( 'supports .slice(1,2)', async t => {
+test('supports .slice(1,2)', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -938,18 +938,18 @@ test( 'supports .slice(1,2)', async t => {
   ]);
 
   const res = await r
-    .table( 'UserSocial' )
-    .slice( 1, 2 )
+    .table('UserSocial')
+    .slice(1, 2)
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'userSocialId-5678',
     numeric_id: 2222,
     name_screenname: 'screenname'
   } ]);
 });
 
-test( 'supports .skip(1)', async t => {
+test('supports .skip(1)', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -967,11 +967,11 @@ test( 'supports .skip(1)', async t => {
   ]);
 
   const res = await r
-    .table( 'UserSocial' )
-    .skip( 1 )
+    .table('UserSocial')
+    .skip(1)
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'userSocialId-5678',
     numeric_id: 2222,
     name_screenname: 'screenname'
@@ -982,7 +982,7 @@ test( 'supports .skip(1)', async t => {
   } ]);
 });
 
-test( 'supports .concatMap()', async t => {
+test('supports .concatMap()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
@@ -991,11 +991,11 @@ test( 'supports .concatMap()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .concatMap( hero => hero( 'defeatedMonsters' ) )
+    .table('marvel')
+    .concatMap(hero => hero('defeatedMonsters'))
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     'squirtle',
     'charzar',
     'fiery',
@@ -1003,7 +1003,7 @@ test( 'supports .concatMap()', async t => {
   ]);
 });
 
-test( 'supports .sample()', async t => {
+test('supports .sample()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
@@ -1011,13 +1011,13 @@ test( 'supports .sample()', async t => {
       { id: 'xavier', defeatedMonsters: [ 'jiggly puff' ] } ]
   ]);
 
-  const res = await r.table( 'marvel' ).sample( 2 ).run();
+  const res = await r.table('marvel').sample(2).run();
 
-  t.true( Array.isArray( res ) );
-  t.is( res.length, 2 );
+  t.true(Array.isArray(res));
+  t.is(res.length, 2);
 });
 
-test( 'supports .group() (basic)', async t => {
+test('supports .group() (basic)', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -1026,9 +1026,9 @@ test( 'supports .group() (basic)', async t => {
       { id: 12, player: 'Alice', points: 2, type: 'free' } ]
   ]);
 
-  const res = await r.table( 'games' ).group( 'player' ).run();
+  const res = await r.table('games').group('player').run();
 
-  t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+  t.deepEqual(res.sort((a, b) => compare(a, b, 'group')), [ {
     group: 'Alice',
     reduction: [
       { id: 5, player: 'Alice', points: 7, type: 'free' },
@@ -1043,7 +1043,7 @@ test( 'supports .group() (basic)', async t => {
   } ]);
 });
 
-test( 'supports .group().max() query', async t => {
+test('supports .group().max() query', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -1052,9 +1052,9 @@ test( 'supports .group().max() query', async t => {
       { id: 12, player: 'Alice', points: 2, type: 'free' } ]
   ]);
 
-  const res = await r.table( 'games' ).group( 'player' ).max( 'points' ).run();
+  const res = await r.table('games').group('player').max('points').run();
 
-  t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+  t.deepEqual(res.sort((a, b) => compare(a, b, 'group')), [ {
     group: 'Alice',
     reduction: { id: 5, player: 'Alice', points: 7, type: 'free' }
   }, {
@@ -1063,7 +1063,7 @@ test( 'supports .group().max() query', async t => {
   } ]);
 });
 
-test( 'supports .group().min() query', async t => {
+test('supports .group().min() query', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -1072,9 +1072,9 @@ test( 'supports .group().min() query', async t => {
       { id: 12, player: 'Alice', points: 2, type: 'free' } ]
   ]);
 
-  const res = await r.table( 'games' ).group( 'player' ).min( 'points' ).run();
+  const res = await r.table('games').group('player').min('points').run();
 
-  t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+  t.deepEqual(res.sort((a, b) => compare(a, b, 'group')), [ {
     group: 'Alice',
     reduction: { id: 12, player: 'Alice', points: 2, type: 'free' }
   }, {
@@ -1083,7 +1083,7 @@ test( 'supports .group().min() query', async t => {
   } ]);
 });
 
-test( 'supports .ungroup() query', async t => {
+test('supports .ungroup() query', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -1093,12 +1093,12 @@ test( 'supports .ungroup() query', async t => {
   ]);
 
   const res = await r
-    .table( 'games' )
-    .group( 'player' )
+    .table('games')
+    .group('player')
     .ungroup()
     .run();
 
-  t.deepEqual( res.sort( ( a, b ) => compare( a, b, 'group' ) ), [ {
+  t.deepEqual(res.sort((a, b) => compare(a, b, 'group')), [ {
     group: 'Alice',
     reduction: [
       { id: 5, player: 'Alice', points: 7, type: 'free' },
@@ -1113,7 +1113,7 @@ test( 'supports .ungroup() query', async t => {
   } ]);
 });
 
-test( 'supports simple group() ungroup() official example', async t => {
+test('supports simple group() ungroup() official example', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -1123,13 +1123,13 @@ test( 'supports simple group() ungroup() official example', async t => {
   ]);
 
   const ungroupres = await r
-    .table( 'games' )
-    .group( 'player' )
+    .table('games')
+    .group('player')
     .ungroup()
-    .slice( 1 )
+    .slice(1)
     .run();
 
-  t.deepEqual( ungroupres, [ {
+  t.deepEqual(ungroupres, [ {
     group: 'Alice',
     reduction: [
       { id: 5, player: 'Alice', points: 7, type: 'free' },
@@ -1138,12 +1138,12 @@ test( 'supports simple group() ungroup() official example', async t => {
   } ]);
 
   const groupres = await r
-    .table( 'games' )
-    .group( 'player' )
-    .slice( 1 )
+    .table('games')
+    .group('player')
+    .slice(1)
     .run();
 
-  t.deepEqual( groupres, [ {
+  t.deepEqual(groupres, [ {
     group: 'Bob',
     reduction: [
       { id: 11, player: 'Bob', points: 10, type: 'free' }
@@ -1156,7 +1156,7 @@ test( 'supports simple group() ungroup() official example', async t => {
   } ]);
 });
 
-test( 'supports .ungroup() complex query', async t => {
+test('supports .ungroup() complex query', async t => {
   const { r } = rethinkdbMocked([
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
@@ -1166,12 +1166,12 @@ test( 'supports .ungroup() complex query', async t => {
   ]);
 
   const res = await r
-    .table( 'games' )
-    .group( 'player' ).max( 'points' )( 'points' )
-    .ungroup().orderBy( r.desc( 'reduction' ) )
+    .table('games')
+    .group('player').max('points')('points')
+    .ungroup().orderBy(r.desc('reduction'))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     group: 'Bob',
     reduction: 15
   }, {
@@ -1180,7 +1180,7 @@ test( 'supports .ungroup() complex query', async t => {
   } ]);
 });
 
-test( 'supports .eqJoin()', async t => {
+test('supports .eqJoin()', async t => {
   const { r } = rethinkdbMocked([
     [ 'players',
       { id: 1, player: 'George', gameId: 1 },
@@ -1196,11 +1196,11 @@ test( 'supports .eqJoin()', async t => {
   ]);
 
   const res = await r
-    .table( 'players' )
-    .eqJoin( 'gameId', r.table( 'games' ) )
+    .table('players')
+    .eqJoin('gameId', r.table('games'))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     left: { id: 1, player: 'George', gameId: 1 },
     right: { id: 1, field: 'Little Delving' }
   }, {
@@ -1221,7 +1221,7 @@ test( 'supports .eqJoin()', async t => {
   } ]);
 });
 
-test( 'supports .innerJoin', async t => {
+test('supports .innerJoin', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
       { id: 1, name: 'ryu', strength: 6 },
@@ -1234,12 +1234,12 @@ test( 'supports .innerJoin', async t => {
   ]);
 
   const res = await r
-    .table( 'streetfighter' )
-    .innerJoin( r.table( 'pokemon' ), ( sfRow, pokeRow ) => (
-      sfRow( 'strength' ).lt( pokeRow( 'strength' ) )
-    ) ).run();
+    .table('streetfighter')
+    .innerJoin(r.table('pokemon'), (sfRow, pokeRow) => (
+      sfRow('strength').lt(pokeRow('strength'))
+    )).run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     left: { id: 1, name: 'ryu', strength: 6 },
     right: { id: 2, name: 'charmander', strength: 8 }
   }, {
@@ -1251,7 +1251,7 @@ test( 'supports .innerJoin', async t => {
   } ]);
 });
 
-test( 'supports .merge()', async t => {
+test('supports .merge()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'wolverine', name: 'wolverine' },
@@ -1263,54 +1263,54 @@ test( 'supports .merge()', async t => {
       { id: 'pimento_sandwich', type: 'dream' } ]
   ]);
 
-  const res = await r.table( 'marvel' ).get( 'thor' ).merge(
-    r.table( 'equipment' ).get( 'hammer' ),
-    r.table( 'equipment' ).get( 'pimento_sandwich' )
+  const res = await r.table('marvel').get('thor').merge(
+    r.table('equipment').get('hammer'),
+    r.table('equipment').get('pimento_sandwich')
   ).run();
 
-  t.deepEqual( res, { id: 'pimento_sandwich', name: 'thor', type: 'dream' });
+  t.deepEqual(res, { id: 'pimento_sandwich', name: 'thor', type: 'dream' });
 });
 
-test( 'supports .merge(), does not mutate document in table', async t => {
+test('supports .merge(), does not mutate document in table', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'thor', name: 'thor' },
       { id: 'xavier', name: 'xavier' } ]
   ]);
 
-  await r.table( 'marvel' ).get( 'thor' ).merge({
+  await r.table('marvel').get('thor').merge({
     yummy: 'cupcake'
   }).run();
 
-  t.deepEqual( await r.table( 'marvel' ).get( 'thor' ).run(), {
+  t.deepEqual(await r.table('marvel').get('thor').run(), {
     id: 'thor',
     name: 'thor'
   });
 });
 
-test( 'supports .orderBy()', async t => {
+test('supports .orderBy()', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
       { id: 1, name: 'ryu', strength: 6 },
       { id: 2, name: 'balrog', strength: 5 },
       { id: 3, name: 'chun-li', strength: 7 } ]
   ]);
-  await r.table( 'streetfighter' ).indexCreate( 'strength' ).run();
-  await r.table( 'streetfighter' ).indexWait( 'strength' ).run();
+  await r.table('streetfighter').indexCreate('strength').run();
+  await r.table('streetfighter').indexWait('strength').run();
 
   const res = await r
-    .table( 'streetfighter' )
+    .table('streetfighter')
     .orderBy({ index: 'strength' })
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     { id: 2, name: 'balrog', strength: 5 },
     { id: 1, name: 'ryu', strength: 6 },
     { id: 3, name: 'chun-li', strength: 7 }
   ]);
 });
 
-test( 'supports .orderBy property', async t => {
+test('supports .orderBy property', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
       { id: 1, name: 'ryu', strength: 6 },
@@ -1319,21 +1319,21 @@ test( 'supports .orderBy property', async t => {
   ]);
 
   const res = await r
-    .table( 'streetfighter' )
-    .orderBy( 'name' )
+    .table('streetfighter')
+    .orderBy('name')
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     { id: 2, name: 'balrog', strength: 5 },
     { id: 3, name: 'chun-li', strength: 7 },
     { id: 1, name: 'ryu', strength: 6 }
   ]);
 });
 
-test( 'supports .orderBy(), desc date', async t => {
+test('supports .orderBy(), desc date', async t => {
   const now = new Date();
-  const earliest = new Date( now.getTime() - 80000 );
-  const latest = new Date( now.getTime() + 50 );
+  const earliest = new Date(now.getTime() - 80000);
+  const latest = new Date(now.getTime() + 50);
 
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
@@ -1341,25 +1341,25 @@ test( 'supports .orderBy(), desc date', async t => {
       { id: 2, name: 'balrog', date: earliest },
       { id: 3, name: 'chun-li', date: latest } ]
   ]);
-  await r.table( 'streetfighter' ).indexCreate( 'date' ).run();
-  await r.table( 'streetfighter' ).indexWait( 'date' ).run();
+  await r.table('streetfighter').indexCreate('date').run();
+  await r.table('streetfighter').indexWait('date').run();
 
   const res = await r
-    .table( 'streetfighter' )
-    .orderBy({ index: r.desc( 'date' ) })
+    .table('streetfighter')
+    .orderBy({ index: r.desc('date') })
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     { id: 3, name: 'chun-li', date: latest },
     { id: 1, name: 'ryu', date: now },
     { id: 2, name: 'balrog', date: earliest }
   ]);
 });
 
-test( 'supports .orderBy(), asc date', async t => {
+test('supports .orderBy(), asc date', async t => {
   const now = new Date();
-  const earliest = new Date( now.getTime() - 80000 );
-  const latest = new Date( now.getTime() + 50 );
+  const earliest = new Date(now.getTime() - 80000);
+  const latest = new Date(now.getTime() + 50);
 
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
@@ -1367,22 +1367,22 @@ test( 'supports .orderBy(), asc date', async t => {
       { id: 2, name: 'balrog', date: earliest },
       { id: 3, name: 'chun-li', date: latest } ]
   ]);
-  await r.table( 'streetfighter' ).indexCreate( 'date' ).run();
-  await r.table( 'streetfighter' ).indexWait( 'date' ).run();
+  await r.table('streetfighter').indexCreate('date').run();
+  await r.table('streetfighter').indexWait('date').run();
 
   const res = await r
-    .table( 'streetfighter' )
-    .orderBy({ index: r.asc( 'date' ) })
+    .table('streetfighter')
+    .orderBy({ index: r.asc('date') })
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     { id: 2, name: 'balrog', date: earliest },
     { id: 1, name: 'ryu', date: now },
     { id: 3, name: 'chun-li', date: latest }
   ]);
 });
 
-test( 'supports .orderBy(), dynamic function', async t => {
+test('supports .orderBy(), dynamic function', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
       { id: 1, name: 'ryu', upvotes: 6, downvotes: 30 },
@@ -1391,20 +1391,20 @@ test( 'supports .orderBy(), dynamic function', async t => {
   ]);
 
   const res = await r
-    .table( 'streetfighter' )
+    .table('streetfighter')
   // sub document query-chains not yet supported
   // .orderBy( doc => doc( 'upvotes' ).sub( doc( 'downvotes' ) ) )
-    .orderBy( doc => doc( 'upvotes' ) )
+    .orderBy(doc => doc('upvotes'))
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     { id: 2, name: 'balrog', upvotes: 5, downvotes: 0 },
     { id: 1, name: 'ryu', upvotes: 6, downvotes: 30 },
     { id: 3, name: 'chun-li', upvotes: 7, downvotes: 3 }
   ]);
 });
 
-test( 'supports .gt(), applied to row', async t => {
+test('supports .gt(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1416,17 +1416,17 @@ test( 'supports .gt(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).gt( 8 ) )
+    .table('player')
+    .filter(row => row('score').gt(8))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-1234',
     score: 10
   } ]);
 });
 
-test( 'supports .ge(), applied to row', async t => {
+test('supports .ge(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1438,17 +1438,17 @@ test( 'supports .ge(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).ge( 10 ) )
+    .table('player')
+    .filter(row => row('score').ge(10))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-1234',
     score: 10
   } ]);
 });
 
-test( 'supports .lt(), applied to row', async t => {
+test('supports .lt(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1460,17 +1460,17 @@ test( 'supports .lt(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).lt( 8 ) )
+    .table('player')
+    .filter(row => row('score').lt(8))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-5678',
     score: 6
   } ]);
 });
 
-test( 'supports .le(), applied to row', async t => {
+test('supports .le(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1482,17 +1482,17 @@ test( 'supports .le(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).le( 6 ) )
+    .table('player')
+    .filter(row => row('score').le(6))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-5678',
     score: 6
   } ]);
 });
 
-test( 'supports .eq(), applied to row', async t => {
+test('supports .eq(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1504,17 +1504,17 @@ test( 'supports .eq(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).eq( 6 ) )
+    .table('player')
+    .filter(row => row('score').eq(6))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-5678',
     score: 6
   } ]);
 });
 
-test( 'supports .ne(), applied to row', async t => {
+test('supports .ne(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1526,19 +1526,19 @@ test( 'supports .ne(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).ne( 6 ) )
+    .table('player')
+    .filter(row => row('score').ne(6))
     .run();
 
   // r function not yet supported
   // t.is( await r( true ).not().run(), false );
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-1234',
     score: 10
   } ]);
 });
 
-test( 'supports .not(), applied to row', async t => {
+test('supports .not(), applied to row', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -1550,17 +1550,17 @@ test( 'supports .not(), applied to row', async t => {
   ]);
 
   const res = await r
-    .table( 'player' )
-    .filter( row => row( 'score' ).eq( 6 ).not() )
+    .table('player')
+    .filter(row => row('score').eq(6).not())
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'playerId-1234',
     score: 10
   } ]);
 });
 
-test( 'supports .nth()', async t => {
+test('supports .nth()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1568,12 +1568,12 @@ test( 'supports .nth()', async t => {
     } ]
   ]);
 
-  const ironman = await r.table( 'marvel' ).nth( 0 ).run();
+  const ironman = await r.table('marvel').nth(0).run();
 
-  t.is( ironman.id, 'IronMan' );
+  t.is(ironman.id, 'IronMan');
 });
 
-test( 'supports .nth(), non-trivial guery', async t => {
+test('supports .nth(), non-trivial guery', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -1582,24 +1582,24 @@ test( 'supports .nth(), non-trivial guery', async t => {
     } ]
   ]);
 
-  await r.table( 'UserSocial' ).indexCreate( 'screenname_numeric_cid', [
-    r.row( 'name_screenname' ),
-    r.row( 'numeric_id' )
+  await r.table('UserSocial').indexCreate('screenname_numeric_cid', [
+    r.row('name_screenname'),
+    r.row('numeric_id')
   ]).run();
-  await r.table( 'UserSocial' ).indexWait( 'screenname_numeric_cid' ).run();
+  await r.table('UserSocial').indexWait('screenname_numeric_cid').run();
 
-  await t.throws( () => (
-    r.table( 'UserSocial' )
+  await t.throws(() => (
+    r.table('UserSocial')
       .getAll([ 'notfound', 7575 ], { index: 'screenname_numeric_cid' })
-      .limit( 1 )
-      .nth( 0 )
+      .limit(1)
+      .nth(0)
       .run()
   ), {
     message: 'ReqlNonExistanceError: Index out of bounds: 0'
   });
 });
 
-test( 'supports .default()', async t => {
+test('supports .default()', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -1608,15 +1608,15 @@ test( 'supports .default()', async t => {
     } ]
   ]);
 
-  const res = await r.table( 'UserSocial' )
-    .get( 'userSocialId-7575' )
+  const res = await r.table('UserSocial')
+    .get('userSocialId-7575')
     .default({ defaultValue: true })
     .run();
 
-  t.true( res.defaultValue );
+  t.true(res.defaultValue);
 });
 
-test( 'supports .default(), non-trivial guery', async t => {
+test('supports .default(), non-trivial guery', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
       id: 'userSocialId-1234',
@@ -1625,25 +1625,25 @@ test( 'supports .default(), non-trivial guery', async t => {
     } ]
   ]);
 
-  await r.table( 'UserSocial' ).indexCreate( 'screenname_numeric_cid', [
-    r.row( 'name_screenname' ),
-    r.row( 'numeric_id' )
+  await r.table('UserSocial').indexCreate('screenname_numeric_cid', [
+    r.row('name_screenname'),
+    r.row('numeric_id')
   ]).run();
-  await r.table( 'UserSocial' ).indexWait( 'screenname_numeric_cid' ).run();
+  await r.table('UserSocial').indexWait('screenname_numeric_cid').run();
 
   const result = (
-    await r.table( 'UserSocial' )
+    await r.table('UserSocial')
       .getAll([ 'notfound', 7575 ], { index: 'screenname_numeric_cid' })
-      .limit( 1 )
-      .nth( 0 )
-      .default( 'defaultval' )
+      .limit(1)
+      .nth(0)
+      .default('defaultval')
       .run()
   );
 
-  t.is( result, 'defaultval' );
+  t.is(result, 'defaultval');
 });
 
-test( 'supports .epochTime()', async t => {
+test('supports .epochTime()', async t => {
   const { r } = rethinkdbMocked([
     [ 'user', {
       id: 'John',
@@ -1651,17 +1651,17 @@ test( 'supports .epochTime()', async t => {
     } ]
   ]);
 
-  await r.table( 'user' ).insert({
+  await r.table('user').insert({
     id: 'Jane',
-    birthdate: r.epochTime( 531360000 )
+    birthdate: r.epochTime(531360000)
   }).run();
 
-  const janeDoc = await r.table( 'user' ).get( 'Jane' ).run();
+  const janeDoc = await r.table('user').get('Jane').run();
 
-  t.is( janeDoc.birthdate.getTime(), 531360000000 );
+  t.is(janeDoc.birthdate.getTime(), 531360000000);
 });
 
-test( 'supports .update()', async t => {
+test('supports .update()', async t => {
   const { r } = rethinkdbMocked([
     [ 'user', {
       id: 'John',
@@ -1669,11 +1669,11 @@ test( 'supports .update()', async t => {
     } ]
   ]);
 
-  const result = await r.table( 'user' ).get( 'John' ).update({
-    birthdate: r.epochTime( 531360000 )
+  const result = await r.table('user').get('John').update({
+    birthdate: r.epochTime(531360000)
   }).run();
 
-  t.deepEqual( result, {
+  t.deepEqual(result, {
     unchanged: 0,
     skipped: 0,
     replaced: 1,
@@ -1683,37 +1683,37 @@ test( 'supports .update()', async t => {
   });
 });
 
-test( 'supports .during()', async t => {
+test('supports .during()', async t => {
   const now = Date.now();
-  const expiredDate = new Date( now - ( 1000 * 60 * 60 * 24 ) );
+  const expiredDate = new Date(now - (1000 * 60 * 60 * 24));
   const { r } = rethinkdbMocked([
     [ 'RoomCodes', {
       id: 'expired',
       time_expire: expiredDate
     }, {
       id: 'not-expired',
-      time_expire: new Date( now + 1000 )
+      time_expire: new Date(now + 1000)
     } ]
   ]);
 
   const expiredDocs = await r
-    .table( 'RoomCodes' )
+    .table('RoomCodes')
     .filter(
-      r.row( 'time_expire' ).during(
-        r.epochTime( 0 ),
-        r.epochTime( now / 1000 )
-      ) )
+      r.row('time_expire').during(
+        r.epochTime(0),
+        r.epochTime(now / 1000)
+      ))
     .run();
 
-  t.deepEqual( expiredDocs, [ {
+  t.deepEqual(expiredDocs, [ {
     id: 'expired',
     time_expire: expiredDate
   } ]);
 });
 
-test( 'supports .during(), correctly handles empty results', async t => {
+test('supports .during(), correctly handles empty results', async t => {
   const now = Date.now();
-  const timeExpire = new Date( now - ( 1000 * 60 * 60 * 24 ) );
+  const timeExpire = new Date(now - (1000 * 60 * 60 * 24));
   const { r } = rethinkdbMocked([
     [ 'RoomCodes', {
       id: 'expired',
@@ -1722,21 +1722,21 @@ test( 'supports .during(), correctly handles empty results', async t => {
   ]);
 
   const expiredDocs = await r
-    .table( 'RoomCodes' )
+    .table('RoomCodes')
     .filter(
-      r.row( 'time_expire' ).during(
-        r.epochTime( 0 ),
-        r.epochTime( now / 1000 )
-      ) )
+      r.row('time_expire').during(
+        r.epochTime(0),
+        r.epochTime(now / 1000)
+      ))
     .run();
 
-  t.deepEqual( expiredDocs, [ {
+  t.deepEqual(expiredDocs, [ {
     id: 'expired',
     time_expire: timeExpire
   } ]);
 });
 
-test( 'supports .getField()', async t => {
+test('supports .getField()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1745,16 +1745,16 @@ test( 'supports .getField()', async t => {
   ]);
 
   const ironManEquipment = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )
-    .getField( 'equipment' )
+    .table('marvel')
+    .get('IronMan')
+    .getField('equipment')
     .run();
 
-  t.is( ironManEquipment[0], 'boots' );
+  t.is(ironManEquipment[0], 'boots');
 });
 
 // https://rethinkdb.com/api/javascript/get_field
-test( 'supports .getField() on sequences', async t => {
+test('supports .getField() on sequences', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1764,15 +1764,15 @@ test( 'supports .getField() on sequences', async t => {
   ]);
 
   const ironMenNames = await r
-    .table( 'marvel' )
-    .getAll( 'IronMan' )
-    .getField( 'name' )
+    .table('marvel')
+    .getAll('IronMan')
+    .getField('name')
     .run();
 
-  t.deepEqual( ironMenNames, [ 'Jim Glow' ]);
+  t.deepEqual(ironMenNames, [ 'Jim Glow' ]);
 });
 
-test( 'supports brackets lookup ()', async t => {
+test('supports brackets lookup ()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1781,14 +1781,14 @@ test( 'supports brackets lookup ()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )( 'equipment' )
+    .table('marvel')
+    .get('IronMan')('equipment')
     .upcase().run();
 
-  t.is( res, 'BOOTS' );
+  t.is(res, 'BOOTS');
 });
 
-test( 'supports brackets upcase()', async t => {
+test('supports brackets upcase()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1797,14 +1797,14 @@ test( 'supports brackets upcase()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )( 'equipment' )
+    .table('marvel')
+    .get('IronMan')('equipment')
     .upcase().run();
 
-  t.is( res, 'BOOTS' );
+  t.is(res, 'BOOTS');
 });
 
-test( 'supports brackets downcase()', async t => {
+test('supports brackets downcase()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1813,14 +1813,14 @@ test( 'supports brackets downcase()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )( 'equipment' )
+    .table('marvel')
+    .get('IronMan')('equipment')
     .downcase().run();
 
-  t.is( res, 'boots' );
+  t.is(res, 'boots');
 });
 
-test( 'supports .match()', async t => {
+test('supports .match()', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
       id: 'userid-john-1234',
@@ -1835,11 +1835,11 @@ test( 'supports .match()', async t => {
   ]);
 
   const res = await r
-    .table( 'users' )
-    .filter( doc => doc( 'name' ).match( '(?i)^john' ) )
+    .table('users')
+    .filter(doc => doc('name').match('(?i)^john'))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'userid-john-1234',
     name: 'john smith'
   }, {
@@ -1848,7 +1848,7 @@ test( 'supports .match()', async t => {
   } ]);
 });
 
-test( 'throws error when .match() used on NUMBER type', async t => {
+test('throws error when .match() used on NUMBER type', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
       id: 'userid-john-1234',
@@ -1862,13 +1862,13 @@ test( 'throws error when .match() used on NUMBER type', async t => {
     } ]
   ]);
 
-  await t.throws( () => r
-    .table( 'users' )
-    .filter( doc => doc( 'number' ).match( '(?i)^john' ) )
-    .run(), { message: mockdbResErrorExpectedTypeFOOButFoundBAR( 'STRING', 'NUMBER' ) });
+  await t.throws(() => r
+    .table('users')
+    .filter(doc => doc('number').match('(?i)^john'))
+    .run(), { message: mockdbResErrorExpectedTypeFOOButFoundBAR('STRING', 'NUMBER') });
 });
 
-test( 'supports .append()', async t => {
+test('supports .append()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'IronMan',
@@ -1877,28 +1877,28 @@ test( 'supports .append()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .get( 'IronMan' )( 'equipment' )
-    .append( 'newBoots' )
+    .table('marvel')
+    .get('IronMan')('equipment')
+    .append('newBoots')
     .run();
 
-  t.deepEqual( res, [ 'gloves', 'newBoots' ]);
+  t.deepEqual(res, [ 'gloves', 'newBoots' ]);
 });
 
-test( 'supports .insert([ ...docs ]) should insert several docs', async t => {
+test('supports .insert([ ...docs ]) should insert several docs', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
   await r
-    .db( 'default' )
-    .table( 'Rooms' )
+    .db('default')
+    .table('Rooms')
     .insert([ { val: 1 }, { val: 2 }, { val: 3 } ])
     .run();
 
-  const testRooms = await r.db( 'default' ).table( 'Rooms' ).run();
+  const testRooms = await r.db('default').table('Rooms').run();
 
-  t.is( testRooms.length, 3 );
+  t.is(testRooms.length, 3);
 });
 
-test( 'supports .insert(, {})', async t => {
+test('supports .insert(, {})', async t => {
   const { r } = rethinkdbMocked([
     [ 'posts', {
       id: 'post-1234',
@@ -1907,14 +1907,14 @@ test( 'supports .insert(, {})', async t => {
     } ]
   ]);
 
-  const insertRes = await r.table( 'posts' ).insert({
+  const insertRes = await r.table('posts').insert({
     title: 'Lorem ipsum',
     content: 'Dolor sit amet'
   }).run();
 
   const [ generatedKey ] = insertRes.generated_keys;
 
-  t.deepEqual( insertRes, {
+  t.deepEqual(insertRes, {
     deleted: 0,
     errors: 0,
     generated_keys: [ generatedKey ],
@@ -1925,7 +1925,7 @@ test( 'supports .insert(, {})', async t => {
   });
 });
 
-test( 'should only return generated_keys from .insert() if db defines key', async t => {
+test('should only return generated_keys from .insert() if db defines key', async t => {
   const { r } = rethinkdbMocked([
     [ 'posts', {
       id: 'post-1234',
@@ -1934,23 +1934,23 @@ test( 'should only return generated_keys from .insert() if db defines key', asyn
     } ]
   ]);
 
-  const insertRes = await r.table( 'posts' ).insert({
+  const insertRes = await r.table('posts').insert({
     title: 'Lorem ipsum',
     content: 'Dolor sit amet'
   }).run();
 
-  t.true( 'generated_keys' in insertRes );
+  t.true('generated_keys' in insertRes);
 
-  const insertResWithKey = await r.table( 'posts' ).insert({
+  const insertResWithKey = await r.table('posts').insert({
     id: 'post-7777',
     title: 'with primary key',
     content: 'best of times and worst of times'
   }).run();
 
-  t.false( 'generated_keys' in insertResWithKey );
+  t.false('generated_keys' in insertResWithKey);
 });
 
-test( 'supports .insert([ doc1, doc2 ], {})', async t => {
+test('supports .insert([ doc1, doc2 ], {})', async t => {
   const { r } = rethinkdbMocked([
     [ 'posts', {
       id: 'post-1234',
@@ -1959,7 +1959,7 @@ test( 'supports .insert([ doc1, doc2 ], {})', async t => {
     } ]
   ]);
 
-  const insertRes = await r.table( 'posts' ).insert([ {
+  const insertRes = await r.table('posts').insert([ {
     title: 'Lorem ipsum',
     content: 'Dolor sit amet'
   },{
@@ -1967,7 +1967,7 @@ test( 'supports .insert([ doc1, doc2 ], {})', async t => {
     content: 'Benkyoushimashita'
   } ]).run();
 
-  t.deepEqual( insertRes, {
+  t.deepEqual(insertRes, {
     deleted: 0,
     errors: 0,
     generated_keys: insertRes.generated_keys,
@@ -1977,10 +1977,10 @@ test( 'supports .insert([ doc1, doc2 ], {})', async t => {
     unchanged: 0
   });
 
-  t.is( insertRes.generated_keys.length, 2 );
+  t.is(insertRes.generated_keys.length, 2);
 });
 
-test( 'supports .insert(, { returnChanges: true })', async t => {
+test('supports .insert(, { returnChanges: true })', async t => {
   const { r } = rethinkdbMocked([
     [ 'posts', {
       id: 'post-1234',
@@ -1989,7 +1989,7 @@ test( 'supports .insert(, { returnChanges: true })', async t => {
     } ]
   ]);
 
-  const insertRes = await r.table( 'posts' ).insert({
+  const insertRes = await r.table('posts').insert({
     title: 'Lorem ipsum',
     content: 'Dolor sit amet'
   }, {
@@ -1998,7 +1998,7 @@ test( 'supports .insert(, { returnChanges: true })', async t => {
 
   const [ generatedKey ] = insertRes.generated_keys;
 
-  t.deepEqual( insertRes, {
+  t.deepEqual(insertRes, {
     deleted: 0,
     errors: 0,
     generated_keys: [ generatedKey ],
@@ -2017,7 +2017,7 @@ test( 'supports .insert(, { returnChanges: true })', async t => {
   });
 });
 
-test( '.insert(, {}) returns error if inserted document is found', async t => {
+test('.insert(, {}) returns error if inserted document is found', async t => {
   const existingDoc = {
     id: 'post-1234',
     title: 'post title',
@@ -2034,20 +2034,20 @@ test( '.insert(, {}) returns error if inserted document is found', async t => {
     [ 'posts', existingDoc ]
   ]);
 
-  const insertRes = await r.table( 'posts' ).insert( conflictDoc ).run();
+  const insertRes = await r.table('posts').insert(conflictDoc).run();
 
-  t.deepEqual( insertRes, {
+  t.deepEqual(insertRes, {
     unchanged: 0,
     skipped: 0,
     replaced: 0,
     inserted: 0,
     errors: 1,
     deleted: 0,
-    firstError: mockdbResErrorDuplicatePrimaryKey( existingDoc, conflictDoc )
+    firstError: mockdbResErrorDuplicatePrimaryKey(existingDoc, conflictDoc)
   });
 });
 
-test( 'r.table().insert( doc, { conflict: "update" }) updates existing doc', async t => {
+test('r.table().insert( doc, { conflict: "update" }) updates existing doc', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', [ { primaryKey: 'user_id' } ], {
       user_id: 0,
@@ -2056,7 +2056,7 @@ test( 'r.table().insert( doc, { conflict: "update" }) updates existing doc', asy
     } ] ]);
 
   await r
-    .table( 'Presence' )
+    .table('Presence')
     .insert({
       user_id: 0,
       state: 'HAPPY',
@@ -2064,14 +2064,14 @@ test( 'r.table().insert( doc, { conflict: "update" }) updates existing doc', asy
     }, { conflict: 'update' })
     .run();
 
-  t.deepEqual( await r.table( 'Presence' ).run(), [ {
+  t.deepEqual(await r.table('Presence').run(), [ {
     user_id: 0,
     state: 'HAPPY',
     status_msg: ''
   } ]);
 });
 
-test( '.update(, { prop: val }) should update a document', async t => {
+test('.update(, { prop: val }) should update a document', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserTest', {
       id: 'appuser-1234',
@@ -2083,12 +2083,12 @@ test( '.update(, { prop: val }) should update a document', async t => {
   ]);
 
   const updateRes = await r
-    .table( 'AppUserTest' )
-    .get( 'appuser-1234' )
+    .table('AppUserTest')
+    .get('appuser-1234')
     .update({ user_social_id: 'userSocial-1234' })
     .run();
 
-  t.deepEqual( updateRes, {
+  t.deepEqual(updateRes, {
     deleted: 0,
     errors: 0,
     inserted: 0,
@@ -2098,14 +2098,14 @@ test( '.update(, { prop: val }) should update a document', async t => {
   });
 
   const queriedAppUser = await r
-    .table( 'AppUserTest' )
-    .get( 'appuser-1234' )
+    .table('AppUserTest')
+    .get('appuser-1234')
     .run();
 
-  t.is( queriedAppUser.user_social_id, 'userSocial-1234' );
+  t.is(queriedAppUser.user_social_id, 'userSocial-1234');
 });
 
-test( '.delete() should delete a document', async t => {
+test('.delete() should delete a document', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserTest', {
       id: 'appuser-1234',
@@ -2117,12 +2117,12 @@ test( '.delete() should delete a document', async t => {
   ]);
 
   const updateRes = await r
-    .table( 'AppUserTest' )
-    .get( 'appuser-1234' )
+    .table('AppUserTest')
+    .get('appuser-1234')
     .delete()
     .run();
 
-  t.deepEqual( updateRes, {
+  t.deepEqual(updateRes, {
     deleted: 1,
     errors: 0,
     inserted: 0,
@@ -2132,7 +2132,7 @@ test( '.delete() should delete a document', async t => {
   });
 });
 
-test( '.delete() should delete all documents', async t => {
+test('.delete() should delete all documents', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserTest', {
       id: 'appuser-1234',
@@ -2144,11 +2144,11 @@ test( '.delete() should delete all documents', async t => {
   ]);
 
   const updateRes = await r
-    .table( 'AppUserTest' )
+    .table('AppUserTest')
     .delete()
     .run();
 
-  t.deepEqual( updateRes, {
+  t.deepEqual(updateRes, {
     deleted: 2,
     errors: 0,
     inserted: 0,
@@ -2158,7 +2158,7 @@ test( '.delete() should delete all documents', async t => {
   });
 });
 
-test( '.delete() should delete all documents, no args, custom primaryKey', async t => {
+test('.delete() should delete all documents, no args, custom primaryKey', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', [ { primaryKey: 'user_id' } ], {
       user_id: 0,
@@ -2166,12 +2166,12 @@ test( '.delete() should delete all documents, no args, custom primaryKey', async
       status_msg: ''
     } ] ]);
 
-  await r.table( 'Presence' ).delete().run();
+  await r.table('Presence').delete().run();
 
-  t.is( await r.table( 'Presence' ).count().run(), 0 );
+  t.is(await r.table('Presence').count().run(), 0);
 });
 
-test( '.delete() should delete filtered documents', async t => {
+test('.delete() should delete filtered documents', async t => {
   const { r } = rethinkdbMocked([
     [ 'AppUserTest', {
       id: 'appuser-1234',
@@ -2183,12 +2183,12 @@ test( '.delete() should delete filtered documents', async t => {
   ]);
 
   const updateRes = await r
-    .table( 'AppUserTest' )
+    .table('AppUserTest')
     .filter({ name: 'appusername-5678' })
     .delete()
     .run();
 
-  t.deepEqual( updateRes, {
+  t.deepEqual(updateRes, {
     deleted: 1,
     errors: 0,
     inserted: 0,
@@ -2198,7 +2198,7 @@ test( '.delete() should delete filtered documents', async t => {
   });
 });
 
-test( '.contains() should return containing documents', async t => {
+test('.contains() should return containing documents', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'appuser-1234',
@@ -2217,11 +2217,11 @@ test( '.contains() should return containing documents', async t => {
 
   const cities = [ 'Detroit', 'Chicago', 'Hoboken' ];
   const updateRes = await r
-    .table( 'marvel' )
-    .filter( hero => r.expr( cities ).contains( hero( 'city' ) ) )
+    .table('marvel')
+    .filter(hero => r.expr(cities).contains(hero('city')))
     .run();
 
-  t.deepEqual( updateRes, [ {
+  t.deepEqual(updateRes, [ {
     id: 'appuser-5678',
     name: 'Xavier',
     city: 'Detroit'
@@ -2232,7 +2232,7 @@ test( '.contains() should return containing documents', async t => {
   } ]);
 });
 
-test( '.limit() should return limited documents', async t => {
+test('.limit() should return limited documents', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'appuser-1234',
@@ -2250,11 +2250,11 @@ test( '.limit() should return limited documents', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .limit( 2 )
+    .table('marvel')
+    .limit(2)
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'appuser-1234',
     name: 'Siren',
     city: 'Los Angeles'
@@ -2265,7 +2265,7 @@ test( '.limit() should return limited documents', async t => {
   } ]);
 });
 
-test( '.hasFields() should return documents with fields', async t => {
+test('.hasFields() should return documents with fields', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel', {
       id: 'appuser-1234',
@@ -2285,11 +2285,11 @@ test( '.hasFields() should return documents with fields', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .hasFields( 'nick' )
+    .table('marvel')
+    .hasFields('nick')
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'appuser-1234',
     name: 'Siren',
     city: 'Los Angeles',
@@ -2302,9 +2302,9 @@ test( '.hasFields() should return documents with fields', async t => {
   } ]);
 });
 
-test( 'supports .hours()', async t => {
+test('supports .hours()', async t => {
   // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
-  const date = new Date( 1365222221485 );
+  const date = new Date(1365222221485);
 
   const { r } = rethinkdbMocked([
     [ 'posts',
@@ -2312,18 +2312,18 @@ test( 'supports .hours()', async t => {
   ]);
 
   const res = await r
-    .table( 'posts' )
-    .get( 1 )
-    .getField( 'date' )
+    .table('posts')
+    .get(1)
+    .getField('date')
     .hours()
     .run();
 
-  t.is( res, 21 );
+  t.is(res, 21);
 });
 
-test( 'supports .minutes()', async t => {
+test('supports .minutes()', async t => {
   // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
-  const date = new Date( 1365222221485 );
+  const date = new Date(1365222221485);
 
   const { r } = rethinkdbMocked([
     [ 'posts',
@@ -2331,18 +2331,18 @@ test( 'supports .minutes()', async t => {
   ]);
 
   const res = await r
-    .table( 'posts' )
-    .get( 1 )
-    .getField( 'date' )
+    .table('posts')
+    .get(1)
+    .getField('date')
     .minutes()
     .run();
 
-  t.is( res, 23 );
+  t.is(res, 23);
 });
 
-test( 'supports .hours(), filter', async t => {
+test('supports .hours(), filter', async t => {
   // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
-  const date = new Date( 1365222221485 );
+  const date = new Date(1365222221485);
 
   const { r } = rethinkdbMocked([
     [ 'posts',
@@ -2350,14 +2350,14 @@ test( 'supports .hours(), filter', async t => {
   ]);
 
   const res = await r
-    .table( 'posts' )
-    .filter( post => post( 'date' ).hours().gt( 4 ) )
+    .table('posts')
+    .filter(post => post('date').hours().gt(4))
     .run();
 
-  t.deepEqual( res, [ { id: 1, author: 'ryu', date } ]);
+  t.deepEqual(res, [ { id: 1, author: 'ryu', date } ]);
 });
 
-test( 'expr()', async t => {
+test('expr()', async t => {
   const { r } = rethinkdbMocked([
     [ 'posts',
       { id: 1, author: 'ryu' } ]
@@ -2368,15 +2368,15 @@ test( 'expr()', async t => {
     .merge({ b: [ 1, 2, 3 ] })
     .run();
 
-  t.deepEqual( res, {
+  t.deepEqual(res, {
     a: 'b',
     b: [ 1, 2, 3 ]
   });
 });
 
-test( 'supports .coerceTo()', async t => {
+test('supports .coerceTo()', async t => {
   // Fri Apr 05 2013 21:23:41 GMT-0700 (PDT)
-  const date = new Date( 1365222221485 );
+  const date = new Date(1365222221485);
 
   const { r } = rethinkdbMocked([
     [ 'posts',
@@ -2384,17 +2384,17 @@ test( 'supports .coerceTo()', async t => {
   ]);
 
   const res = await r
-    .table( 'posts' )
-    .get( 1 )
-    .getField( 'date' )
+    .table('posts')
+    .get(1)
+    .getField('date')
     .minutes()
-    .coerceTo( 'string' )
+    .coerceTo('string')
     .run();
 
-  t.is( res, '23' );
+  t.is(res, '23');
 });
 
-test( 'map()', async t => {
+test('map()', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
       id: 'userid-fred-1234',
@@ -2406,11 +2406,11 @@ test( 'map()', async t => {
   ]);
 
   const res = await r
-    .table( 'users' )
-    .map( doc => doc.merge({ userId: doc( 'id' ) }).without( 'id' ) )
+    .table('users')
+    .map(doc => doc.merge({ userId: doc('id') }).without('id'))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     userId: 'userid-fred-1234',
     name: 'fred'
   }, {
@@ -2419,7 +2419,7 @@ test( 'map()', async t => {
   } ]);
 });
 
-test( 'or()', async t => {
+test('or()', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
       id: 'userid-fred-1234',
@@ -2433,18 +2433,18 @@ test( 'or()', async t => {
   ]);
 
   const res = await r
-    .table( 'users' )
-    .filter( row => row( 'first' ).eq( 1 ).or( row( 'second' ).eq( 1 ) ) )
+    .table('users')
+    .filter(row => row('first').eq(1).or(row('second').eq(1)))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'userid-fred-1234',
     first: 1,
     second: 0
   } ]);
 });
 
-test( 'nested row("field")("subField") equivalent row("field").getField("subfield")', async t => {
+test('nested row("field")("subField") equivalent row("field").getField("subfield")', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', [ { primaryKey: 'user_id' } ], {
       user_id: 'userId-1234',
@@ -2458,14 +2458,14 @@ test( 'nested row("field")("subField") equivalent row("field").getField("subfiel
   ]);
 
   const presencesOffline = await r
-    .table( 'Presence' )
-    .filter( row => row( 'state' )( 'value' ).eq( 'OFFLINE' ) )
+    .table('Presence')
+    .filter(row => row('state')('value').eq('OFFLINE'))
     .run();
 
-  t.is( presencesOffline.length, 1 );
+  t.is(presencesOffline.length, 1);
 });
 
-test( 'and()', async t => {
+test('and()', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
       id: 'userid-fred-1234',
@@ -2479,11 +2479,11 @@ test( 'and()', async t => {
   ]);
 
   const res = await r
-    .table( 'users' )
-    .filter( row => row( 'first' ).eq( 0 ).and( row( 'second' ).eq( 0 ) ) )
+    .table('users')
+    .filter(row => row('first').eq(0).and(row('second').eq(0)))
     .run();
 
-  t.deepEqual( res, [ {
+  t.deepEqual(res, [ {
     id: 'userid-jane-1234',
     first: 0,
     second: 0
@@ -2491,7 +2491,7 @@ test( 'and()', async t => {
 });
 
 // NOTE: rethinkdb-ts only throws if nested row inside AND or OR are evaluated
-test( 'nested r.row.and() throws error', async t => {
+test('nested r.row.and() throws error', async t => {
   const { r } = rethinkdbMocked([
     [ 'memberships', {
       user_id: 'wolverine',
@@ -2502,27 +2502,27 @@ test( 'nested r.row.and() throws error', async t => {
     } ]
   ]);
 
-  await t.throws( () => r
-    .table( 'memberships' )
-    .filter( r.row( 'user_id' ).ne( 'xavier' ).and(
-      r.row( 'membership' ).eq( 'invite' )
-    ) ).run(), { message: mockDbResErrorCannotUseNestedRow() });
+  await t.throws(() => r
+    .table('memberships')
+    .filter(r.row('user_id').ne('xavier').and(
+      r.row('membership').eq('invite')
+    )).run(), { message: mockDbResErrorCannotUseNestedRow() });
 
   // use this instead
   const users = await r
-    .table( 'memberships' )
-    .filter( membership => membership( 'user_id' ).ne( 'xavier' ).and(
-      membership( 'membership' ).eq( 'join' )
-    ) ).run();
+    .table('memberships')
+    .filter(membership => membership('user_id').ne('xavier').and(
+      membership('membership').eq('join')
+    )).run();
 
-  t.deepEqual( users, [ {
+  t.deepEqual(users, [ {
     user_id: 'wolverine',
     membership: 'join'
   } ]);
 
 });
 
-test( 'nested r.row.or() throws error', async t => {
+test('nested r.row.or() throws error', async t => {
   const { r } = rethinkdbMocked([
     [ 'memberships', {
       user_id: 'wolverine',
@@ -2533,27 +2533,27 @@ test( 'nested r.row.or() throws error', async t => {
     } ]
   ]);
     
-  await t.throws( () => r
-    .table( 'memberships' )
-    .filter( r.row( 'user_id' ).eq( 'xavier' ).or(
-      r.row( 'membership' ).eq( 'join' )
-    ).run() ), { message: mockDbResErrorCannotUseNestedRow() });
+  await t.throws(() => r
+    .table('memberships')
+    .filter(r.row('user_id').eq('xavier').or(
+      r.row('membership').eq('join')
+    ).run()), { message: mockDbResErrorCannotUseNestedRow() });
 
   // use this instead
   const users = await r
-    .table( 'memberships' )
-    .filter( membership => membership( 'user_id' ).eq( 'xavier' ).or(
-      membership( 'membership' ).eq( 'join' )
-    ) ).run();
+    .table('memberships')
+    .filter(membership => membership('user_id').eq('xavier').or(
+      membership('membership').eq('join')
+    )).run();
 
-  t.deepEqual( users, [ {
+  t.deepEqual(users, [ {
     user_id: 'wolverine',
     membership: 'join'
   } ]);
 
 });
 
-test( 'supports .distinct()', async t => {
+test('supports .distinct()', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'wolverine', defeatedMonsters: [ 'squirtle', 'fiery' ] },
@@ -2563,15 +2563,15 @@ test( 'supports .distinct()', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .concatMap( hero => hero( 'defeatedMonsters' ) )
+    .table('marvel')
+    .concatMap(hero => hero('defeatedMonsters'))
     .distinct()
     .run();
 
-  t.deepEqual( res, [ 'squirtle', 'fiery', 'charzar', 'jiggly puff' ]);
+  t.deepEqual(res, [ 'squirtle', 'fiery', 'charzar', 'jiggly puff' ]);
 });
 
-test( 'supports .union', async t => {
+test('supports .union', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
       { id: 1, name: 'ryu', strength: 6 },
@@ -2584,15 +2584,15 @@ test( 'supports .union', async t => {
   ]);
 
   const res = await r
-    .table( 'streetfighter' )
-    .orderBy( 'name' )
+    .table('streetfighter')
+    .orderBy('name')
     .union(
-      r.table( 'pokemon' ).orderBy( 'name' ), {
+      r.table('pokemon').orderBy('name'), {
         interleave: 'name'
       })
     .run();
 
-  t.deepEqual( res, [
+  t.deepEqual(res, [
     { id: 2, name: 'balrog', strength: 5 },
     { id: 2, name: 'charmander', strength: 8 },
     { id: 3, name: 'chun-li', strength: 7 },
@@ -2602,13 +2602,13 @@ test( 'supports .union', async t => {
   ]);
 });
 
-test( 'supports .getPoolMaster().isHealthy', t => {
+test('supports .getPoolMaster().isHealthy', t => {
   const { r } = rethinkdbMocked();
 
-  t.is( r.getPoolMaster().isHealthy, true );
+  t.is(r.getPoolMaster().isHealthy, true);
 });
 
-test( 'supports .filter( doc => doc("id") )', async t => {
+test('supports .filter( doc => doc("id") )', async t => {
   const { r } = rethinkdbMocked([
     [ 'player', {
       id: 'playerId-1234',
@@ -2620,24 +2620,24 @@ test( 'supports .filter( doc => doc("id") )', async t => {
   ]);
 
   await r
-    .table( 'player' )
-    .filter( player => player( 'score' ).eq( 10 ) )
+    .table('player')
+    .filter(player => player('score').eq(10))
     .delete()
     .run();
 
-  t.is( await r.table( 'player' ).count().run(), 1 );
+  t.is(await r.table('player').count().run(), 1);
 
   await r
-    .table( 'player' )
-    .getAll( 'playerId-5678' )
-    .filter( player => player( 'score' ).eq( 6 ) )
+    .table('player')
+    .getAll('playerId-5678')
+    .filter(player => player('score').eq(6))
     .delete()
     .run();
 
-  t.is( await r.table( 'player' ).count().run(), 0 );
+  t.is(await r.table('player').count().run(), 0);
 });
 
-test( 'supports .forEach( doc => doc("id") )', async t => {
+test('supports .forEach( doc => doc("id") )', async t => {
   const { r } = rethinkdbMocked([
     [ 'playershoes', {
       id: 'shoeId-1234',
@@ -2658,14 +2658,14 @@ test( 'supports .forEach( doc => doc("id") )', async t => {
   ]);
 
   await r
-    .table( 'player' )
-    .forEach( player => r.table( 'playershoes' ).get( player( 'shoeId' ) ).delete() )
+    .table('player')
+    .forEach(player => r.table('playershoes').get(player('shoeId')).delete())
     .run();
 
-  t.is( await r.table( 'playershoes' ).count().run(), 0 );
+  t.is(await r.table('playershoes').count().run(), 0);
 });
 
-test( 'supports nested contains row function', async t => {
+test('supports nested contains row function', async t => {
   const { r } = rethinkdbMocked([
     [ 'playershoes', {
       id: 'shoeId-1234',
@@ -2679,37 +2679,37 @@ test( 'supports nested contains row function', async t => {
   t.true(
     await r
       .expr([ 'cleat' ])
-      .contains( 'cleat' )
+      .contains('cleat')
       .run()
   );
 
   t.true(
     await r
-      .table( 'playershoes' )
-      .contains( row => row.getField( 'type' ).eq( 'cleat' ) )
+      .table('playershoes')
+      .contains(row => row.getField('type').eq('cleat'))
       .run()
   );
 
   t.true(
     await r
-      .table( 'playershoes' )
-      .contains( joinRow => r
+      .table('playershoes')
+      .contains(joinRow => r
         .expr([ 'cleat' ])
-        .contains( joinRow.getField( 'type' ) ) )
+        .contains(joinRow.getField('type')))
       .run()
   );
 
   t.true(
     await r
-      .table( 'playershoes' )
-      .contains( joinRow => r
+      .table('playershoes')
+      .contains(joinRow => r
         .expr([ 'cleat' ])
-        .contains( joinRow( 'type' ) ) )
+        .contains(joinRow('type')))
       .run()
   );
 });
 
-test( 'returns true if multiple contains values evaluate true', async t => {
+test('returns true if multiple contains values evaluate true', async t => {
   const { r } = rethinkdbMocked([
     [ 'marvel',
       { id: 'wolverine', defeatedMonsters: [ 'squirtle' ] },
@@ -2718,16 +2718,16 @@ test( 'returns true if multiple contains values evaluate true', async t => {
   ]);
 
   const res = await r
-    .table( 'marvel' )
-    .filter( hero => hero( 'defeatedMonsters' ).contains( 'charzar', 'fiery' ) )
+    .table('marvel')
+    .filter(hero => hero('defeatedMonsters').contains('charzar', 'fiery'))
     .run();
 
-  t.deepEqual( res, [ { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] } ]);
+  t.deepEqual(res, [ { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] } ]);
 });
 
-test( 'returns a complex merge result', async t => {
-  const dateFuture = new Date( Date.now() + 88888 );
-  const datePast = new Date( Date.now() - 88888 );
+test('returns a complex merge result', async t => {
+  const dateFuture = new Date(Date.now() + 88888);
+  const datePast = new Date(Date.now() - 88888);
     
   const { r } = rethinkdbMocked([
     [ 'SocialFriendRequests', {
@@ -2763,20 +2763,20 @@ test( 'returns a complex merge result', async t => {
     } ]
   ]);
 
-  await r.table( 'SocialFriendRequests' ).indexCreate( 'receiver_id' ).run();
-  await r.table( 'SocialRoomInvites' ).indexCreate( 'receiver_id' ).run();
+  await r.table('SocialFriendRequests').indexCreate('receiver_id').run();
+  await r.table('SocialRoomInvites').indexCreate('receiver_id').run();
     
   const notifications = await r.expr([]).union(
-    r.table( 'SocialFriendRequests' )
-      .getAll( 'janehill8888', { index: 'receiver_id' })
-      .merge( row => ({ date: row( 'requested_date' ), type_name: 'sfr' }) ),
-    r.table( 'SocialRoomInvites' )
-      .getAll( 'janehill8888', { index: 'receiver_id' })
-      .filter( row => row( 'expires_date' ).gt( r.now() ) )
-      .merge( row => ({ date: row( 'invited_date' ), type_name: 'sri' }) )
-  ).orderBy( 'id' ).run();
+    r.table('SocialFriendRequests')
+      .getAll('janehill8888', { index: 'receiver_id' })
+      .merge(row => ({ date: row('requested_date'), type_name: 'sfr' })),
+    r.table('SocialRoomInvites')
+      .getAll('janehill8888', { index: 'receiver_id' })
+      .filter(row => row('expires_date').gt(r.now()))
+      .merge(row => ({ date: row('invited_date'), type_name: 'sri' }))
+  ).orderBy('id').run();
 
-  t.deepEqual( notifications, [ {
+  t.deepEqual(notifications, [ {
     date: datePast,
     type_name: 'sfr',
     id: 2,
@@ -2803,7 +2803,7 @@ test( 'returns a complex merge result', async t => {
   } ]);
 });
 
-test( 'populates multiple db on init', async t => {
+test('populates multiple db on init', async t => {
   const { r } = rethinkdbMocked([
     { db: 'cmdb' },
     [ 'User',
@@ -2816,14 +2816,14 @@ test( 'populates multiple db on init', async t => {
     ]
   ]);
 
-  const cmdbUser = await r.db( 'cmdb' ).table( 'User' ).get( 'userId-1234' ).run();
-  const jobsSpec = await r.db( 'jobs' ).table( 'Spec' ).get( 'specId-1234' ).run();
+  const cmdbUser = await r.db('cmdb').table('User').get('userId-1234').run();
+  const jobsSpec = await r.db('jobs').table('Spec').get('specId-1234').run();
 
-  t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
-  t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
+  t.deepEqual(cmdbUser, { id: 'userId-1234', name: 'fred' });
+  t.deepEqual(jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
 });
 
-test( 'populates multiple db -- uses connect db as default', async t => {
+test('populates multiple db -- uses connect db as default', async t => {
   const { r } = rethinkdbMocked([
     { db: 'cmdb' },
     [ 'User',
@@ -2844,14 +2844,14 @@ test( 'populates multiple db -- uses connect db as default', async t => {
     password: ''
   });
 
-  const cmdbUser = await r.table( 'User' ).get( 'userId-1234' ).run();
-  const jobsSpec = await r.db( 'jobs' ).table( 'Spec' ).get( 'specId-1234' ).run();
+  const cmdbUser = await r.table('User').get('userId-1234').run();
+  const jobsSpec = await r.db('jobs').table('Spec').get('specId-1234').run();
 
-  t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
-  t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
+  t.deepEqual(cmdbUser, { id: 'userId-1234', name: 'fred' });
+  t.deepEqual(jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
 });
 
-test( 'populates multiple db -- uses connectPool db as default', async t => {
+test('populates multiple db -- uses connectPool db as default', async t => {
   const { r } = rethinkdbMocked([
     { db: 'cmdb' },
     [ 'User',
@@ -2872,24 +2872,24 @@ test( 'populates multiple db -- uses connectPool db as default', async t => {
     password: ''
   });
 
-  const cmdbUser = await r.table( 'User' ).get( 'userId-1234' ).run();
-  const jobsSpec = await r.db( 'jobs' ).table( 'Spec' ).get( 'specId-1234' ).run();
+  const cmdbUser = await r.table('User').get('userId-1234').run();
+  const jobsSpec = await r.db('jobs').table('Spec').get('specId-1234').run();
 
-  t.deepEqual( cmdbUser, { id: 'userId-1234', name: 'fred' });
-  t.deepEqual( jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
+  t.deepEqual(cmdbUser, { id: 'userId-1234', name: 'fred' });
+  t.deepEqual(jobsSpec, { id: 'specId-1234', repo: 'clearvr-transcode' });
 });
 
-test( 'dbCreate should use r expressions', async t => {
+test('dbCreate should use r expressions', async t => {
   const { r } = rethinkdbMocked();
   const dbs = [ 'db1', 'db2' ];
 
-  await r( dbs ).difference( r.dbList() ).forEach( db => r.dbCreate( db ) ).run();
+  await r(dbs).difference(r.dbList()).forEach(db => r.dbCreate(db)).run();
 
   // when rethinkdbMocked is called without any db, 'default' db is created
-  t.deepEqual( await r.dbList().run(), [ 'default' ].concat( dbs ) );
+  t.deepEqual(await r.dbList().run(), [ 'default' ].concat(dbs));
 });
 
-test( 'handles subquery for single eqJoin query', async t => {
+test('handles subquery for single eqJoin query', async t => {
   const { r } = rethinkdbMocked([
     [ 'players',
       { id: 1, player: 'George', game: { id: 1 } },
@@ -2905,13 +2905,13 @@ test( 'handles subquery for single eqJoin query', async t => {
   ]);
 
   const result = await r
-    .table( 'players' )
-    .eqJoin( r.row( 'game' )( 'id' ), r.table( 'games' ) )
+    .table('players')
+    .eqJoin(r.row('game')('id'), r.table('games'))
     .without({ right: 'id' })
     .zip()
     .run();
 
-  t.deepEqual( result, [
+  t.deepEqual(result, [
     { field: 'Little Delving', game: { id: 1 }, id: 1, player: 'George' },
     { field: 'Bucklebury', game: { id: 3 }, id: 2, player: 'Agatha' },
     { field: 'Rushock Bog', game: { id: 2 }, id: 3, player: 'Fred' },
@@ -2921,7 +2921,7 @@ test( 'handles subquery for single eqJoin query', async t => {
   ]);
 });
 
-test( 'handles list variation of .without query on eqJoin left and right', async t => {
+test('handles list variation of .without query on eqJoin left and right', async t => {
   const { r } = rethinkdbMocked([
     [ 'players',
       { id: 1, player: 'George', favorites: [ 3, 2 ], gameId: 1 },
@@ -2937,13 +2937,13 @@ test( 'handles list variation of .without query on eqJoin left and right', async
   ]);
 
   const result = await r
-    .table( 'players' )
-    .eqJoin( player => player( 'favorites' ).nth( 0 ), r.table( 'games' ) )
+    .table('players')
+    .eqJoin(player => player('favorites').nth(0), r.table('games'))
     .without({ left: [ 'favorites', 'gameId', 'id' ] }, { right: 'id ' })
     .zip()
     .run();
 
-  t.deepEqual( result, [
+  t.deepEqual(result, [
     { player: 'George', id: 3, field: 'Bucklebury' },
     { player: 'Agatha', id: 1, field: 'Little Delving' },
     { player: 'Fred', id: 3, field: 'Bucklebury' },
@@ -2953,7 +2953,7 @@ test( 'handles list variation of .without query on eqJoin left and right', async
   ]);
 });
 
-test( 'eqJoin can use nested sub query as first param', async t => {
+test('eqJoin can use nested sub query as first param', async t => {
   const { r } = rethinkdbMocked([
     [ 'Users',
       { id: 'userId-1234', name: 'fred' },
@@ -2970,20 +2970,20 @@ test( 'eqJoin can use nested sub query as first param', async t => {
     } ]
   ]);
 
-  await r.table( 'Memberships' ).indexCreate( 'user_id' ).run();
+  await r.table('Memberships').indexCreate('user_id').run();
   
   const result = await r
-    .table( 'Memberships' )
-    .getAll( 'userId-1234', { index: 'user_id' })
+    .table('Memberships')
+    .getAll('userId-1234', { index: 'user_id' })
     .filter({ room_membership_type: 'INVITE' })
-    .eqJoin( 'room_id', r.table( 'Rooms' ) )
-    .eqJoin( r.row( 'left'  )( 'user_sender_id' ), r.table( 'Users' ) )
-    .map( row => row( 'left' ).getField( 'left' ).merge({
-      user: row( 'right' ),
-      room: row( 'left' ).getField( 'right' )
-    }) ).run();
+    .eqJoin('room_id', r.table('Rooms'))
+    .eqJoin(r.row('left')('user_sender_id'), r.table('Users'))
+    .map(row => row('left').getField('left').merge({
+      user: row('right'),
+      room: row('left').getField('right')
+    })).run();
 
-  t.deepEqual( result, [ {
+  t.deepEqual(result, [ {
     user_id: 'userId-1234',
     room_membership_type: 'INVITE',
     user_sender_id: 'userId-5678',
@@ -2993,7 +2993,7 @@ test( 'eqJoin can use nested sub query as first param', async t => {
   } ]);
 });
 
-test( '.eqJoin()( "right" ) can be used to return eqJoin destination table', async t => {
+test('.eqJoin()( "right" ) can be used to return eqJoin destination table', async t => {
   const { r } = rethinkdbMocked([
     [ 'Users',
       { id: 'userId-1234', name: 'fred' },
@@ -3011,17 +3011,17 @@ test( '.eqJoin()( "right" ) can be used to return eqJoin destination table', asy
   ]);
 
   const roomsJoined = await r
-    .table( 'Memberships' )
-    .getAll( 'userId-1234', { index: 'user_id' })
-    .eqJoin( 'room_id', r.table( 'Rooms' ) )( 'right' )
+    .table('Memberships')
+    .getAll('userId-1234', { index: 'user_id' })
+    .eqJoin('room_id', r.table('Rooms'))('right')
     .run();
 
-  t.deepEqual( roomsJoined, [
+  t.deepEqual(roomsJoined, [
     { room_id: 'roomId-1234', name: 'the room' }
   ]);
 });
 
-test( '.filter( ... )( "val" ) attribute getField call is supported', async t => {
+test('.filter( ... )( "val" ) attribute getField call is supported', async t => {
   const tableRoomMemberships = 'Memberships';
   const userId = 'userId-1234';
   const friendId = 'userId-5677';
@@ -3048,35 +3048,35 @@ test( '.filter( ... )( "val" ) attribute getField call is supported', async t =>
     } ]
   ]);
 
-  await r.table( 'Memberships' ).indexCreate( 'user_id' ).run();
-  await r.table( 'Memberships' ).indexCreate( 'user_sender_id' ).run();
-  await r.table( 'Memberships' ).indexCreate( 'room_id' ).run();
+  await r.table('Memberships').indexCreate('user_id').run();
+  await r.table('Memberships').indexCreate('user_sender_id').run();
+  await r.table('Memberships').indexCreate('room_id').run();
 
   const userFriendIds = await r
     .union(
-      r.table( tableRoomMemberships )
-        .getAll( userId, { index: 'user_id' })
-        .filter( row => r.and(
-          row( 'room_membership_type' ).eq( 'JOIN' ) ) )
-        .merge( row => ({ friend_id: row( 'user_sender_id' ) }) ),
-      r.table( tableRoomMemberships )
-        .getAll( userId, { index: 'user_sender_id' })
-        .filter( row => r.and(
-          row( 'room_membership_type' ).eq( 'JOIN' ),
-          row( 'user_id' ).ne( userId ) ) )
-        .merge( row => ({ friend_id: row( 'user_id' ) }) )
+      r.table(tableRoomMemberships)
+        .getAll(userId, { index: 'user_id' })
+        .filter(row => r.and(
+          row('room_membership_type').eq('JOIN')))
+        .merge(row => ({ friend_id: row('user_sender_id') })),
+      r.table(tableRoomMemberships)
+        .getAll(userId, { index: 'user_sender_id' })
+        .filter(row => r.and(
+          row('room_membership_type').eq('JOIN'),
+          row('user_id').ne(userId)))
+        .merge(row => ({ friend_id: row('user_id') }))
     )
-    .eqJoin( r.row( 'friend_id' ), r.table( tableRoomMemberships ), { index: 'user_id' })
-    .getField( 'right' )
-    .filter( row => r.and(
-      row( 'room_membership_type' ).eq( 'JOIN' ),
-      row( 'user_id' ).ne( userId )
-    ) )( 'user_id' ).run();
+    .eqJoin(r.row('friend_id'), r.table(tableRoomMemberships), { index: 'user_id' })
+    .getField('right')
+    .filter(row => r.and(
+      row('room_membership_type').eq('JOIN'),
+      row('user_id').ne(userId)
+    ))('user_id').run();
 
-  t.deepEqual( userFriendIds, [ friendId ]);
+  t.deepEqual(userFriendIds, [ friendId ]);
 });
 
-test( 'supports complex filtering', async t => {
+test('supports complex filtering', async t => {
   const tableRoomMemberships = 'Memberships';
   const userId = 'userId-1234';
   const friendAId = 'userId-friend-AAAA';
@@ -3120,30 +3120,30 @@ test( 'supports complex filtering', async t => {
     } ]
   ]);
 
-  await r.table( 'Memberships' ).indexCreate( 'user_id' ).run();
-  await r.table( 'Memberships' ).indexCreate( 'user_sender_id' ).run();
-  await r.table( 'Memberships' ).indexCreate( 'room_id' ).run();
+  await r.table('Memberships').indexCreate('user_id').run();
+  await r.table('Memberships').indexCreate('user_sender_id').run();
+  await r.table('Memberships').indexCreate('room_id').run();
 
   const userFriendIds = await r
     .union(
-      r.table( tableRoomMemberships )
-        .getAll( userId, { index: 'user_id' })
-        .filter( row => r.and(
-          row( 'room_membership_type' ).eq( 'JOIN' ) ) )
-        .merge( row => ({ friend_id: row( 'user_sender_id' ) }) ),
-      r.table( tableRoomMemberships )
-        .getAll( userId, { index: 'user_sender_id' })
-        .filter( row => r.and(
-          row( 'room_membership_type' ).eq( 'JOIN' ),
-          row( 'user_id' ).ne( userId ) ) )
-        .merge( row => ({ friend_id: row( 'user_id' ) }) )
+      r.table(tableRoomMemberships)
+        .getAll(userId, { index: 'user_id' })
+        .filter(row => r.and(
+          row('room_membership_type').eq('JOIN')))
+        .merge(row => ({ friend_id: row('user_sender_id') })),
+      r.table(tableRoomMemberships)
+        .getAll(userId, { index: 'user_sender_id' })
+        .filter(row => r.and(
+          row('room_membership_type').eq('JOIN'),
+          row('user_id').ne(userId)))
+        .merge(row => ({ friend_id: row('user_id') }))
     )
-    .eqJoin( r.row( 'friend_id' ), r.table( tableRoomMemberships ), { index: 'user_id' })
-    .getField( 'right' )
-    .filter( row => r.and(
-      row( 'room_membership_type' ).eq( 'JOIN' ),
-      row( 'user_id' ).ne( userId )
-    ) )( 'user_id' ).run();
+    .eqJoin(r.row('friend_id'), r.table(tableRoomMemberships), { index: 'user_id' })
+    .getField('right')
+    .filter(row => r.and(
+      row('room_membership_type').eq('JOIN'),
+      row('user_id').ne(userId)
+    ))('user_id').run();
 
-  t.deepEqual( userFriendIds.sort(), [ friendAId, friendBId ].sort() );
+  t.deepEqual(userFriendIds.sort(), [ friendAId, friendBId ].sort());
 });
