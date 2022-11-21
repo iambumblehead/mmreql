@@ -1,27 +1,27 @@
 import test from 'ava';
 import rethinkdbMocked from '../src/mockdb.mjs';
 
-test( '`tableList` should return a cursor', async t => {
+test('`tableList` should return a cursor', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
   const result = await r
-    .db( 'default' )
+    .db('default')
     .tableList()
     .run();
 
-  t.true( Array.isArray( result ) );
-  t.deepEqual( result, [ 'Rooms' ]);
+  t.true(Array.isArray(result));
+  t.deepEqual(result, [ 'Rooms' ]);
 });
 
-test( '`tableList` should show the table we created', async t => {
+test('`tableList` should show the table we created', async t => {
   const { r, dbState } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
   const tableCreateRes = await r
-    .db( 'default' )
-    .tableCreate( 'thenewtable' )
+    .db('default')
+    .tableCreate('thenewtable')
     .run();
 
-  t.deepEqual( tableCreateRes, {
+  t.deepEqual(tableCreateRes, {
     tables_created: 1,
     config_changes: [ {
       new_val: {
@@ -45,22 +45,22 @@ test( '`tableList` should show the table we created', async t => {
   });
     
   const result2 = await r
-    .db( 'default' )
+    .db('default')
     .tableList()
     .run();
 
-  t.true( Array.isArray( result2 ) );
-  t.true( result2.some( name => name === 'thenewtable' ) );
+  t.true(Array.isArray(result2));
+  t.true(result2.some(name => name === 'thenewtable'));
 });
 
-test( '`tableCreate` should create a table -- primaryKey', async t => {
+test('`tableCreate` should create a table -- primaryKey', async t => {
   const { r, dbState } = rethinkdbMocked([ [ 'Rooms' ] ]);
   const tableCreateRes = await r
-    .db( 'default' )
-    .tableCreate( 'thenewtable', { primaryKey: 'foo' })
+    .db('default')
+    .tableCreate('thenewtable', { primaryKey: 'foo' })
     .run();
 
-  t.deepEqual( tableCreateRes, {
+  t.deepEqual(tableCreateRes, {
     tables_created: 1,
     config_changes: [ {
       new_val: {
@@ -84,12 +84,12 @@ test( '`tableCreate` should create a table -- primaryKey', async t => {
   });
 
   const infoRes = await r
-    .db( 'default' )
-    .table( 'thenewtable' )
+    .db('default')
+    .table('thenewtable')
     .info()
     .run();
 
-  t.deepEqual( infoRes, {
+  t.deepEqual(infoRes, {
     db: {
       ...dbState.dbConfig_default,
       type: 'DB'
@@ -103,35 +103,35 @@ test( '`tableCreate` should create a table -- primaryKey', async t => {
   });
 });
 
-test( '`tableCreate` should throw if table exists', async t => {
+test('`tableCreate` should throw if table exists', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
-  await t.throws( () => ( r
-    .db( 'default' )
-    .tableCreate( 'Rooms' )
+  await t.throws(() => (r
+    .db('default')
+    .tableCreate('Rooms')
     .run()
   ), {
     message: 'Table `default.Rooms` already exists.'
   });
 });
 
-test( '`tableCreate` should throw -- non valid args', async t => {
+test('`tableCreate` should throw -- non valid args', async t => {
   const { r } = rethinkdbMocked();
 
-  await t.throws( () => ( r
-    .db( 'default' )
-    .tableCreate( 'thetablename', { nonValidArg: true })
+  await t.throws(() => (r
+    .db('default')
+    .tableCreate('thetablename', { nonValidArg: true })
     .run()
   ), {
     message: 'Unrecognized optional argument `nonValidArg`.'
   });
 });
 
-test( '`tableCreate` should throw if no argument is given', async t => {
+test('`tableCreate` should throw if no argument is given', async t => {
   const { r } = rethinkdbMocked();
 
-  await t.throws( () => ( r
-    .db( 'default' )
+  await t.throws(() => (r
+    .db('default')
     .tableCreate()
     .run()
   ), {
@@ -139,43 +139,43 @@ test( '`tableCreate` should throw if no argument is given', async t => {
   });
 });
 
-test( '`tableCreate` should throw is the name contains special char', async t => {
+test('`tableCreate` should throw is the name contains special char', async t => {
   const { r } = rethinkdbMocked();
 
-  await t.throws( () => ( r
-    .db( 'default' )
-    .tableCreate( '^_-' )
+  await t.throws(() => (r
+    .db('default')
+    .tableCreate('^_-')
     .run()
   ), {
     message: 'RethinkDBError [ReqlLogicError]: Table name `^_-` invalid (Use A-Z, a-z, 0-9, _ and - only)'
   });
 });
 
-test( '`tableDrop` should drop a table', async t => {
+test('`tableDrop` should drop a table', async t => {
   const { r, dbState } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
   const tableCreateRes = await r
-    .db( 'default' )
-    .tableCreate( 'thenewtable', { primaryKey: 'foo' })
+    .db('default')
+    .tableCreate('thenewtable', { primaryKey: 'foo' })
     .run();
 
-  t.is( tableCreateRes.tables_created, 1 );
+  t.is(tableCreateRes.tables_created, 1);
 
   const tableListRes = await r
-    .db( 'default' )
+    .db('default')
     .tableList()
     .run();
 
-  t.deepEqual( tableListRes, [ 'Rooms', 'thenewtable' ]);
+  t.deepEqual(tableListRes, [ 'Rooms', 'thenewtable' ]);
 
   const thenewtableid = dbState.dbConfig_default_thenewtable.id;
 
   const tableDropRes = await r
-    .db( 'default' )
-    .tableDrop( 'thenewtable' )
+    .db('default')
+    .tableDrop('thenewtable')
     .run();
 
-  t.deepEqual( tableDropRes, {
+  t.deepEqual(tableDropRes, {
     tables_dropped: 1,
     config_changes: [ {
       new_val: null,
@@ -197,14 +197,14 @@ test( '`tableDrop` should drop a table', async t => {
   });
 
   const tableListRes2 = await r
-    .db( 'default' )
+    .db('default')
     .tableList()
     .run();
 
-  t.deepEqual( tableListRes2, [ 'Rooms' ]);
+  t.deepEqual(tableListRes2, [ 'Rooms' ]);
 });
 
-test( '`indexCreate` should work nested values', async t => {
+test('`indexCreate` should work nested values', async t => {
   const { r } = rethinkdbMocked([ [ 'Applications', {
     name: 'testapp',
     tokens: [ {
@@ -219,48 +219,48 @@ test( '`indexCreate` should work nested values', async t => {
   } ] ]);
 
   await r
-    .table( 'Applications' )
+    .table('Applications')
     .indexList()
-    .contains( 'tokens' )
-    .or( r.table( 'Applications' ).indexCreate(
-      'tokens', r.row( 'tokens' ).map( token => token( 'value' ) ), { multi: true })
+    .contains('tokens')
+    .or(r.table('Applications').indexCreate(
+      'tokens', r.row('tokens').map(token => token('value')), { multi: true })
     ).run();
 
-  await r.table( 'Applications' ).indexWait().run();
+  await r.table('Applications').indexWait().run();
 
   const apps = await r
-    .table( 'Applications' )
-    .getAll( '7ljYP1v', { index: 'tokens' })
+    .table('Applications')
+    .getAll('7ljYP1v', { index: 'tokens' })
     .run();
 
-  t.is( apps[0].name, 'testapp' );
+  t.is(apps[0].name, 'testapp');
 });
 
-test( '`indexCreate` should work with official doc example', async t => {
+test('`indexCreate` should work with official doc example', async t => {
   const { r } = rethinkdbMocked([ [ 'friends', {
     id: 'fred',
     hobbies: [ 'cars', 'drawing' ],
     sports: [ 'soccer', 'baseball' ]
   } ] ]);
 
-  await r.table( 'friends' ).indexCreate(
-    'activities', row => row( 'hobbies' ).add( row( 'sports' ) ), { multi: true }
+  await r.table('friends').indexCreate(
+    'activities', row => row('hobbies').add(row('sports')), { multi: true }
   ).run();
 
-  await r.table( 'friends' ).indexWait().run();
+  await r.table('friends').indexWait().run();
   const favorites = await r
-    .table( 'friends' )
-    .getAll( 'baseball', { index: 'activities' })
+    .table('friends')
+    .getAll('baseball', { index: 'activities' })
     .run();
 
-  t.deepEqual( favorites, [ {
+  t.deepEqual(favorites, [ {
     id: 'fred',
     hobbies: [ 'cars', 'drawing' ],
     sports: [ 'soccer', 'baseball' ]
   } ]);
 });
 
-test( '`indexCreate` should work with basic index and multi ', async t => {
+test('`indexCreate` should work with basic index and multi ', async t => {
   const { r } = rethinkdbMocked([
     [ 'testtable',
       { foo: [ 'bar1', 'bar2' ], buzz: 1 },
@@ -268,38 +268,38 @@ test( '`indexCreate` should work with basic index and multi ', async t => {
     ] ]);
 
   const result = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .indexCreate( 'foo', { multi: true })
+    .db('default')
+    .table('testtable')
+    .indexCreate('foo', { multi: true })
     .run();
-  t.deepEqual( result, { created: 1 });
+  t.deepEqual(result, { created: 1 });
 
   const result3 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar1', { index: 'foo' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar1', { index: 'foo' })
     .count()
     .run();
-  t.is( result3, 2 );
+  t.is(result3, 2);
 
   const result6 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar2', { index: 'foo' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar2', { index: 'foo' })
     .count()
     .run();
-  t.is( result6, 1 );
+  t.is(result6, 1);
 
   const result9 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar3', { index: 'foo' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar3', { index: 'foo' })
     .count()
     .run();
-  t.is( result9, 1 );
+  t.is(result9, 1);
 });
 
-test( '`indexCreate` should work with options', async t => {
+test('`indexCreate` should work with options', async t => {
   const { r } = rethinkdbMocked([
     [ 'testtable',
       { foo: [ 'bar1', 'bar2' ], buzz: 1 },
@@ -307,66 +307,66 @@ test( '`indexCreate` should work with options', async t => {
     ] ]);
 
   let result = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .indexCreate( 'foo1', row => row( 'foo' ), { multi: true })
+    .db('default')
+    .table('testtable')
+    .indexCreate('foo1', row => row('foo'), { multi: true })
     .run();
-  t.deepEqual( result, { created: 1 });
+  t.deepEqual(result, { created: 1 });
 
   result = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .indexCreate( 'foo2', doc => doc( 'foo' ), { multi: true })
+    .db('default')
+    .table('testtable')
+    .indexCreate('foo2', doc => doc('foo'), { multi: true })
     .run();
-  t.deepEqual( result, { created: 1 });
+  t.deepEqual(result, { created: 1 });
 
   const result4 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar1', { index: 'foo1' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar1', { index: 'foo1' })
     .count()
     .run();
-  t.is( result4, 2 );
+  t.is(result4, 2);
   const result5 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar1', { index: 'foo2' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar1', { index: 'foo2' })
     .count()
     .run();
-  t.is( result5, 2 );
+  t.is(result5, 2);
 
   const result7 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar2', { index: 'foo1' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar2', { index: 'foo1' })
     .count()
     .run();
-  t.is( result7, 1 );
+  t.is(result7, 1);
   const result8 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar2', { index: 'foo2' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar2', { index: 'foo2' })
     .count()
     .run();
-  t.is( result8, 1 );
+  t.is(result8, 1);
 
   const result10 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar3', { index: 'foo1' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar3', { index: 'foo1' })
     .count()
     .run();
-  t.is( result10, 1 );
+  t.is(result10, 1);
   const result11 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .getAll( 'bar3', { index: 'foo2' })
+    .db('default')
+    .table('testtable')
+    .getAll('bar3', { index: 'foo2' })
     .count()
     .run();
-  t.is( result11, 1 );
+  t.is(result11, 1);
 });
 
-test( '`indexCreate` should work with wrapped array', async t => {
+test('`indexCreate` should work with wrapped array', async t => {
   const { r } = rethinkdbMocked([
     [ 'testtable',
       { foo: [ 'bar1', 'bar2' ], buzz: 1 },
@@ -374,23 +374,23 @@ test( '`indexCreate` should work with wrapped array', async t => {
     ] ]);
 
   const result12 = await r
-    .db( 'default' )
-    .table( 'testtable' )
-    .indexCreate( 'buzz', row => [ row( 'buzz' ) ])
+    .db('default')
+    .table('testtable')
+    .indexCreate('buzz', row => [ row('buzz') ])
     .run();
-  t.deepEqual( result12, { created: 1 });
+  t.deepEqual(result12, { created: 1 });
 
   await r
-    .db( 'default' )
-    .table( 'testtable' )
+    .db('default')
+    .table('testtable')
     .indexWait()
     .run();
 
   const result13 = await r
-    .db( 'default' )
-    .table( 'testtable' )
+    .db('default')
+    .table('testtable')
     .getAll([ 1 ], { index: 'buzz' })
     .count()
     .run();
-  t.is( result13, 1 );
+  t.is(result13, 1);
 });

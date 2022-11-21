@@ -30,11 +30,9 @@
       "import/extensions": [ "error", "always" ],
       "space-in-parens": [
          "error",
-         "always",
+         "never",
          {
             "exceptions": [
-               "{}",
-               "[]"
             ]
          }
       ],

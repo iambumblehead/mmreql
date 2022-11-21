@@ -1,28 +1,28 @@
 import test from 'ava';
 import rethinkdbMocked from '../src/mockdb.mjs';
 
-test( '`distinct` should work', async t => {
+test('`distinct` should work', async t => {
   const { r } = rethinkdbMocked();
   const result = await r
     .expr([ 1, 2, 3, 1, 2, 1, 3, 2, 2, 1, 4 ])
     .distinct()
-    .orderBy( row => row )
+    .orderBy(row => row)
     .run();
 
-  t.deepEqual( result, [ 1, 2, 3, 4 ]);
+  t.deepEqual(result, [ 1, 2, 3, 4 ]);
 });
 
-test( '`r.distinct` should work', async t => {
+test('`r.distinct` should work', async t => {
   const { r } = rethinkdbMocked();
   const result = await r
     .distinct([ 1, 2, 3, 1, 2, 1, 3, 2, 2, 1, 4 ])
-    .orderBy( row => row )
+    .orderBy(row => row)
     .run();
 
-  t.deepEqual( result, [ 1, 2, 3, 4 ]);
+  t.deepEqual(result, [ 1, 2, 3, 4 ]);
 });
 
-test( '`distinct` should work with an index', async t => {
+test('`distinct` should work with an index', async t => {
   const { r } = rethinkdbMocked([
     { db: 'jobrunner' },
     [ 'JobEvents', {
@@ -37,13 +37,13 @@ test( '`distinct` should work with an index', async t => {
     } ]
   ]);
 
-  await r.db( 'jobrunner' ).table( 'JobEvents' ).indexCreate( 'jobId' ).run();
+  await r.db('jobrunner').table('JobEvents').indexCreate('jobId').run();
     
   const result = await r
-    .db( 'jobrunner' )
-    .table( 'JobEvents' )
+    .db('jobrunner')
+    .table('JobEvents')
     .distinct({ index: 'jobId' })
     .run();
 
-  t.deepEqual( result, [ 1, 2 ]);
+  t.deepEqual(result, [ 1, 2 ]);
 });

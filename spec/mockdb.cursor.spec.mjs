@@ -2,7 +2,7 @@ import test from 'ava';
 import rethinkdbMocked from '../src/mockdb.mjs';
 import { v4 as uuidv4 } from 'uuid';
 
-test( '`close` should work on feed', async t => {
+test('`close` should work on feed', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       user_id: 'userId-1234',
@@ -11,13 +11,13 @@ test( '`close` should work on feed', async t => {
     } ]
   ]);
     
-  const feed = await r.table( 'Presence' ).changes().run();
+  const feed = await r.table('Presence').changes().run();
   await feed.close();
 
   t.pass();
 });
 
-test( '`close` should work on feed with events', async t => {
+test('`close` should work on feed with events', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       user_id: 'userId-1234',
@@ -26,11 +26,11 @@ test( '`close` should work on feed with events', async t => {
     } ]
   ]);
     
-  const feed = await r.table( 'Presence' ).changes().run();
+  const feed = await r.table('Presence').changes().run();
     
-  const promise = new Promise( ( resolve, reject ) => {
-    feed.on( 'error', reject );
-    feed.on( 'data', () => null ).on( 'end', resolve );
+  const promise = new Promise((resolve, reject) => {
+    feed.on('error', reject);
+    feed.on('data', () => null).on('end', resolve);
   });
 
   await feed.close();
@@ -39,7 +39,7 @@ test( '`close` should work on feed with events', async t => {
   t.pass();
 });
 
-test( '`on` should work on feed', async t => {
+test('`on` should work on feed', async t => {
   const smallNumDocs = 2;
   const { r } = rethinkdbMocked([
     [ 'Presence', [ { primaryKey: 'user_id' } ], {
@@ -53,22 +53,22 @@ test( '`on` should work on feed', async t => {
     } ]
   ]);
 
-  const feed = await r.table( 'Presence' ).changes().run();
+  const feed = await r.table('Presence').changes().run();
 
-  const promise = new Promise( ( resolve, reject ) => {
+  const promise = new Promise((resolve, reject) => {
     let i = 0;
 
-    feed.on( 'data', () => {
+    feed.on('data', () => {
       i = i + 1;
-      if ( i === smallNumDocs ) {
+      if (i === smallNumDocs) {
         // eslint-disable-next-line promise/prefer-await-to-then
-        feed.close().then( resolve ).catch( reject );
+        feed.close().then(resolve).catch(reject);
       }
     });
-    feed.on( 'error', reject );
+    feed.on('error', reject);
   });
 
-  await r.table( 'Presence' ).update({
+  await r.table('Presence').update({
     state: 'ONLINE',
     time_last_seen: new Date()
   }).run();
@@ -77,7 +77,7 @@ test( '`on` should work on feed', async t => {
   t.pass();
 });
 
-test( '`on` should work on feed that is filtered, changes().filter()', async t => {
+test('`on` should work on feed that is filtered, changes().filter()', async t => {
   const smallNumDocs = 1;
   const { r } = rethinkdbMocked([
     [ 'Presence', [ { primaryKey: 'user_id' } ], {
@@ -92,30 +92,30 @@ test( '`on` should work on feed that is filtered, changes().filter()', async t =
   ]);
 
   const feed = await r
-    .table( 'Presence' )
+    .table('Presence')
     .changes()
-    .filter( row => row( 'old_val' ).eq( null ).or(
-      row( 'old_val' ).getField( 'state' ).ne(
-        row( 'new_val' ).getField( 'state' ) ) )
+    .filter(row => row('old_val').eq(null).or(
+      row('old_val').getField('state').ne(
+        row('new_val').getField('state')))
     ).run();
 
-  const promise = new Promise( ( resolve, reject ) => {
+  const promise = new Promise((resolve, reject) => {
     let i = 0;
 
-    feed.on( 'data', data => {
-      if ( data.new_val.state === data.old_val.state )
-        throw new Error( 'filter failed: old_val.state should not equal new_val.state' );
+    feed.on('data', data => {
+      if (data.new_val.state === data.old_val.state)
+        throw new Error('filter failed: old_val.state should not equal new_val.state');
 
       i = i + 1;
-      if ( i === smallNumDocs ) {
+      if (i === smallNumDocs) {
         // eslint-disable-next-line promise/prefer-await-to-then
-        feed.close().then( resolve ).catch( reject );
+        feed.close().then(resolve).catch(reject);
       }
     });
-    feed.on( 'error', reject );
+    feed.on('error', reject);
   });
 
-  await r.table( 'Presence' ).update({
+  await r.table('Presence').update({
     state: 'OFFLINE',
     time_last_seen: new Date()
   }).run();
@@ -124,29 +124,29 @@ test( '`on` should work on feed that is filtered, changes().filter()', async t =
   t.pass();
 });
 
-test( '`on` should work on cursor - a `end` event shoul be eventually emitted on a cursor', async t => {
+test('`on` should work on cursor - a `end` event shoul be eventually emitted on a cursor', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence',  {
       id: 'userId-1234',
-      foo: new Date( Date.now() - 1000 )
+      foo: new Date(Date.now() - 1000)
     } ]
   ]);
 
   const cursor = await r
-    .table( 'Presence' )
+    .table('Presence')
     .getCursor();
 
-  const promise = new Promise( ( resolve, reject ) => {
-    cursor.on( 'data', () => null ).on( 'end', resolve );
-    cursor.on( 'error', reject );
+  const promise = new Promise((resolve, reject) => {
+    cursor.on('data', () => null).on('end', resolve);
+    cursor.on('error', reject);
   });
 
-  await r.table( 'Presence' ).update({ foo: r.now() }).run();
+  await r.table('Presence').update({ foo: r.now() }).run();
   await promise;
   t.pass();
 });
 
-test( '`next` should work on an atom feed', async t => {
+test('`next` should work on an atom feed', async t => {
   const idValue = uuidv4();
 
   const { r } = rethinkdbMocked([
@@ -157,29 +157,29 @@ test( '`next` should work on an atom feed', async t => {
   ]);
 
   const feed = await r
-    .table( 'LatestNews' )
-    .get( idValue )
+    .table('LatestNews')
+    .get(idValue)
     .changes({ includeInitial: true })
     .run();
 
   /* eslint-disable promise/prefer-await-to-then */
-  const promise = new Promise( ( resolve, reject ) => {
+  const promise = new Promise((resolve, reject) => {
     feed.next()
-      .then( res => t.deepEqual( res, { new_val: null }) )
-      .then( () => feed.next() )
-      .then( res => t.deepEqual( res, { new_val: { id: idValue }, old_val: null }) )
-      .then( resolve )
-      .catch( reject );
+      .then(res => t.deepEqual(res, { new_val: null }))
+      .then(() => feed.next())
+      .then(res => t.deepEqual(res, { new_val: { id: idValue }, old_val: null }))
+      .then(resolve)
+      .catch(reject);
   });
     /* eslint-enable promise/prefer-await-to-then */
 
-  await r.table( 'LatestNews' ).insert({ id: idValue }).run();
+  await r.table('LatestNews').insert({ id: idValue }).run();
   await promise;
   await feed.close();
   t.pass();
 });
 
-test( '`next` should work -- testing common pattern', async t => {
+test('`next` should work -- testing common pattern', async t => {
   const smallNumDocs = 2;
   const { r } = rethinkdbMocked([
     [ 'Presence', [ { primaryKey: 'user_id' } ], {
@@ -194,25 +194,25 @@ test( '`next` should work -- testing common pattern', async t => {
   ]);
 
   const cursor = await r
-    .table( 'Presence' )
+    .table('Presence')
     .getCursor();
 
   let i = 0;
 
-  await t.throwsAsync( async () => {
-    while ( true ) {
+  await t.throwsAsync(async () => {
+    while (true) {
       const result = await cursor.next();
-      t.truthy( result );
+      t.truthy(result);
       i = i + 1;
     }
   }, {
     message: 'No more rows in the cursor.'
   });
 
-  t.is( smallNumDocs, i );
+  t.is(smallNumDocs, i);
 });
 
-test( '`cursor.close` should return a promise', async t => {
+test('`cursor.close` should return a promise', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       user_id: 'userId-1234',
@@ -221,14 +221,14 @@ test( '`cursor.close` should return a promise', async t => {
     } ]
   ]);
     
-  const cursor1 = await r.table( 'Presence' ).getCursor();
+  const cursor1 = await r.table('Presence').getCursor();
 
   await cursor1.close();
 
   t.pass();
 });
 
-test( '`cursor.close` should still return a promise if the cursor was closed', async t => {
+test('`cursor.close` should still return a promise if the cursor was closed', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       user_id: 'userId-1234',
@@ -237,21 +237,21 @@ test( '`cursor.close` should still return a promise if the cursor was closed', a
     } ]
   ]);
 
-  const cursor = await r.table( 'Presence' ).changes().run();
+  const cursor = await r.table('Presence').changes().run();
 
   await cursor.close();
   const result = cursor.close();
   try {
     // eslint-disable-next-line
         result.then( () => undefined ); // Promise's contract is to have a `then` method
-  } catch ( e ) {
-    t.fail( 'failed' );
+  } catch (e) {
+    t.fail('failed');
   }
 
   t.pass();
 });
 
-test( '`next` should return a document', async t => {
+test('`next` should return a document', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       user_id: 'userId-1234',
@@ -260,13 +260,13 @@ test( '`next` should return a document', async t => {
     } ]
   ]);
 
-  const cursor = await r.table( 'Presence' ).getCursor();
+  const cursor = await r.table('Presence').getCursor();
   const result = await cursor.next();
 
-  t.is( result.user_id, 'userId-1234' );
+  t.is(result.user_id, 'userId-1234');
 });
 
-test( '`each` should work', async t => {
+test('`each` should work', async t => {
   const numDocs = 2;
   const { r } = rethinkdbMocked([
     [ 'Presence', {
@@ -280,16 +280,16 @@ test( '`each` should work', async t => {
     } ]
   ]);
 
-  const cursor = await r.table( 'Presence' ).getCursor();
+  const cursor = await r.table('Presence').getCursor();
 
-  await new Promise( ( resolve, reject ) => {
+  await new Promise((resolve, reject) => {
     let count = 0;
-    cursor.each( err => {
-      if ( err ) {
-        reject( err );
+    cursor.each(err => {
+      if (err) {
+        reject(err);
       }
       count = count + 1;
-      if ( count === numDocs ) {
+      if (count === numDocs) {
         resolve();
       }
     });
@@ -298,7 +298,7 @@ test( '`each` should work', async t => {
   t.pass();
 });
 
-test( '`each` should work - onFinish - reach end', async t => {
+test('`each` should work - onFinish - reach end', async t => {
   const numDocs = 2;
   const { r } = rethinkdbMocked([
     [ 'Presence', {
@@ -312,26 +312,26 @@ test( '`each` should work - onFinish - reach end', async t => {
     } ]
   ]);
 
-  const cursor = await r.table( 'Presence' ).getCursor();
+  const cursor = await r.table('Presence').getCursor();
 
-  await new Promise( ( resolve, reject ) => {
+  await new Promise((resolve, reject) => {
     let count = 0;
     cursor.each(
       err => {
-        if ( err ) {
-          reject( err );
+        if (err) {
+          reject(err);
         }
         count = count + 1;
       },
       () => {
-        if ( count !== numDocs ) {
+        if (count !== numDocs) {
           reject(
             new Error(
               `expected count (${count}) to equal numDocs (${numDocs})`
             )
           );
         }
-        t.is( count, numDocs );
+        t.is(count, numDocs);
         resolve();
       }
     );
@@ -340,7 +340,7 @@ test( '`each` should work - onFinish - reach end', async t => {
   t.pass();
 });
 
-test( '`next` should error when hitting an error -- not on the first batch', async t => {
+test('`next` should error when hitting an error -- not on the first batch', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       user_id: 'userId-1234',
@@ -357,15 +357,15 @@ test( '`next` should error when hitting an error -- not on the first batch', asy
   });
 
   const cursor = await r
-    .table( 'Presence' )
+    .table('Presence')
     .orderBy({ index: 'id' })
-    .map( row => row( 'val' ).add( 1 ) )
-    .getCursor( connection, { maxBatchRows: 10 });
+    .map(row => row('val').add(1))
+    .getCursor(connection, { maxBatchRows: 10 });
 
   let i = 0;
 
-  await t.throwsAsync( async () => {
-    while ( true ) {
+  await t.throwsAsync(async () => {
+    while (true) {
       await cursor.next();
 
       i = i + 1;
@@ -375,10 +375,10 @@ test( '`next` should error when hitting an error -- not on the first batch', asy
   });
 
   await connection.close();
-  t.false( connection.open );
+  t.false(connection.open);
 });
 
-test( '`changes` with `includeTypes` should work', async t => {
+test('`changes` with `includeTypes` should work', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       id: 'userId-1234',
@@ -392,9 +392,9 @@ test( '`changes` with `includeTypes` should work', async t => {
   ]);
 
   const feed = await r
-    .table( 'Presence' )
+    .table('Presence')
     .orderBy({ index: 'id' })
-    .limit( 2 )
+    .limit(2)
     .changes({
       includeTypes: true,
       includeInitial: true
@@ -403,15 +403,15 @@ test( '`changes` with `includeTypes` should work', async t => {
   let counter = 0;
 
   // eslint-disable-next-line promise/prefer-await-to-callbacks
-  const promise = new Promise( ( resolve, reject ) => {
+  const promise = new Promise((resolve, reject) => {
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    feed.each( ( error, change ) => {
-      if ( error ) {
-        reject( error );
+    feed.each((error, change) => {
+      if (error) {
+        reject(error);
       }
-      t.is( typeof change.type, 'string' );
+      t.is(typeof change.type, 'string');
 
-      if ( counter > 0 ) {
+      if (counter > 0) {
         // eslint-disable-next-line
                 feed.close().then( resolve ).catch( reject );
       }
@@ -419,14 +419,14 @@ test( '`changes` with `includeTypes` should work', async t => {
     });
   });
 
-  await r.table( 'Presence' ).insert({ id: 0 }).run();
+  await r.table('Presence').insert({ id: 0 }).run();
 
   await promise;
 
   t.pass();
 });
 
-test( '`asyncIterator` should work', async t => {
+test('`asyncIterator` should work', async t => {
   const { r } = rethinkdbMocked([
     [ 'Presence', {
       id: 'userId-1234',
@@ -439,19 +439,19 @@ test( '`asyncIterator` should work', async t => {
     } ]
   ]);
 
-  const feed = await r.table( 'Presence' ).changes().run();
+  const feed = await r.table('Presence').changes().run();
   const value = 1;
 
-  const promise = ( async () => {
+  const promise = (async () => {
     let res;
-    for await ( const row of feed ) {
+    for await (const row of feed) {
       res = row;
       feed.close();
     }
     return res;
   })();
 
-  await r.table( 'Presence' ).insert({ foo: value }).run();
+  await r.table('Presence').insert({ foo: value }).run();
   const result = await promise;
-  t.is( result.new_val.foo, value );
+  t.is(result.new_val.foo, value);
 });
