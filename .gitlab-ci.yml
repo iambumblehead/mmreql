@@ -1,25 +1,23 @@
-image: node:15.4.0
-
+---
 stages:
+  - build-development
   - test
+  - pre-deploy
+  - build-production
   - publish
 
-before_script:
-  - npm install
-  
-test:
-  stage: test
-  script:
-  - npm run lint
-  - npm run test-cover
-  coverage: '/src[^\d]*(\d\d?\.?\d?\d?)/'
-  
-publish:
-  stage: publish
-  when: manual
-  script:
-    - npm run build-dist
-    - npm config set '//code.venom360.com/api/v4/packages/npm/:_authToken' "${CI_JOB_TOKEN}"
-    - npm config set '//code.venom360.com/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken' "${CI_JOB_TOKEN}"
-    - npm config set '@platform:registry' "https://code.venom360.com/api/v4/projects/564/packages/npm/"
-    - npm publish
+include:
+  - project: 'platform/gitlab-jobs'
+    file: 'jobs.web.yml'
+
+job-test:
+  extends: .job-npm-ci-test-cover
+
+job-release-minor:
+  extends: .job-release-it-minor
+
+job-release-major:
+  extends: .job-release-it-major
+
+job-publish:
+  extends: .publish
