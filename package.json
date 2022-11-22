@@ -17,6 +17,10 @@
   "publishConfig": {
     "@platform:registry": "https://code.venom360.com/api/v4/projects/564/packages/npm/"
   },
+  "files": [
+    "src",
+    "dist"
+  ],
   "scripts": {
     "test": "npm run lint && npm run unit-test",
     "lint": "eslint */*mjs && npm run -s lint-yaml",
