@@ -21,3 +21,5 @@ job-release-major:
 
 job-publish:
   extends: .publish
+  before_script:
+    - npm ci --include=dev
