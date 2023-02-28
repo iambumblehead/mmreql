@@ -33,6 +33,18 @@ test('`fold` should work', async t => {
   t.is(result, 16);
 });
 
+test('`fold` should throw if no argument has been passed', async t => {
+  const dbName = 'dbName';
+  const tableName = 'tableName';
+  const { r } = rethinkdbMocked([
+    { db: dbName }, [ tableName, { id : 'id' } ]
+  ]);
+
+  await t.throwsAsync(async () => r.db(dbName).table(tableName).fold().run(), {
+    message: '`fold` takes 2 arguments, 0 provided.'
+  });
+});
+
 test('`distinct` should work', async t => {
   const { r } = rethinkdbMocked();
   const result = await r
