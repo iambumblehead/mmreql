@@ -2039,6 +2039,32 @@ reql.reduce = (queryState, args, reqlChain) => {
   return queryState;
 };
 
+// fold has the following differences from reduce:
+//
+//  * it is guaranteed to proceed through the sequence from
+//    first element to last.
+//  * it passes an initial base value to the function with the
+//    first element in place of the previous reduction result.
+//
+reql.fold = (queryState, args, reqlChain) => {
+  const [ startVal, reduceFn ] = args;
+
+  if (args.length === 0) {
+    queryState.error = mockdbResErrorArgumentsNumber(
+      'reduce', 1, args.length);
+    queryState.target = null;
+
+    return queryState;
+  }
+
+  const start = reqlChain().expr(startVal);
+  queryState.target = queryState.target
+    .reduce((st, arg) => reduceFn(st, reqlChain().expr(arg)), start)
+    .run();
+
+  return queryState;
+};
+
 reql.forEach =  (queryState, args, reqlChain) => {
   const [ forEachFn ] = args;
 
