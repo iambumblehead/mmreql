@@ -1,6 +1,28 @@
 import test from 'ava';
 import rethinkdbMocked from '../src/mockdb.mjs';
 
+test('`reduce` should work -- no base ', async t => {
+  const { r } = rethinkdbMocked();
+  const result = await r
+    .expr([ 1, 2, 3 ])
+    .reduce((left, right) => left.add(right))
+    .run();
+
+  t.is(result, 6);
+});
+
+test('`reduce` should throw if no argument has been passed', async t => {
+  const dbName = 'dbName';
+  const tableName = 'tableName';
+  const { r } = rethinkdbMocked([
+    { db: dbName }, [ tableName, { id : 'id' } ]
+  ]);
+
+  await t.throwsAsync(async () => r.db(dbName).table(tableName).reduce().run(), {
+    message: '`reduce` takes 1 argument, 0 provided.'
+  });
+});
+
 test('`distinct` should work', async t => {
   const { r } = rethinkdbMocked();
   const result = await r

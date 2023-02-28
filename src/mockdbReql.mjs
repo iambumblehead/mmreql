@@ -2008,6 +2008,37 @@ reql.changes = (queryState, args, reqlChain, dbState) => {
   return queryState;
 };
 
+// The reduction function can be called on the results of two previous
+// reductions because the reduce command is distributed and parallelized
+// across shards and CPU cores. A common mistaken when using the reduce
+// command is to suppose that the reduction is executed from left to right.
+// Read the map-reduce in RethinkDB article to see an example.
+//
+// If the sequence is empty, the server will produce a ReqlRuntimeError
+// that can be caught with default.
+//
+// If the sequence has only one element, the first element will be returned.
+reql.reduce = (queryState, args, reqlChain) => {
+  const [ reduceFn ] = args;
+
+  if (args.length === 0) {
+    queryState.error = mockdbResErrorArgumentsNumber(
+      'reduce', 1, args.length);
+    queryState.target = null;
+
+    return queryState;
+  }
+
+  const start = reqlChain().expr(queryState.target[0]);
+  queryState.target = queryState.target
+    .slice(1)
+    .sort(() => 0.5 - Math.random())
+    .reduce((st, arg) => reduceFn(st, reqlChain().expr(arg)), start)
+    .run();
+
+  return queryState;
+};
+
 reql.forEach =  (queryState, args, reqlChain) => {
   const [ forEachFn ] = args;
 
