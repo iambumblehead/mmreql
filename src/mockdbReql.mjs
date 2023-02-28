@@ -1480,7 +1480,10 @@ reql.isEmpty = queryState => {
 };
 
 reql.add = (queryState, args, reqlChain) => {
-  const target = queryState.target || queryState.row;
+  const target = 'target' in queryState
+    ? queryState.target
+    : queryState.row;
+
   const values = spend(args, reqlChain);
   let result;
 
@@ -1494,6 +1497,46 @@ reql.add = (queryState, args, reqlChain) => {
     result = values.reduce((prev, val) => prev + val, target);
   } else if (Array.isArray(target)) {
     result = [ ...target, ...values ];
+  }
+
+  queryState.target = result;
+
+  return queryState;
+};
+
+reql.sub = (queryState, args, reqlChain) => {
+  const target = queryState.target || queryState.row;
+  const values = spend(args, reqlChain);
+  let result;
+
+  if (typeof target === 'undefined') {
+    if (Array.isArray(values)) {
+      result = values.slice(1).reduce((prev, val) => prev - val, values[0]);
+    } else {
+      result = values;
+    }
+  } else if (/number|string/.test(typeof target)) {
+    result = values.reduce((prev, val) => prev - val, target);
+  }
+
+  queryState.target = result;
+
+  return queryState;
+};
+
+reql.mul = (queryState, args, reqlChain) => {
+  const target = queryState.target || queryState.row;
+  const values = spend(args, reqlChain);
+  let result;
+
+  if (typeof target === 'undefined') {
+    if (Array.isArray(values)) {
+      result = values.slice(1).reduce((prev, val) => prev * val, values[0]);
+    } else {
+      result = values;
+    }
+  } else if (/number|string/.test(typeof target)) {
+    result = values.reduce((prev, val) => prev * val, target);
   }
 
   queryState.target = result;
@@ -2017,7 +2060,17 @@ reql.changes = (queryState, args, reqlChain, dbState) => {
 // If the sequence is empty, the server will produce a ReqlRuntimeError
 // that can be caught with default.
 //
-// If the sequence has only one element, the first element will be returned.
+// NOTE: take care when shape of reduced value differs from shape of sequence values
+//
+// await r.expr([
+//   { count: 3 }, { count: 0 },
+//   { count: 6 }, { count: 7 }
+// ]).reduce((left, right) => (
+//   left('count').add(right('count').add(5))
+// )).run()
+//
+// > 'Cannot perform bracket on a non-object non-sequence `8`.'
+//
 reql.reduce = (queryState, args, reqlChain) => {
   const [ reduceFn ] = args;
 
@@ -2029,12 +2082,27 @@ reql.reduce = (queryState, args, reqlChain) => {
     return queryState;
   }
 
-  const start = reqlChain().expr(queryState.target[0]);
-  queryState.target = queryState.target
-    .slice(1)
-    .sort(() => 0.5 - Math.random())
-    .reduce((st, arg) => reduceFn(st, reqlChain().expr(arg)), start)
-    .run();
+  // live rethinkdb inst returns sequence of 0 as error
+  if (queryState.target.length === 0) {
+    queryState.error = 'Cannot reduce over an empty stream.';
+    queryState.target = null;
+
+    return queryState;
+  }
+
+  // live rethinkdb inst returns sequence of 1 atom
+  if (queryState.target.length === 1) {
+    [ queryState.target ] = queryState.target;
+
+    return queryState;
+  }
+
+  const seq = queryState.target.sort(() => 0.5 - Math.random());
+
+  queryState.target = seq.slice(1).reduce((st, arg) => reduceFn(
+    reqlChain().expr(st),
+    reqlChain().expr(arg)
+  ).run(), seq[0]);
 
   return queryState;
 };
@@ -2050,17 +2118,16 @@ reql.fold = (queryState, args, reqlChain) => {
   const [ startVal, reduceFn ] = args;
 
   if (args.length < 2) {
-    queryState.error = mockdbResErrorArgumentsNumber(
-      'fold', 2, args.length);
+    queryState.error = mockdbResErrorArgumentsNumber('fold', 2, args.length);
     queryState.target = null;
 
     return queryState;
   }
 
-  const start = reqlChain().expr(startVal);
-  queryState.target = queryState.target
-    .reduce((st, arg) => reduceFn(st, reqlChain().expr(arg)), start)
-    .run();
+  queryState.target = queryState.target.reduce((st, arg) => reduceFn(
+    reqlChain().expr(st),
+    reqlChain().expr(arg)
+  ).run(), startVal);
 
   return queryState;
 };

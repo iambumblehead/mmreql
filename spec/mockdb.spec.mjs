@@ -35,6 +35,18 @@ test('supports add(), args strings', async t => {
   t.is(await r.add(r.args([ 'bar', 'baz' ])).run(), 'barbaz');
 });
 
+test('supports sub(), numbers', async t => {
+  const { r } = rethinkdbMocked();
+
+  t.is(await r.expr(2).sub(3).run(), -1);
+});
+
+test('supports mul(), numbers', async t => {
+  const { r } = rethinkdbMocked();
+
+  t.is(await r.expr(2).mul(3).run(), 6);
+});
+
 test('supports uuid()', async t => {
   const { r } = rethinkdbMocked();
 
