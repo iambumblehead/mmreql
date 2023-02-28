@@ -2049,9 +2049,9 @@ reql.reduce = (queryState, args, reqlChain) => {
 reql.fold = (queryState, args, reqlChain) => {
   const [ startVal, reduceFn ] = args;
 
-  if (args.length === 0) {
+  if (args.length < 2) {
     queryState.error = mockdbResErrorArgumentsNumber(
-      'reduce', 1, args.length);
+      'fold', 2, args.length);
     queryState.target = null;
 
     return queryState;
