@@ -23,6 +23,16 @@ test('`reduce` should throw if no argument has been passed', async t => {
   });
 });
 
+test('`fold` should work', async t => {
+  const { r } = rethinkdbMocked();
+  const result = await r
+    .expr([ 1, 2, 3 ])
+    .fold(10, (left, right) => left.add(right))
+    .run();
+
+  t.is(result, 16);
+});
+
 test('`distinct` should work', async t => {
   const { r } = rethinkdbMocked();
   const result = await r
