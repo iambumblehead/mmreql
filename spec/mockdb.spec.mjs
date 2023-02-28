@@ -697,9 +697,7 @@ test('.get(), throws error if called with no arguments', async t => {
     } ]
   ]);
 
-  await t.throws(() => (
-    r.table('UserSocial').get().run()
-  ), {
+  await t.throwsAsync(async () => r.table('UserSocial').get().run(), {
     message: '`get` takes 1 argument, 0 provided.'
   });
 });
