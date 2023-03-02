@@ -371,6 +371,29 @@ test('`insert` should work - testing conflict` (custom id)', async t => {
   t.is(result4.errors, 1);
 });
 
+test('`insert` case', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Rooms', [ { primaryKey: 'numeric_id' } ], {
+      id: 'roomAId-1234',
+      numeric_id: 755090,
+      foo: 'baz'
+    } ]
+  ]);
+
+  const result3 = await r
+    .db('default')
+    .table('Rooms')
+    .insert({
+      id: 'roomAId-1234',
+      numeric_id: 755090,
+      foo: 'bar'
+    }, {
+      conflict: 'replace'
+    }).run();
+
+  t.is(result3.replaced, 1);
+});
+
 test('`insert` should throw if options param `undefined` is passed', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
   await t.throws(() => (r
@@ -498,6 +521,87 @@ test('`insert` with a conflict method', async t => {
   t.deepEqual(result3, {
     id: savedId,
     count: 17
+  });
+});
+
+test('`replace` should throw if no argument is given', async t => {
+  const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+
+  await t.throwsAsync(async () => (
+    r.table('Rooms').replace().run()
+  ), {
+    message: '`replace` takes at least 1 argument, 0 provided.'
+  });
+});
+
+test('`replace` should throw if non valid option', async t => {
+  const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+
+  await t.throwsAsync(async () => (
+    r.table('Rooms').replace({}, { nonValidKey: true }).run()
+  ), {
+    message: 'Unrecognized optional argument `nonValidKey`.'
+  });
+});
+
+test('`replace` should delete when replace value is null', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Rooms', {
+      id: 'roomAId-1234',
+      numeric_id: 755090,
+      foo: 'baz'
+    }, {
+      id: 'roomBId-1234',
+      numeric_id: 123321,
+      foo: 'baz'
+    } ]
+  ]);
+
+  const result = await r
+    .table('Rooms')
+    .get('roomAId-1234')
+    .replace(null, { returnChanges: true })
+    .run();
+
+  t.is(result.deleted, 1);
+  t.is(result.changes[0].new_val, null);
+  t.deepEqual(result.changes[0].old_val, {
+    id: 'roomAId-1234',
+    numeric_id: 755090,
+    foo: 'baz'
+  });
+});
+
+test('`replace` should insert when pre-existing val not found', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Rooms', {
+      id: 'roomAId-1234',
+      numeric_id: 755090,
+      foo: 'baz'
+    }, {
+      id: 'roomBId-1234',
+      numeric_id: 123321,
+      foo: 'baz'
+    } ]
+  ]);
+
+  const result = await r
+    .table('Rooms')
+    .get('roomCId-1234')
+    .replace({
+      id: 'roomCId-1234',
+      numeric_id: 245326,
+      foo: 'baz'
+    }, {
+      returnChanges: true
+    }).run();
+
+  t.is(result.inserted, 1);
+  t.is(result.changes[0].old_val, null);
+  t.deepEqual(result.changes[0].new_val, {
+    id: 'roomCId-1234',
+    numeric_id: 245326,
+    foo: 'baz'
   });
 });
 
@@ -648,4 +752,26 @@ test('`update` should work - returnChanges true', async t => {
   });
 
   t.is(await r.db('default').table('Rooms').count().run(), 2);
+});
+
+test('`update` null should leave the target document unchanged', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'Rooms', {
+      id: 'roomAId-1234',
+      numeric_id: 755090,
+      foo: 'baz'
+    }, {
+      id: 'roomBId-1234',
+      numeric_id: 123321,
+      foo: 'baz'
+    } ]
+  ]);
+
+  const result = await r
+    .table('Rooms')
+    .get('roomAId-1234')
+    .update(null)
+    .run();
+
+  t.is(result.unchanged, 1);
 });

@@ -22,6 +22,28 @@ const mockdbResChangesFieldCreate = opts => mockdbFilterUndefined({
   ...opts
 });
 
+// Some operations, such as replace, might apply multiple operations
+// such as 'deleted', 'inserted' and 'replaced' depending upon how they
+// are called. This tries to create values for these fields programatically
+// when given the 'changes' object
+const mockdbResChangesCreate = (changes, opts) => mockdbResChangesFieldCreate(
+  changes.reduce((prev, change) => {
+    if (change.new_val && change.old_val)
+      prev.replaced += 1;
+    else if (!change.new_val)
+      prev.deleted += 1;
+    else if (!change.old_val)
+      prev.inserted += 1;
+
+    return prev;
+  }, {
+    deleted: 0,
+    inserted: 0,
+    replaced: 0,
+    ...opts
+  })
+);
+
 const mockdbResTableStatus = opts => mockdbFilterUndefined({
   db: opts.db || null,
   id: opts.id || null,
@@ -134,6 +156,7 @@ export {
   mockdbResChangeTypeSTATE,
 
   mockdbResChangesFieldCreate,
+  mockdbResChangesCreate,
   mockdbResStringify,
   mockdbResTableStatus,
   mockdbResTableInfo,

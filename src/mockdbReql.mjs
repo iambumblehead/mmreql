@@ -25,6 +25,7 @@ import {
 } from './mockdbState.mjs';
 
 import {
+  mockdbTableRmDocument,
   mockdbTableGetDocument,
   mockdbTableSetDocument,
   mockdbTableGetDocuments,
@@ -39,6 +40,7 @@ import {
   mockdbResChangeTypeADD,
   mockdbResChangeTypeINITIAL,
 
+  mockdbResChangesCreate,
   mockdbResChangesFieldCreate,
   mockdbResErrorArgumentsNumber,
   mockdbResErrorDuplicatePrimaryKey,
@@ -660,7 +662,7 @@ reql.insert = (queryState, args, reqlChain, dbState) => {
       } ];
 
       mockdbTableSetDocument(table, resDoc, primaryKey);
-            
+
       queryState.target = mockdbResChangesFieldCreate({
         replaced: documents.length,
         changes: options.returnChanges === true ? changes : undefined
@@ -723,20 +725,22 @@ reql.update = (queryState, args, reqlChain, dbState) => {
 
   const updateTarget = targetDoc => {
     const oldDoc = mockdbTableGetDocument(queryTable, targetDoc[primaryKey], primaryKey);
-    let newDoc = oldDoc && Object.assign({}, oldDoc, updateProps || {});
-        
-    if (oldDoc) {
+    let newDoc = updateProps === null
+      ? null
+      : oldDoc && Object.assign({}, oldDoc, updateProps || {});
+
+    if (oldDoc && newDoc) {
       [ , newDoc ] = mockdbTableSetDocument(queryTable, newDoc, primaryKey);
     }
 
     return [ newDoc, oldDoc ];
   };
 
-  const changesDocs = (
-    Array.isArray(queryTarget)
-      ? queryTarget
-      : [ queryTarget ]
-  ).reduce((changes, targetDoc) => {
+  const targetList = Array.isArray(queryTarget)
+    ? queryTarget
+    : [ queryTarget ];
+
+  const changesDocs = targetList.reduce((changes, targetDoc) => {
     const [ newDoc, oldDoc ] = updateTarget(targetDoc);
 
     if (newDoc) {
@@ -752,8 +756,8 @@ reql.update = (queryState, args, reqlChain, dbState) => {
   dbState = mockdbStateTableCursorsPushChanges(
     dbState, dbName, queryState.tablename, changesDocs);
 
-  queryState.target = mockdbResChangesFieldCreate({
-    replaced: changesDocs.length,
+  queryState.target = mockdbResChangesCreate(changesDocs, {
+    unchanged: targetList.length - changesDocs.length,
     changes: options.returnChanges === true ? changesDocs : undefined
   });
 
@@ -822,23 +826,76 @@ reql.getAll = (queryState, args, reqlChain, dbState) => {
   return queryState;
 };
 
+// The replace command can be used to both insert and delete documents.
+// If the “replaced” document has a primary key that doesn’t exist in the
+// table, the document will be inserted; if an existing document is replaced
+// with null, the document will be deleted. Since update and replace
+// operations are performed atomically, this allows atomic inserts and
+// deletes as well.
 reql.replace = (queryState, args, reqlChain, dbState) => {
-  let replaced = 0;
+  const queryTarget = queryState.target;
+  const queryTable = queryState.tablelist;
   const replacement = spend(args[0], reqlChain);
   const dbName = mockdbReqlQueryOrStateDbName(queryState, dbState);
-  const targetIndexName = mockdbStateTableGetPrimaryKey(dbState, dbName, queryState.tablename);
+  const primaryKey = mockdbStateTableGetPrimaryKey(dbState, dbName, queryState.tablename);
+  const config = queryArgsOptions(args.slice(1));
 
-  const targetIndex = queryState.tablelist
-    .findIndex(doc => doc[targetIndexName] === replacement[targetIndexName]);
+  const isValidConfigKeyRe = /^(returnChanges|durability|nonAtomic|ignoreWriteHook)$/;
+  const invalidConfigKey = Object.keys(config)
+    .find(k => !isValidConfigKeyRe.test(k));
+  if (invalidConfigKey) {
+    queryState.error = mockdbResErrorUnrecognizedOption(
+      invalidConfigKey, config[invalidConfigKey]);
+    queryState.target = null;
 
-
-  if (targetIndex > -1) {
-    replaced += 1;
-    queryState.tablelist[targetIndex] = replacement;
+    return queryState;
   }
 
-  queryState.target = mockdbResChangesFieldCreate({
-    replaced
+  if (!args.length) {
+    queryState.error = mockdbResErrorArgumentsNumber(
+      'replace', 1, args.length, true);
+    queryState.target = null;
+
+    return queryState;
+  }
+
+  const updateTarget = targetDoc => {
+    const oldDoc = targetDoc &&
+      mockdbTableGetDocument(queryTable, targetDoc[primaryKey], primaryKey);
+    let newDoc = replacement === null
+      ? null
+      : Object.assign({}, oldDoc, replacement || {});
+
+    if (newDoc)
+      [ , newDoc ] = mockdbTableSetDocument(queryTable, newDoc, primaryKey);
+
+    if (oldDoc && newDoc === null)
+      mockdbTableRmDocument(queryTable, oldDoc, primaryKey);
+
+    return [ newDoc, oldDoc ];
+  };
+
+  const changesDocs = (
+    Array.isArray(queryTarget)
+      ? queryTarget
+      : [ queryTarget ]
+  ).reduce((changes, targetDoc) => {
+    const [ newDoc, oldDoc ] = updateTarget(targetDoc);
+
+    changes.push({
+      new_val: newDoc,
+      old_val: oldDoc
+    });
+
+    return changes;
+  }, []);
+
+  dbState = mockdbStateTableCursorsPushChanges(
+    dbState, dbName, queryState.tablename, changesDocs);
+
+  queryState.target = mockdbResChangesCreate(changesDocs, {
+    changes: config.returnChanges === true
+      ? changesDocs : undefined
   });
 
   return queryState;

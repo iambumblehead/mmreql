@@ -107,10 +107,11 @@ export {
   mockdbTableGetDocuments,
   mockdbTableSetDocument,
   mockdbTableSetDocuments,
+  mockdbTableRmDocument,
+  mockdbTableRmDocumentsAll,
   mockdbTableDocGetIndexValue,
   mockdbTableDocEnsurePrimaryKey,
   mockdbTableDocIsPrimaryKey,
-  mockdbTableRmDocumentsAll,
   mockdbTableDocHasIndexValueFn,
   mockdbTableSet
 };
