@@ -723,7 +723,7 @@ test('.get(), throws error if called argument of wrong type', async t => {
     } ]
   ]);
 
-  await t.throws(() => (
+  await t.throwsAsync(async () => (
     r.table('UserSocial').get(undefined).run()
   ), {
     message: 'Primary keys must be either a number, string, bool, pseudotype or array (got type UNDEFINED)'
@@ -779,6 +779,96 @@ test('supports .replace()', async t => {
   });
 });
 
+test('supports .replace() with subquery', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'UserSocial', {
+      id: 1,
+      numeric_id: 5848,
+      name_screenname: 'screenname'
+    } ]
+  ]);
+
+  const replaceRes = await r.table('UserSocial').get(1)
+    .replace(doc => doc.without('name_screenname')).run();
+
+  t.deepEqual(replaceRes, {
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 1,
+    skipped: 0,
+    unchanged: 0
+  });
+
+  const updatedDoc = await r.table('UserSocial').get(1).run();
+
+  t.deepEqual(updatedDoc, {
+    id: 1,
+    numeric_id: 5848
+  });  
+});
+
+test('supports .replace() with subquery, list', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'UserSocial', {
+      id: 1,
+      numeric_id: 5848,
+      name_screenname: 'screenname'
+    } ]
+  ]);
+
+  const replaceRes = await r.table('UserSocial')
+    .replace(doc => doc.without('name_screenname')).run();
+
+  t.deepEqual(replaceRes, {
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 1,
+    skipped: 0,
+    unchanged: 0
+  });
+
+  t.deepEqual(await r.table('UserSocial').get(1).run(), {
+    id: 1,
+    numeric_id: 5848
+  });
+});
+/*
+test('supports .replace() with subquery, r.branch and list', async t => {
+  const { r } = rethinkdbMocked([
+    [ 'UserSocial', {
+      id: 1,
+      numeric_id: 5848,
+    } ]
+  ]);
+
+  const doc = r.expr({
+    id: 1,
+    numeric_id: 8585
+  });
+
+  // hasFields.not chain mutatates state at the merge chain :/
+  await r.branch(doc.hasFields('name_screenname').not(),
+    doc.merge({ name_screenname: 'restored' }),
+    null
+  ).run();
+
+  await r.table('UserSocial')
+    .replace(doc => r.branch(doc.hasFields('name_screenname').not(),
+      doc.merge({ name_screenname: 'restored' }),
+      null)
+    ).run();
+
+  t.deepEqual(await r.table('UserSocial').get(1).run(), {
+    id: 1,
+    numeric_id: 5848,
+    name_screenname: 'restored'
+  });
+
+  t.is(true, true);
+});
+*/
 test('supports .count()', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
@@ -3190,3 +3280,4 @@ test('supports complex filtering', async t => {
 
   t.deepEqual(userFriendIds.sort(), [ friendAId, friendBId ].sort());
 });
+

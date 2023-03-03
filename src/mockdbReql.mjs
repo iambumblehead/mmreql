@@ -87,6 +87,8 @@ const compare = (a, b, prop) => {
 const isReqlArgs = value => (
   isReqlObj(value) && value.queryName === 'args');
 
+const asList = value => Array.isArray(value) ? value : [ value ];
+
 export const spend = (value, reqlChain, doc, type = typeof value, f = null) => {
   if (value === f) {
     f = value;
@@ -736,10 +738,7 @@ reql.update = (queryState, args, reqlChain, dbState) => {
     return [ newDoc, oldDoc ];
   };
 
-  const targetList = Array.isArray(queryTarget)
-    ? queryTarget
-    : [ queryTarget ];
-
+  const targetList = asList(queryTarget);
   const changesDocs = targetList.reduce((changes, targetDoc) => {
     const [ newDoc, oldDoc ] = updateTarget(targetDoc);
 
@@ -835,7 +834,6 @@ reql.getAll = (queryState, args, reqlChain, dbState) => {
 reql.replace = (queryState, args, reqlChain, dbState) => {
   const queryTarget = queryState.target;
   const queryTable = queryState.tablelist;
-  const replacement = spend(args[0], reqlChain);
   const dbName = mockdbReqlQueryOrStateDbName(queryState, dbState);
   const primaryKey = mockdbStateTableGetPrimaryKey(dbState, dbName, queryState.tablename);
   const config = queryArgsOptions(args.slice(1));
@@ -860,12 +858,13 @@ reql.replace = (queryState, args, reqlChain, dbState) => {
   }
 
   const updateTarget = targetDoc => {
+    const replacement = spend(args[0], reqlChain, targetDoc);
     const oldDoc = targetDoc &&
       mockdbTableGetDocument(queryTable, targetDoc[primaryKey], primaryKey);
+
     let newDoc = replacement === null
       ? null
-      : Object.assign({}, oldDoc, replacement || {});
-
+      : replacement;
     if (newDoc)
       [ , newDoc ] = mockdbTableSetDocument(queryTable, newDoc, primaryKey);
 
@@ -875,11 +874,8 @@ reql.replace = (queryState, args, reqlChain, dbState) => {
     return [ newDoc, oldDoc ];
   };
 
-  const changesDocs = (
-    Array.isArray(queryTarget)
-      ? queryTarget
-      : [ queryTarget ]
-  ).reduce((changes, targetDoc) => {
+  const targetList = asList(queryTarget);
+  const changesDocs = targetList.reduce((changes, targetDoc) => {
     const [ newDoc, oldDoc ] = updateTarget(targetDoc);
 
     changes.push({
@@ -1041,7 +1037,8 @@ reql.delete = (queryState, args, reqlChain, dbState) => {
   const primaryKey = mockdbStateTableGetPrimaryKey(dbState, dbName, queryState.tablename);
   const tableIndexTuple = mockdbStateTableGetIndexTuple(
     dbState, dbName, queryState.tablename, primaryKey);
-  const targetIds = (Array.isArray(queryTarget) ? queryTarget : [ queryTarget ])
+  const targetList = asList(queryTarget);
+  const targetIds = targetList
     .map(doc => mockdbTableDocGetIndexValue(doc, tableIndexTuple, spend));
     // eslint-disable-next-line security/detect-non-literal-regexp
   const targetIdRe = new RegExp(`^(${targetIds.join('|')})$`);
@@ -1061,11 +1058,7 @@ reql.delete = (queryState, args, reqlChain, dbState) => {
     return queryState;
   }
 
-  const changesDocs = (
-    Array.isArray(queryTarget)
-      ? queryTarget
-      : [ queryTarget ]
-  ).reduce((changes, targetDoc) => {
+  const changesDocs = targetList.reduce((changes, targetDoc) => {
     if (targetDoc) {
       changes.push({
         new_val: null,
@@ -1194,11 +1187,10 @@ reql.pluck = (queryState, args, reqlChain) => {
 
 reql.hasFields = (queryState, args) => {
   const queryTarget = queryState.target;
+  const itemHasFields = item => Boolean(item && args
+    .every(name => Object.prototype.hasOwnProperty.call(item, name)));
 
-  queryState.target = queryTarget.filter(item => {
-    if (!item) return false;
-    return args.every(name => Object.prototype.hasOwnProperty.call(item, name));
-  });
+  queryState.target = asList(queryTarget).filter(itemHasFields);
 
   return queryState;
 };
@@ -1793,11 +1785,10 @@ reql.without = (queryState, args, reqlChain) => {
   args = spend(args, reqlChain);
 
   if (queryState.eqJoinBranch) {
-    const toArr = val => Array.isArray(val) ? val : [ val ];
     const isleft = 'left' in args[0];
     const isright = 'right' in args[0];
-    const leftArgs = isleft && toArr(args[0].left);
-    const rightArgs = isright && toArr(args[0].right);
+    const leftArgs = isleft && asList(args[0].left);
+    const rightArgs = isright && asList(args[0].right);
 
     if (isleft || isright) {
       queryState.target = queryTarget.map(qt => {
@@ -1883,7 +1874,7 @@ reql.branch = (queryState, args, reqlChain) => {
     result !== false && result !== null);
 
   const nextCondition = (condition, branches) => {
-    const conditionResult = spend(condition, reqlChain, queryState.target);
+    const conditionResult = spend(condition, reqlChain, queryTarget);
 
     if (branches.length === 0)
       return conditionResult;
@@ -2055,7 +2046,7 @@ reql.changes = (queryState, args, reqlChain, dbState) => {
   const initialDocs = [];
 
   if (!queryState.isChanges || queryState.includeInitial) {
-    (Array.isArray(queryTarget) ? queryTarget : [ queryTarget ]).map(item => {
+    asList(queryTarget).map(item => {
       if (cursorTargetType === 'doc' || item || /string|number|boolean/.test(typeof item)) {
         if (queryOptions.includeInitial) {
           initialDocs.push({
@@ -2244,7 +2235,7 @@ reql.getCursor = (queryState, args, reqlChain, dbState) => {
   const initialDocs = [];
 
   if (!queryState.isChanges || queryState.includeInitial) {
-    (Array.isArray(queryTarget) ? queryTarget : [ queryTarget ]).map(item => {
+    asList(queryTarget).map(item => {
       if (cursorTargetType === 'doc' || item || /string|number|boolean/.test(typeof item)) {
         initialDocs.push({
           new_val: item

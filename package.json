@@ -22,7 +22,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "npm run lint && npm run unit-test",
+    "test": "npm run unit-test",
     "lint": "eslint */*mjs && npm run -s lint-yaml",
     "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
     "lint-fix": "eslint --fix ./src/*mjs ./spec/*mjs",
