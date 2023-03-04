@@ -355,6 +355,8 @@ reql.getPoolMaster = (queryState, args, reqlChain, dbState) => {
   };
 };
 
+reql.getPool = reql.getPoolMaster;
+
 // used for selecting/specifying db, not supported yet
 reql.db = (queryState, args) => {
   const [ dbName ] = args;
@@ -1190,7 +1192,9 @@ reql.hasFields = (queryState, args) => {
   const itemHasFields = item => Boolean(item && args
     .every(name => Object.prototype.hasOwnProperty.call(item, name)));
 
-  queryState.target = asList(queryTarget).filter(itemHasFields);
+  queryState.target = Array.isArray(queryTarget)
+    ? queryTarget.filter(itemHasFields)
+    : itemHasFields(queryTarget);
 
   return queryState;
 };
@@ -2010,6 +2014,8 @@ reql.run = queryState => {
 
   return queryState.target;
 };
+
+reql.drain = reql.run;
 
 reql.serialize = queryState => JSON.stringify(queryState.chain);
 

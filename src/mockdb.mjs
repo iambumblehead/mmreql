@@ -1,3 +1,4 @@
+import castas from 'castas';
 import queryReql from './mockdbReql.mjs';
 import mockdbChain from './mockdbChain.mjs';
 
@@ -39,7 +40,8 @@ const queryChainResolve = (chain, dbState, startState) => {
   return chainNext(chain);
 };
 
-const buildChain = (dbState = {}) => {
+const buildChain = (dbState = {}, opts) => {
+  dbState.clearQueryLevelNum = castas.num(opts && opts.clearQueryLevelNum, 1);
   const r = mockdbChain(dbState, queryChainResolve);
 
   // make, for example, r.add callable through r.row.add
@@ -76,5 +78,9 @@ const buildDb = (tables, config) => {
   }, dbConfig);
 };
 
-export default configList => buildChain(
-  buildDb(configList || []));
+// opts can be optionally passed. ex,
+//
+//   rethinkdbMocked({ clearQueryLevelNum: 0 }, [ ...db ])
+//
+export default (opts, configList) => buildChain(
+  buildDb(Array.isArray(opts) ? opts : configList || []), opts);

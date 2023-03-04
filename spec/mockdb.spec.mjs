@@ -86,7 +86,9 @@ test('branch(), simple', async t => {
 });
 
 test('branch(), complex', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({
+    clearQueryLevelNum: 1
+  }, [
     [ 'marvel',
       { name: 'Iron Man', victories: 214 },
       { name: 'Jubilee', victories: 49 },
@@ -103,6 +105,8 @@ test('branch(), complex', async t => {
       r.row('name').add(' is very nice')
     )
   ).run();
+
+  await r.getPool().drain();
 
   t.deepEqual(res, [
     'Iron Man is a superhero',
@@ -177,6 +181,7 @@ test('supports row.add()', async t => {
 
   const res = await r.expr([ 1, 2, 3 ]).map(r.row.add(1)).run();
 
+  await r.getPool().drain();
   t.deepEqual(res, [ 2, 3, 4 ]);
 });
 
@@ -522,7 +527,7 @@ test('provides secondary index methods and lookups, numeric', async t => {
 });
 
 test('provides compound index methods and lookups', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'UserSocial', {
       id: 'userSocialId-1234',
       numeric_id: 5848,
@@ -548,6 +553,8 @@ test('provides compound index methods and lookups', async t => {
     .table('UserSocial')
     .getAll([ 'screenname', 5848 ], { index: 'screenname_numeric_cid' })
     .run();
+
+  await r.getPool().drain();
 
   t.is(userSocialDocs.length, 1);
 });
@@ -834,41 +841,49 @@ test('supports .replace() with subquery, list', async t => {
     numeric_id: 5848
   });
 });
-/*
+
+test('supports reusing-of base query chains to construct different chains', async t => {
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 0 });
+
+  const doc = r.expr({ id: 1, numeric_id: 8585 });
+  const query1 = await doc.hasFields('name_screenname').not().run();
+  const query2 = await doc.merge({ name_screenname: 'restored' }).run();
+
+  t.is(query1, true);
+  t.deepEqual(query2, { id: 1, numeric_id: 8585, name_screenname: 'restored' });
+
+  t.is(doc('id').run(), 1);
+  t.is(doc('numeric_id').run(), 8585);
+  t.is(doc('numeric_id').add(doc('id')).run(), 8586);
+
+  await r.getPool().drain();
+});
+
 test('supports .replace() with subquery, r.branch and list', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 0 }, [
     [ 'UserSocial', {
       id: 1,
       numeric_id: 5848,
     } ]
   ]);
 
-  const doc = r.expr({
-    id: 1,
-    numeric_id: 8585
-  });
-
-  // hasFields.not chain mutatates state at the merge chain :/
-  await r.branch(doc.hasFields('name_screenname').not(),
-    doc.merge({ name_screenname: 'restored' }),
-    null
-  ).run();
-
-  await r.table('UserSocial')
+  const res = await r.table('UserSocial')
     .replace(doc => r.branch(doc.hasFields('name_screenname').not(),
       doc.merge({ name_screenname: 'restored' }),
       null)
     ).run();
 
+  t.is(res.replaced, 1);
+
+  await r.getPool().drain();
+  
   t.deepEqual(await r.table('UserSocial').get(1).run(), {
     id: 1,
     numeric_id: 5848,
     name_screenname: 'restored'
   });
-
-  t.is(true, true);
 });
-*/
+
 test('supports .count()', async t => {
   const { r } = rethinkdbMocked([
     [ 'UserSocial', {
@@ -1257,7 +1272,7 @@ test('supports simple group() ungroup() official example', async t => {
 });
 
 test('supports .ungroup() complex query', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
       { id: 5, player: 'Alice', points: 7, type: 'free' },
@@ -1271,6 +1286,8 @@ test('supports .ungroup() complex query', async t => {
     .ungroup().orderBy(r.desc('reduction'))
     .run();
 
+  await r.getPool().drain();
+
   t.deepEqual(res, [ {
     group: 'Bob',
     reduction: 15
@@ -1281,7 +1298,7 @@ test('supports .ungroup() complex query', async t => {
 });
 
 test('supports .eqJoin()', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'players',
       { id: 1, player: 'George', gameId: 1 },
       { id: 2, player: 'Agatha', gameId: 3 },
@@ -1299,6 +1316,8 @@ test('supports .eqJoin()', async t => {
     .table('players')
     .eqJoin('gameId', r.table('games'))
     .run();
+
+  await r.getPool().drain();
 
   t.deepEqual(res, [ {
     left: { id: 1, player: 'George', gameId: 1 },
@@ -1786,7 +1805,7 @@ test('supports .update()', async t => {
 test('supports .during()', async t => {
   const now = Date.now();
   const expiredDate = new Date(now - (1000 * 60 * 60 * 24));
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'RoomCodes', {
       id: 'expired',
       time_expire: expiredDate
@@ -1805,6 +1824,8 @@ test('supports .during()', async t => {
       ))
     .run();
 
+  await r.getPool().drain();
+  
   t.deepEqual(expiredDocs, [ {
     id: 'expired',
     time_expire: expiredDate
@@ -3023,7 +3044,7 @@ test('dbCreate should use r expressions', async t => {
 });
 
 test('handles subquery for single eqJoin query', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'players',
       { id: 1, player: 'George', game: { id: 1 } },
       { id: 2, player: 'Agatha', game: { id: 3 } },
@@ -3044,6 +3065,8 @@ test('handles subquery for single eqJoin query', async t => {
     .zip()
     .run();
 
+  await r.getPool().drain();
+
   t.deepEqual(result, [
     { field: 'Little Delving', game: { id: 1 }, id: 1, player: 'George' },
     { field: 'Bucklebury', game: { id: 3 }, id: 2, player: 'Agatha' },
@@ -3055,7 +3078,7 @@ test('handles subquery for single eqJoin query', async t => {
 });
 
 test('handles list variation of .without query on eqJoin left and right', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'players',
       { id: 1, player: 'George', favorites: [ 3, 2 ], gameId: 1 },
       { id: 2, player: 'Agatha', favorites: [ 1, 2 ], gameId: 3 },
@@ -3076,6 +3099,8 @@ test('handles list variation of .without query on eqJoin left and right', async 
     .zip()
     .run();
 
+  await r.getPool().drain();
+
   t.deepEqual(result, [
     { player: 'George', id: 3, field: 'Bucklebury' },
     { player: 'Agatha', id: 1, field: 'Little Delving' },
@@ -3087,7 +3112,7 @@ test('handles list variation of .without query on eqJoin left and right', async 
 });
 
 test('eqJoin can use nested sub query as first param', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'Users',
       { id: 'userId-1234', name: 'fred' },
       { id: 'userId-5678', name: 'jane' }
@@ -3116,6 +3141,8 @@ test('eqJoin can use nested sub query as first param', async t => {
       room: row('left').getField('right')
     })).run();
 
+  await r.getPool().drain();
+
   t.deepEqual(result, [ {
     user_id: 'userId-1234',
     room_membership_type: 'INVITE',
@@ -3127,7 +3154,7 @@ test('eqJoin can use nested sub query as first param', async t => {
 });
 
 test('.eqJoin()( "right" ) can be used to return eqJoin destination table', async t => {
-  const { r } = rethinkdbMocked([
+  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
     [ 'Users',
       { id: 'userId-1234', name: 'fred' },
       { id: 'userId-5678', name: 'jane' }
@@ -3148,6 +3175,8 @@ test('.eqJoin()( "right" ) can be used to return eqJoin destination table', asyn
     .getAll('userId-1234', { index: 'user_id' })
     .eqJoin('room_id', r.table('Rooms'))('right')
     .run();
+
+  await r.getPool().drain();
 
   t.deepEqual(roomsJoined, [
     { room_id: 'roomId-1234', name: 'the room' }
