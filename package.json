@@ -23,8 +23,7 @@
   ],
   "scripts": {
     "test": "npm run unit-test",
-    "lint": "eslint */*mjs && npm run -s lint-yaml",
-    "lint-yaml": "command -v yamllint &> /dev/null && yamllint . || echo 'If you want YAML to be linted, install yamllint on your machine.'",
+    "lint": "eslint */*mjs",
     "lint-fix": "eslint --fix ./src/*mjs ./spec/*mjs",
     "unit-test-coverage": "c8 --all ava",
     "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env",
@@ -32,8 +31,7 @@
     "test-cover": "c8 --all ava --check-coverage=true"
   },
   "dependencies": {
-    "castas": "1.2.0",
-    "uuid": "^9.0.0"
+    "castas": "1.2.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.21.0",
@@ -50,7 +48,6 @@
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-security": "^1.7.1",
-    "js-yaml": "^4.1.0",
     "milliseconds": "^1.0.3",
     "timezone-mock": "^1.3.6"
   },
@@ -59,10 +56,6 @@
       "release": true
     }
   },
-  "eslintIgnore": [
-    "build",
-    "coverage"
-  ],
   "babel": {
     "plugins": [],
     "presets": [

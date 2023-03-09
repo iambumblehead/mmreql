@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 const mockdbTableDocIsPrimaryKey = (doc, primaryKey) => Boolean(
   doc && /number|string/.test(typeof doc[primaryKey]));
@@ -28,7 +28,7 @@ const mockdbTableRmDocument = (table, doc, primaryKey = 'id') => {
 
 const mockdbTableDocEnsurePrimaryKey = (doc, primaryKey) => {
   if (!mockdbTableDocIsPrimaryKey(doc, primaryKey))
-    doc[primaryKey] = uuidv4();
+    doc[primaryKey] = randomUUID();
 
   return doc;
 };

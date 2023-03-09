@@ -1,6 +1,6 @@
 import test from 'ava';
 import rethinkdbMocked from '../src/mockdb.mjs';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 test('`close` should work on feed', async t => {
   const { r } = rethinkdbMocked([
@@ -147,7 +147,7 @@ test('`on` should work on cursor - a `end` event shoul be eventually emitted on 
 });
 
 test('`next` should work on an atom feed', async t => {
-  const idValue = uuidv4();
+  const idValue = randomUUID();
 
   const { r } = rethinkdbMocked([
     [ 'LatestNews', {

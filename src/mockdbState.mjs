@@ -1,5 +1,5 @@
 import castas from 'castas';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 const mockdbStateTableCreateIndexTuple = (name, fields = [], config = {}) => (
   [ name, fields, config ]);
@@ -20,7 +20,7 @@ const mockdbStateDbCreate = (state, dbName) => {
   state.dbSelected = dbName;
   state[mockdbStateDbConfigKeyGet(dbName)] = {
     name: dbName,
-    id: uuidv4()
+    id: randomUUID()
   };
 
   state[mockdbStateDbCursorsKeyGet(dbName)] = {};
@@ -101,7 +101,7 @@ const mockdbStateTableConfigRm = (dbState, dbName, tableName) => {
 const mockdbStateTableCreate = (dbState, dbName, tableName, config) => {
   dbState = mockdbStateTableConfigSet(dbState, dbName, tableName, {
     db: dbState.dbSelected,
-    id: uuidv4(),
+    id: randomUUID(),
     durability: 'hard',
     indexes: [],
     name: tableName,
