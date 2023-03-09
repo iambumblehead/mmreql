@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
 import mockdbStream from './mockdbStream.mjs';
 
@@ -1706,7 +1706,7 @@ reql.minutes = queryState => {
 };
 
 reql.uuid = queryState => {
-  queryState.target = uuidv4();
+  queryState.target = randomUUID();
 
   return queryState;
 };
