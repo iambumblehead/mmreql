@@ -865,7 +865,7 @@ test('supports .replace() with subquery, r.branch and list', async t => {
   const { r } = rethinkdbMocked({ clearQueryLevelNum: 0 }, [
     [ 'UserSocial', {
       id: 1,
-      numeric_id: 5848,
+      numeric_id: 5848
     } ]
   ]);
 
