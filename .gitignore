@@ -69,3 +69,4 @@ package-lockedversion.json
 *dist.js
 
 .DS_Store
+package-lock.json

@@ -22,9 +22,9 @@
   ],
   "scripts": {
     "test": "ava",
+    "test-cover": "c8 --all --check-coverage=true npm run test",
     "lint": "eslint --ext=.js,.mjs .",
     "lint-fix": "eslint --ext=.js,.mjs --fix .",
-    "test-cover": "c8 --all --check-coverage=true npm run test",
     "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env"
   },
   "dependencies": {
