@@ -1,4 +1,8 @@
 import { randomUUID } from 'crypto';
+import {
+  mockdbSpecIs,
+  mockdbSpecIsSuspendNestedShallow
+} from './mockdbSpec.mjs';
 
 const mockdbTableDocIsPrimaryKey = (doc, primaryKey) => Boolean(
   doc && /number|string/.test(typeof doc[primaryKey]));
@@ -67,14 +71,13 @@ const mockdbTableSet = (table, docs) => {
   return [ table ];
 };
 
-const mockdbTableDocGetIndexValue = (doc, indexTuple, spend, indexValueDefault, reqlChain) => {
-  const [ indexName, fields ] = indexTuple;
+const mockdbTableDocGetIndexValue = (doc, indexTuple, spend, qst, dbState, indexValueDefault) => {
+  const [ indexName, spec ] = indexTuple;
 
-  if (typeof fields === 'function' || (fields && fields.isReql)) {
-    indexValueDefault = spend(fields, reqlChain, doc);
-  } else if (Array.isArray(fields) && fields.length > 0) {
-    indexValueDefault = fields
-      .map(field => spend(field, reqlChain, doc));
+  if (mockdbSpecIs(spec)) {
+    indexValueDefault = spend(dbState, qst, spec, [ doc ]);
+  } else if (Array.isArray(spec) && mockdbSpecIsSuspendNestedShallow(spec)) {
+    indexValueDefault = spec.map(field => spend(dbState, qst, field, [ doc ]));
   } else {
     indexValueDefault = doc[indexName];
   }
@@ -82,15 +85,15 @@ const mockdbTableDocGetIndexValue = (doc, indexTuple, spend, indexValueDefault, 
   return indexValueDefault;
 };
 
-const mockdbTableDocHasIndexValueFn = (tableIndexTuple, indexValues) => {
+const mockdbTableDocHasIndexValueFn = (tableIndexTuple, indexValues, dbState) => {
   const targetIndexMulti = Boolean(tableIndexTuple[2].multi);
   // eslint-disable-next-line security/detect-non-literal-regexp
   const targetValueRe = targetIndexMulti || new RegExp(`^(${indexValues.join('|')})$`);
   const targetValueIs = valueResolved => targetValueRe.test(valueResolved);
 
-  return (doc, spend, reqlChain) => {
+  return (doc, spend, qst) => {
     const indexValueResolved = mockdbTableDocGetIndexValue(
-      doc, tableIndexTuple, spend, null, reqlChain);
+      doc, tableIndexTuple, spend, qst, dbState);
 
     if (!targetIndexMulti)
       return targetValueIs(indexValueResolved);

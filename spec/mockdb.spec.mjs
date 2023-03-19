@@ -7,6 +7,10 @@ import {
   mockDbResErrorCannotUseNestedRow
 } from '../src/mockdbRes.mjs';
 
+import {
+  mockdbSpecIs
+} from '../src/mockdbSpec.mjs';
+
 timezonemock.register('US/Pacific');
 
 const isUUIDre = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
@@ -138,11 +142,12 @@ test('r.serialize() returns a call record', t => {
     } ]
   ]);
 
-  const recording = r.row('name').serialize();
+  const recording = r.table('marvel').get('1').serialize();
 
   t.is(recording, JSON.stringify([
-    { queryName: 'row', queryArgs: [ 'name' ] },
-    { queryName: 'serialize', queryArgs: [] }
+    { queryName: 'table', queryArgs: [ 'marvel' ] },
+    { queryName: 'get', queryArgs: [ '1' ] },
+    { queryName: 'serialize', queryArgs:[] }
   ]));
 });
 
@@ -410,14 +415,12 @@ test('indexCreate should add compound index to dbState', async t => {
     r.row('numeric_id')
   ]).run();
 
-  const isReqlObj = obj => Boolean(
-    obj && /object|function/.test(typeof obj) && obj.isReql);
   const dbStateIndexes = dbState.dbConfig_default_Rooms.indexes;
   const dbStateIndex = dbStateIndexes.find(i => i[0] === 'id_numeric_cid');
 
   t.is(dbStateIndex[0], 'id_numeric_cid');
-  t.true(isReqlObj(dbStateIndex[1][0]));
-  t.true(isReqlObj(dbStateIndex[1][1]));
+  t.true(mockdbSpecIs(dbStateIndex[1][0]));
+  t.true(mockdbSpecIs(dbStateIndex[1][1]));
 });
 
 test('indexCreate should add compound index to dbState, function generated', async t => {
@@ -443,7 +446,8 @@ test('indexCreate should add compound index to dbState, function generated', asy
   const dbStateIndex = dbStateIndexes.find(i => i[0] === 'name_numeric');
 
   t.is(dbStateIndex[0], 'name_numeric');
-  t.true(typeof dbStateIndex[1] === 'function');
+  t.true(mockdbSpecIs(dbStateIndex[1][0]));
+  t.true(mockdbSpecIs(dbStateIndex[1][1]));
 });
 
 test('indexCreate should return results from compound index, function generated', async t => {
@@ -466,7 +470,7 @@ test('indexCreate should return results from compound index, function generated'
     .run();
 
   await r.table('Users').indexWait().run();
-
+  // throw new Error('did');
   const users = await r
     .table('Users')
     .getAll([ 'userA', 1234 ], { index: 'name_numeric' })
@@ -797,8 +801,11 @@ test('supports .replace() with subquery', async t => {
     } ]
   ]);
 
-  const replaceRes = await r.table('UserSocial').get(1)
-    .replace(doc => doc.without('name_screenname')).run();
+  const replaceRes = await r
+    .table('UserSocial')
+    .get(1)
+    .replace(doc => doc.without('name_screenname'))
+    .run();
 
   t.deepEqual(replaceRes, {
     deleted: 0,
@@ -1286,17 +1293,18 @@ test('supports .ungroup() complex query', async t => {
     .table('games')
     .group('player').max('points')('points')
     .ungroup().orderBy(r.desc('reduction'))
+
     .run();
 
   await r.getPool().drain();
 
-  t.deepEqual(res, [ {
+  t.deepEqual(res.sort((a, b) => compare(a, b, 'reduction')), [ {
     group: 'Bob',
     reduction: 15
   }, {
     group: 'Alice',
     reduction: 7
-  } ]);
+  } ].sort((a, b) => compare(a, b, 'reduction')));
 });
 
 test('supports .eqJoin()', async t => {
@@ -1360,6 +1368,7 @@ test('supports .innerJoin', async t => {
       sfRow('strength').lt(pokeRow('strength'))
     )).run();
 
+  t.is(res.length, 3);
   t.deepEqual(res, [ {
     left: { id: 1, name: 'ryu', strength: 6 },
     right: { id: 2, name: 'charmander', strength: 8 }
@@ -1431,7 +1440,7 @@ test('supports .orderBy()', async t => {
   ]);
 });
 
-test('supports .orderBy property', async t => {
+test('supports .orderBy() property', async t => {
   const { r } = rethinkdbMocked([
     [ 'streetfighter',
       { id: 1, name: 'ryu', strength: 6 },
@@ -1709,7 +1718,7 @@ test('supports .nth(), non-trivial guery', async t => {
   ]).run();
   await r.table('UserSocial').indexWait('screenname_numeric_cid').run();
 
-  await t.throws(() => (
+  await t.throwsAsync(async () => (
     r.table('UserSocial')
       .getAll([ 'notfound', 7575 ], { index: 'screenname_numeric_cid' })
       .limit(1)
@@ -1750,6 +1759,7 @@ test('supports .default(), non-trivial guery', async t => {
     r.row('name_screenname'),
     r.row('numeric_id')
   ]).run();
+
   await r.table('UserSocial').indexWait('screenname_numeric_cid').run();
 
   const result = (
@@ -1777,9 +1787,9 @@ test('supports .epochTime()', async t => {
     birthdate: r.epochTime(531360000)
   }).run();
 
-  const janeDoc = await r.table('user').get('Jane').run();
+  const janeDoc = await r.table('user').get('Jane');
 
-  t.is(janeDoc.birthdate.getTime(), 531360000000);
+  t.is(janeDoc('birthdate').run().getTime(), 531360000000);
 });
 
 test('supports .update()', async t => {
@@ -1971,6 +1981,22 @@ test('supports .match()', async t => {
   } ]);
 });
 
+test('throws sub query error, even when parent query has default()', async t => {
+  // actual database replicates this test
+  const { r } = rethinkdbMocked();
+
+  await t.throwsAsync(async () => (r
+    .expr([ { number: 446 } ])
+    .filter(doc => doc('number').match('(?i)^john'))
+    .default('result-when-subquery')
+    .run()
+  ), {
+    message: mockdbResErrorExpectedTypeFOOButFoundBAR(
+      'STRING', 'NUMBER'
+    )
+  });
+});
+
 test('throws error when .match() used on NUMBER type', async t => {
   const { r } = rethinkdbMocked([
     [ 'users', {
@@ -1985,10 +2011,15 @@ test('throws error when .match() used on NUMBER type', async t => {
     } ]
   ]);
 
-  await t.throws(() => r
+  await t.throwsAsync(async () => (r
     .table('users')
     .filter(doc => doc('number').match('(?i)^john'))
-    .run(), { message: mockdbResErrorExpectedTypeFOOButFoundBAR('STRING', 'NUMBER') });
+    .run()
+  ), {
+    message: mockdbResErrorExpectedTypeFOOButFoundBAR(
+      'STRING', 'NUMBER'
+    )
+  });
 });
 
 test('supports .append()', async t => {
@@ -2184,8 +2215,7 @@ test('r.table().insert( doc, { conflict: "update" }) updates existing doc', asyn
       user_id: 0,
       state: 'HAPPY',
       status_msg: ''
-    }, { conflict: 'update' })
-    .run();
+    }, { conflict: 'update' }).run();
 
   t.deepEqual(await r.table('Presence').run(), [ {
     user_id: 0,
@@ -2563,7 +2593,11 @@ test('map()', async t => {
 
   const res = await r
     .table('users')
-    .map(doc => doc.merge({ userId: doc('id') }).without('id'))
+    .map(doc => doc
+      .merge({
+        userId: doc('id')
+      })
+      .without('id'))
     .run();
 
   t.deepEqual(res, [ {
@@ -2658,11 +2692,12 @@ test('nested r.row.and() throws error', async t => {
     } ]
   ]);
 
-  await t.throws(() => r
+  await t.throwsAsync(async () => (r
     .table('memberships')
     .filter(r.row('user_id').ne('xavier').and(
       r.row('membership').eq('invite')
-    )).run(), { message: mockDbResErrorCannotUseNestedRow() });
+    )).run()
+  ), { message: mockDbResErrorCannotUseNestedRow() });
 
   // use this instead
   const users = await r
@@ -2675,7 +2710,6 @@ test('nested r.row.and() throws error', async t => {
     user_id: 'wolverine',
     membership: 'join'
   } ]);
-
 });
 
 test('nested r.row.or() throws error', async t => {
@@ -2688,19 +2722,23 @@ test('nested r.row.or() throws error', async t => {
       membership: 'invite'
     } ]
   ]);
-    
-  await t.throws(() => r
-    .table('memberships')
-    .filter(r.row('user_id').eq('xavier').or(
-      r.row('membership').eq('join')
-    ).run()), { message: mockDbResErrorCannotUseNestedRow() });
+
+  await t.throwsAsync(async () => (
+    await r
+      .table('memberships')
+      .filter(r.row('user_id').eq('xavier').or(
+        r.row('membership').eq('join')
+      )).run())
+  ), {
+    message: mockDbResErrorCannotUseNestedRow()
+  }
 
   // use this instead
   const users = await r
     .table('memberships')
-    .filter(membership => membership('user_id').eq('xavier').or(
-      membership('membership').eq('join')
-    )).run();
+    .filter(membership => (
+      membership('user_id').eq('xavier').or(
+        membership('membership').eq('join')))).run();
 
   t.deepEqual(users, [ {
     user_id: 'wolverine',
@@ -2836,24 +2874,18 @@ test('supports nested contains row function', async t => {
     await r
       .expr([ 'cleat' ])
       .contains('cleat')
-      .run()
-  );
+      .run());
 
   t.true(
     await r
       .table('playershoes')
       .contains(row => row.getField('type').eq('cleat'))
-      .run()
-  );
+      .run());
 
   t.true(
-    await r
-      .table('playershoes')
-      .contains(joinRow => r
-        .expr([ 'cleat' ])
-        .contains(joinRow.getField('type')))
-      .run()
-  );
+    await r.table('playershoes').contains(joinRow => r
+      .expr([ 'cleat' ]).contains(joinRow.getField('type')))
+      .run());
 
   t.true(
     await r
@@ -2861,8 +2893,8 @@ test('supports nested contains row function', async t => {
       .contains(joinRow => r
         .expr([ 'cleat' ])
         .contains(joinRow('type')))
-      .run()
-  );
+        .run());
+
 });
 
 test('returns true if multiple contains values evaluate true', async t => {
@@ -2879,6 +2911,41 @@ test('returns true if multiple contains values evaluate true', async t => {
     .run();
 
   t.deepEqual(res, [ { id: 'thor', defeatedMonsters: [ 'charzar', 'fiery' ] } ]);
+});
+
+test('resolved nested row inside nested r.expr', async t => {
+  const datePast = new Date(Date.now() - 88888);
+  const { r } = rethinkdbMocked();
+
+  // this test query verified to return same result at livedb
+  const res = await r
+    .expr([
+      { id: 1, receiver_id: 'jimfix1133', requested_date: datePast },
+      { id: 2, receiver_id: 'janehill8888', requested_date: datePast }])
+    .merge(row => r.expr({ date: row('requested_date'), gl: 0 }))
+    .run();
+
+  t.deepEqual(res, [
+    { id: 1, receiver_id: 'jimfix1133', requested_date: datePast, date: datePast, gl: 0 },
+    { id: 2, receiver_id: 'janehill8888', requested_date: datePast, date: datePast, gl: 0 }
+  ]);
+});
+
+test('resolved nested row inside nested pojo', async t => {
+  const datePast = new Date(Date.now() - 88888);
+  const { r } = rethinkdbMocked();
+
+  const res = await r
+    .expr([
+      { id: 1, receiver_id: 'jimfix1133', requested_date: datePast },
+      { id: 2, receiver_id: 'janehill8888', requested_date: datePast }])
+    .merge(row => ({ date: row('requested_date'), gl: 0 }))
+    .run();
+
+  t.deepEqual(res, [
+    { id: 1, receiver_id: 'jimfix1133', requested_date: datePast, date: datePast, gl: 0 },
+    { id: 2, receiver_id: 'janehill8888', requested_date: datePast, date: datePast, gl: 0 }
+  ]);
 });
 
 test('returns a complex merge result', async t => {
@@ -2921,7 +2988,7 @@ test('returns a complex merge result', async t => {
 
   await r.table('SocialFriendRequests').indexCreate('receiver_id').run();
   await r.table('SocialRoomInvites').indexCreate('receiver_id').run();
-    
+
   const notifications = await r.expr([]).union(
     r.table('SocialFriendRequests')
       .getAll('janehill8888', { index: 'receiver_id' })
@@ -3069,6 +3136,7 @@ test('handles subquery for single eqJoin query', async t => {
 
   await r.getPool().drain();
 
+  t.is(result.length, 6);
   t.deepEqual(result, [
     { field: 'Little Delving', game: { id: 1 }, id: 1, player: 'George' },
     { field: 'Bucklebury', game: { id: 3 }, id: 2, player: 'Agatha' },
@@ -3216,6 +3284,53 @@ test('.filter( ... )( "val" ) attribute getField call is supported', async t => 
   await r.table('Memberships').indexCreate('user_sender_id').run();
   await r.table('Memberships').indexCreate('room_id').run();
 
+  const joinDetails = r.table(tableRoomMemberships)
+    .getAll(userId, { index: 'user_id' })
+    .filter(row => r.and(
+      row('room_membership_type').eq('JOIN')))
+    .merge(row => ({ friend_id: row('user_sender_id') }))
+    .run();
+
+  t.deepEqual(joinDetails[0], {
+    id: 'memberid-111',
+    user_id: 'userId-1234',
+    room_membership_type: 'JOIN',
+    user_sender_id: 'userId-1234',
+    room_id: 'roomId-1234',
+    friend_id: 'userId-1234'
+  });
+
+  const filter = await r.expr([{
+    id: 'memberid-111',
+    user_id: 'userId-1234',
+    room_membership_type: 'JOIN',
+    user_sender_id: 'userId-1234',
+    room_id: 'roomId-1234'
+  }, {
+    id: 'memberid-222-FRIEND',
+    user_id: 'userId-5677',
+    room_membership_type: 'JOIN',
+    user_sender_id: 'userId-1234',
+    room_id: 'roomId-1234'
+  }, {
+    id: 'memberid-111',
+    user_id: 'userId-1234',
+    room_membership_type: 'JOIN',
+    user_sender_id: 'userId-1234',
+    room_id: 'roomId-1234'
+  }]).filter(row => r.and(
+    row('room_membership_type').eq('JOIN'),
+    row('user_id').ne(userId)
+  )).run();
+
+  t.deepEqual(filter, [{
+    id: 'memberid-222-FRIEND',
+    user_id: 'userId-5677',
+    room_membership_type: 'JOIN',
+    user_sender_id: 'userId-1234',
+    room_id: 'roomId-1234'
+  }]);
+
   const userFriendIds = await r
     .union(
       r.table(tableRoomMemberships)
@@ -3311,4 +3426,3 @@ test('supports complex filtering', async t => {
 
   t.deepEqual(userFriendIds.sort(), [ friendAId, friendBId ].sort());
 });
-

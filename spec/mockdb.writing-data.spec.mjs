@@ -396,7 +396,7 @@ test('`insert` case', async t => {
 
 test('`insert` should throw if options param `undefined` is passed', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
-  await t.throws(() => (r
+  await t.throwsAsync(async () => (r
     .db('default')
     .table('Rooms')
     .insert({ val: 3 }, undefined)
@@ -409,7 +409,7 @@ test('`insert` should throw if options param `undefined` is passed', async t => 
 test('`insert` should throw if no argument is given', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
-  await t.throws(() => (r
+  await t.throwsAsync(async () => (r
     .db('default')
     .table('Rooms')
     .insert()
@@ -477,7 +477,7 @@ test('`insert` work with dates - 4', async t => {
 test('`insert` should throw if non valid option', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
-  await t.throws(() => (r
+  await t.throwsAsync(async () => (r
     .db('default')
     .table('Rooms')
     .insert({}, { nonValidKey: true })
@@ -489,6 +489,7 @@ test('`insert` should throw if non valid option', async t => {
 
 test('`insert` with a conflict method', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
+
   const result1 = await r
     .db('default')
     .table('Rooms')
@@ -775,3 +776,4 @@ test('`update` null should leave the target document unchanged', async t => {
 
   t.is(result.unchanged, 1);
 });
+

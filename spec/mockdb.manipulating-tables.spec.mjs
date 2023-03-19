@@ -106,10 +106,8 @@ test('`tableCreate` should create a table -- primaryKey', async t => {
 test('`tableCreate` should throw if table exists', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
-  await t.throws(() => (r
-    .db('default')
-    .tableCreate('Rooms')
-    .run()
+  await t.throwsAsync(async () => (
+    r.db('default').tableCreate('Rooms').run()
   ), {
     message: 'Table `default.Rooms` already exists.'
   });
@@ -118,10 +116,8 @@ test('`tableCreate` should throw if table exists', async t => {
 test('`tableCreate` should throw -- non valid args', async t => {
   const { r } = rethinkdbMocked();
 
-  await t.throws(() => (r
-    .db('default')
-    .tableCreate('thetablename', { nonValidArg: true })
-    .run()
+  await t.throwsAsync(async () => (
+    r.db('default').tableCreate('thetablename', { nonValidArg: true }).run()
   ), {
     message: 'Unrecognized optional argument `nonValidArg`.'
   });
@@ -130,10 +126,8 @@ test('`tableCreate` should throw -- non valid args', async t => {
 test('`tableCreate` should throw if no argument is given', async t => {
   const { r } = rethinkdbMocked();
 
-  await t.throws(() => (r
-    .db('default')
-    .tableCreate()
-    .run()
+  await t.throwsAsync(async () => (
+    r.db('default').tableCreate().run()
   ), {
     message: '`r.tableCreate` takes at least 1 argument, 0 provided.'
   });
@@ -142,10 +136,8 @@ test('`tableCreate` should throw if no argument is given', async t => {
 test('`tableCreate` should throw is the name contains special char', async t => {
   const { r } = rethinkdbMocked();
 
-  await t.throws(() => (r
-    .db('default')
-    .tableCreate('^_-')
-    .run()
+  await t.throwsAsync(async () => (
+    r.db('default').tableCreate('^_-').run()
   ), {
     message: 'RethinkDBError [ReqlLogicError]: Table name `^_-` invalid (Use A-Z, a-z, 0-9, _ and - only)'
   });
