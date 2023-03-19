@@ -1,5 +1,3 @@
-import castas from 'castas';
-import queryReql from './mockdbReql.mjs';
 import mockdbChain from './mockdbChain.mjs';
 
 import {
@@ -9,40 +7,8 @@ import {
   mockdbStateTableCreate
 } from './mockdbState.mjs';
 
-// obj not instances of mockdbReql fn...
-const objlookup = (nsstr, obj) => String(nsstr)
-  .split('.')
-  .reduce((a, b) => (b in a ? a[b] : null), obj);
-
-const queryChainResolve = (chain, dbState, startState) => {
-  let queryState = { target: startState, chain };
-
-  const chainNext = chainRest => {
-    if (chainRest.length) {
-      if (queryState.error
-                && (chainRest[0].queryName !== 'default' && chainRest.length > 1)) {
-        return chainNext(chainRest.slice(1));
-      }
-
-      queryState = objlookup(chainRest[0].queryName, queryReql)(
-        queryState,
-        chainRest[0].queryArgs,
-        () => mockdbChain(dbState, queryChainResolve, queryState.target),
-        dbState
-      );
-
-      return chainNext(chainRest.slice(1));
-    }
-
-    return queryState;
-  };
-
-  return chainNext(chain);
-};
-
-const buildChain = (dbState = {}, opts) => {
-  dbState.clearQueryLevelNum = castas.num(opts && opts.clearQueryLevelNum, 1);
-  const r = mockdbChain(dbState, queryChainResolve);
+const buildChain = (dbState = {}) => {
+  const r = mockdbChain(dbState);
 
   // make, for example, r.add callable through r.row.add
   Object.assign(r.row, r);
@@ -80,7 +46,7 @@ const buildDb = (tables, config) => {
 
 // opts can be optionally passed. ex,
 //
-//   rethinkdbMocked({ clearQueryLevelNum: 0 }, [ ...db ])
+//   rethinkdbMocked([ ...db ])
 //
 export default (opts, configList) => buildChain(
   buildDb(Array.isArray(opts) ? opts : configList || []), opts);

@@ -158,6 +158,9 @@ const mockdbStateTableIndexAdd = (dbState, dbName, tableName, indexName, fields,
 
   const tableConfig = mockdbStateTableConfigGet(dbState, dbName, tableName);
 
+  // console.log('spec is', fields);
+  // throw new Error('----');
+  
   tableConfig.indexes.push(
     mockdbStateTableCreateIndexTuple(indexName, fields, config));
 
@@ -212,8 +215,11 @@ const mockdbStateTableDocCursorSet = (dbState, dbName, tableName, doc, cursor) =
 
 const mockdbStateTableCursorsPushChanges = (dbState, dbName, tableName, changes, changeType) => {
   const tablePrimaryKey = mockdbStateTableGetPrimaryKey(dbState, dbName, tableName);
-  const cursorConfig = mockdbStateDbCursorConfigGet(dbState, dbName);
+  const cursorConfig = mockdbStateDbCursorConfigGet(dbState, dbName) || {};
+  // console.log('cursorConfig', cursorConfig);
   const cursors = cursorConfig[tableName] || [];
+  // console.log('warning cursor removed');
+  // const cursors = (cursorConfig && cursorConfig[tableName]) || [];
 
   cursors.forEach(c => {
     changes.forEach(d => {

@@ -243,7 +243,7 @@ test('`cursor.close` should still return a promise if the cursor was closed', as
   const result = cursor.close();
   try {
     // eslint-disable-next-line
-        result.then( () => undefined ); // Promise's contract is to have a `then` method
+    result.then( () => undefined ); // Promise's contract is to have a `then` method
   } catch (e) {
     t.fail('failed');
   }
@@ -348,7 +348,7 @@ test('`next` should error when hitting an error -- not on the first batch', asyn
       time_last_seen: new Date()
     } ]
   ]);
-    
+
   const connection = await r.connect({
     host: 'localhost',
     port: 8080,

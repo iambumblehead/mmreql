@@ -98,7 +98,7 @@
       "error",
       "always"
     ],
-    "prefer-destructuring": "error",
+    "prefer-destructuring": "off",
     "object-curly-newline": [
       "error",
       {
