@@ -1,15 +1,13 @@
-// import mockdbChain from './mockdbChain.mjs';
-
 const mockdbSpecARGSRESULT = 'reqlARGSRESULT';
 const mockdbSpecARGSSUSPEND = 'reqlARGSSUSPEND';
 const mockdbSpecARGSSUSPENDFN = 'reqlARGSSUSPENDFN';
 const mockdbSpecARGSISSUSPENDRe = /reqlARGSSUSPEND/;
 
 const isBoolNumUndefRe = /boolean|number|undefined/;
-const isCursorDefaultRe = /getCursor|default/;
+// const isCursorDefaultRe = /getCursor|default/;
 
-const mockdbRecIsCursorOrDefault = rec => (
-  isCursorDefaultRe.test(rec.queryName));
+//const mockdbRecIsCursorOrDefault = rec => (
+//  isCursorDefaultRe.test(rec.queryName));
 
 const mockdbSpecIsSuspendNestedShallow = obj => obj
   && typeof obj === 'object'
@@ -20,8 +18,6 @@ const mockdbSpecIsSuspendNestedShallow = obj => obj
 const mockdbSpecIs = obj => Boolean(
   obj && mockdbSpecARGSISSUSPENDRe.test(obj.type));
 
-// .row(row,'0','id').row(row,'1',' oldDoc').row(row,'2',' newDoc').merge(r)
-// .row("reqlARGSSUSPEND0",0,"id").row("reqlARGSSUSPEND1",1," oldDoc").row("reqlARGSSUSPEND2",2," newDoc").merge(r)
 const mockdbSpecSignatureArg = (recarg, type = typeof recarg) => {
   if (type === 'string') {
     recarg = /^reqlARGSSUSPEND/.test(recarg) ? 'row' : `"${recarg}"`;
@@ -151,7 +147,7 @@ const specFromRawArg = (arg, chainCreate, type = typeof arg) => {
 //  .map(arg => mockdbSpecFromRawArg(arg, rowchain));
 
 export {
-  mockdbRecIsCursorOrDefault,
+  // mockdbRecIsCursorOrDefault,
   mockdbSpecARGSRESULT,
   mockdbSpecARGSSUSPEND,
   mockdbSpecARGSSUSPENDFN,

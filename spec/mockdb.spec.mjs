@@ -1787,9 +1787,10 @@ test('supports .epochTime()', async t => {
     birthdate: r.epochTime(531360000)
   }).run();
 
-  const janeDoc = await r.table('user').get('Jane');
+  const janeDoc = r.table('user').get('Jane');
+  const janeBirthday = await janeDoc('birthdate').run();
 
-  t.is(janeDoc('birthdate').run().getTime(), 531360000000);
+  t.is(janeBirthday.getTime(), 531360000000);
 });
 
 test('supports .update()', async t => {
