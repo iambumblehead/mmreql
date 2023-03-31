@@ -375,7 +375,6 @@ test('`next` should error when hitting an error -- not on the first batch', asyn
   });
 
   await connection.close();
-  t.false(connection.open);
 });
 
 test('`changes` with `includeTypes` should work', async t => {

@@ -16,12 +16,41 @@ timezonemock.register('US/Pacific');
 const isUUIDre = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
 const uuidValidate = str => typeof str === 'string' && isUUIDre.test(str);
 
+
 // use when order not important and sorting helps verify a list
 const compare = (a, b, prop) => {
   if (a[prop] < b[prop]) return -1;
   if (a[prop] > b[prop]) return 1;
   return 0;
 };
+
+test('supports 0 and -0 in arithmetic queries', async t => {
+  const { r } = rethinkdbMocked();
+  const idealNum = 6;
+
+  const result = await r.expr([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ])
+    .map(left =>
+      (left.sub(idealNum)).mul(r.branch(left.gt(idealNum), 1, -1)))
+    .run();
+
+  t.deepEqual(result, [ 5, 4, 3, 2, 1, -0, 1, 2, 3, 4 ]);
+});
+
+test('supports nested list transformation', async t => {
+  const { r } = rethinkdbMocked();
+  const count = 'count';
+  const idealNum = 6;
+  const result = await r.expr([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ])
+    .map(val => ({ [count]: val }))
+    .map(left => [ left(count), (
+      (left(count).sub(idealNum)).mul(r.branch(left(count).gt(idealNum), 1, -1))) ])
+    .run();
+
+  t.deepEqual(result, [
+    [ 1, 5 ], [ 2, 4 ], [ 3, 3 ], [ 4, 2 ], [ 5, 1 ],
+    [ 6, -0 ], [ 7, 1 ], [ 8, 2 ], [ 9, 3 ], [ 10, 4 ]
+  ]);
+});
 
 test('supports add(), numbers', async t => {
   const { r } = rethinkdbMocked();
