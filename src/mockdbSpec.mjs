@@ -1,26 +1,29 @@
-const mockdbSpecARGSRESULT = 'reqlARGSRESULT';
-const mockdbSpecARGSSUSPEND = 'reqlARGSSUSPEND';
-const mockdbSpecARGSSUSPENDFN = 'reqlARGSSUSPENDFN';
-const mockdbSpecARGSISSUSPENDRe = /reqlARGSSUSPEND/;
+import mmConn from './mmConn.mjs';
+
+import {
+  mmEnumQueryArgTypeROW,
+  mmEnumQueryArgTypeROWIsRe,
+  mmEnumQueryArgTypeROWHasRe,
+  mmEnumRecTypeCHAINHasRe
+} from './mmEnum.mjs';
+
+import {
+  mmRecChainRowCreate,
+  mmRecChainRowFnCreate
+} from './mmRecChain.mjs';
 
 const isBoolNumUndefRe = /boolean|number|undefined/;
-// const isCursorDefaultRe = /getCursor|default/;
-
-//const mockdbRecIsCursorOrDefault = rec => (
-//  isCursorDefaultRe.test(rec.queryName));
 
 const mockdbSpecIsSuspendNestedShallow = obj => obj
   && typeof obj === 'object'
-  && mockdbSpecARGSISSUSPENDRe.test(Object.values(obj).join());
+  && mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join());
 
-// const isReqlObj = obj => Boolean(
-//   obj && /object|function/.test(typeof obj) && obj.isReql);
 const mockdbSpecIs = obj => Boolean(
-  obj && mockdbSpecARGSISSUSPENDRe.test(obj.type));
+  obj && mmEnumQueryArgTypeROWIsRe.test(obj.type));
 
 const mockdbSpecSignatureArg = (recarg, type = typeof recarg) => {
   if (type === 'string') {
-    recarg = /^reqlARGSSUSPEND/.test(recarg) ? 'row' : `"${recarg}"`;
+    recarg = mmEnumQueryArgTypeROWIsRe.test(recarg) ? 'row' : `"${recarg}"`;
   } else if (type === 'object') {
     recarg = '...';
   } else if (Array.isArray(recarg)) {
@@ -30,7 +33,7 @@ const mockdbSpecSignatureArg = (recarg, type = typeof recarg) => {
   return recarg;
 };
 
-const mockdbSpecSignatureArgs = rec => rec.queryArgs[0] === 'reqlARGSSUSPEND'
+const mockdbSpecSignatureArgs = rec => rec.queryArgs[0] === mmEnumQueryArgTypeROW
   ? rec.queryArgs[3]
   : rec.queryArgs.map(arg => mockdbSpecSignatureArg(arg)).join(', ');
 
@@ -42,27 +45,6 @@ const mockdbSpecSignature = reqlObj => (
     prev + (/\.fn/.test(rec.queryName)
       ? `(${mockdbSpecSignatureArgs(rec)})`
       : `.${rec.queryName}(${mockdbSpecSignatureArgs(rec)})`)), ''));
-
-
-// default record used to wrap raw data with no chain
-const mockdbSpecRecordDefault = [ {
-  queryName: 'expr',
-  queryArgs: [ mockdbSpecARGSSUSPEND + 0 ]
-} ];
-
-// 'spec' arrives here from nested sub query as a reqlCHAIN or pojo. ex,
-//  * `map(hero => hero('name'))`
-//  * `map(hero => ({ heroName: hero('name') }))`
-//
-// maybe these should be evaluated in advance... called with an empty chain
-const mockdbSpecFromChain = (type, chain, recId) => ({
-  type: type,
-  toString: () => type,
-  recs: chain.recs || mockdbSpecRecordDefault.slice(),
-  recIndex: chain.recIndex || 1,
-  recHist: chain.recHist || [ [] ],
-  recId: recId || ('orphan' + Date.now())
-});
 
 // ex, "table => r.db('cmdb').tableCreate(table)"
 //   [ "table =>", "table " ]
@@ -76,14 +58,11 @@ const mockdbSpecFromChain = (type, chain, recId) => ({
 const fnStrEs5Re = /^function/;
 const fnStrEs5ArgsRe = /^function \(([^)]*)/;
 const fnStrEs6ArgsRe = /\(?([^)]*)\)?\s*\=\>/;
-// /\(?([^)]*)\=\>/;
 const fnStrParseArgs = fnStr => String(fnStr)
   .match(fnStrEs5Re.test(fnStr)
     ? fnStrEs5ArgsRe
     : fnStrEs6ArgsRe
   )[1].trim().split(/,\s*/);
-
-// const mockdbSpecArgsIdRe = /^function \(([^)]*)|\(?(.*)\)?\=\>/
 
 // gennerates spec from chain. when chain includes row functions,
 // applys function to row-chain to extract row-spec from row-chain
@@ -95,25 +74,22 @@ const mockdbChainSuspendArgFn = (chainCreate, arg) => {
   const fnArgSig = `reqlARGSIG.${fnArgNames}`;
 
   let argchain = arg(
-    ...fnArgNames.map((argName, i) => {
-      const chain = chainCreate()
-        .row(mockdbSpecARGSSUSPEND, fnArgSig, i, argName.trim());
-
-      return chain;
-    })
+    ...fnArgNames.map((argName, i) => (
+      chainCreate()
+        .row(mmEnumQueryArgTypeROW, fnArgSig, i, argName.trim())
+    ))
   );
 
   // if raw data are returned, convert to chain
-  if (!/reqlCHAIN/.test(String(argchain))) {
+  if (!mmEnumRecTypeCHAINHasRe.test(String(argchain))) {
     // 'insert' is evaluated here...
     // need to store the arg names
     argchain = chainCreate().expr(argchain);
   }
 
   return Array.isArray(argchain)
-    ? argchain.map(argc => (
-      mockdbSpecFromChain(mockdbSpecARGSSUSPENDFN, argc, fnArgSig)))
-    : mockdbSpecFromChain(mockdbSpecARGSSUSPENDFN, argchain, fnArgSig);
+    ? argchain.map(argc => mmRecChainRowFnCreate(argc, fnArgSig))
+    : mmRecChainRowFnCreate(argchain, fnArgSig);
 };
 
 
@@ -123,10 +99,12 @@ const isChain = obj => Boolean(
 
 // deeply recurse data converting chain leaves to spec
 const specFromRawArg = (arg, chainCreate, type = typeof arg) => {
-  if (isBoolNumUndefRe.test(type) || arg instanceof Date || !arg) {
+  if (isBoolNumUndefRe.test(type)
+    || arg instanceof Date || arg instanceof mmConn || !arg) {
     arg = arg;
   } else if (isChain(arg)) {
-    arg = mockdbSpecFromChain(mockdbSpecARGSSUSPEND, arg);
+    // arg = mockdbSpecFromChain(mmEnumQueryArgTypeROW, arg);
+    arg = mmRecChainRowCreate(arg);
   } else if (typeof arg === 'function') {
     arg = mockdbChainSuspendArgFn(chainCreate, arg);
   } else if (Array.isArray(arg)) {
@@ -139,26 +117,12 @@ const specFromRawArg = (arg, chainCreate, type = typeof arg) => {
   return arg;
 };
 
-// needs to return not just arg but row details...
-// 
-
-// mockdbSpecFromRawArgs
-// const mockdbSpecFromRawArgs = (args, rowchain) => args
-//  .map(arg => mockdbSpecFromRawArg(arg, rowchain));
-
 export {
-  // mockdbRecIsCursorOrDefault,
-  mockdbSpecARGSRESULT,
-  mockdbSpecARGSSUSPEND,
-  mockdbSpecARGSSUSPENDFN,
-  mockdbSpecARGSISSUSPENDRe,
-
   mockdbSpecIsSuspendNestedShallow,
   mockdbSpecIs,
   
   mockdbSpecSignatureArgs,
   mockdbSpecSignature,
 
-  // mockdbSpecFromRawArgs,
   specFromRawArg as mockdbSpecFromRawArg
 }

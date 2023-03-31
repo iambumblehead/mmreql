@@ -1,9 +1,7 @@
 import {
   mmRecChainCreate,
   mmRecChainSubCreate,
-  mmRecChainCreateNext,
-  mmRecChainNext,
-  mmRecChainClear
+  mmRecChainFnCreate
 } from './mmRecChain.mjs';
 
 import queryReql, {
@@ -15,75 +13,48 @@ import {
   mockdbSpecFromRawArg
 } from './mockdbSpec.mjs';
 
-const resolvingQueries = [
-  'serialize',
-  'run',
-  'drain',
-  'getCursor',
-  'connect',
-  'connectPool',
-  'getPoolMaster'
-];
-
-const firstTermQueries = [
-  'desc',
-  'asc'
-];
-
-// eslint-disable-next-line security/detect-non-literal-regexp
-const isResolvingQueryRe = new RegExp(`^(${resolvingQueries.join('|')})$`);
-// eslint-disable-next-line security/detect-non-literal-regexp
-const isFirstTermQueryRe = new RegExp(`^(${firstTermQueries.join('|')})$`);
+import {
+  mmEnumQueryNameIsRESOLVINGRe,
+  mmEnumQueryNameIsFIRSTTERMRe
+} from './mmEnum.mjs';
 
 const staleChains = Object.keys(queryReql).reduce((prev, queryName) => {
   prev[queryName] = function (...args) {
-    const isResolvingQuery = isResolvingQueryRe.test(queryName);
-    const chain = mmRecChainNext(this, {
+    const chain = mmRecChainCreate(this, {
       queryName,
-      queryArgs: isResolvingQuery
-        ? args : mockdbSpecFromRawArg(args, mockdbChain)
+      queryArgs: mockdbSpecFromRawArg(args, mockdbChain)
     });
 
     // must not follow another term, ex: r.expr( ... ).desc( 'foo' )
-    if (chain.recs.length > 1 && isFirstTermQueryRe.test(queryName)) {
+    if (chain.recs.length > 1 && mmEnumQueryNameIsFIRSTTERMRe.test(queryName)) {
       throw new Error(`.${queryName} is not a function`);
     }
 
-    if (isResolvingQuery) {
-      let res;
-      if (queryName === 'serialize') {
-        res = JSON.stringify(chain.recs);
-      } else {
-        res = (queryName === 'getCursor' ? spendCursor : spend)(this.state, {
-          recId: 'start'
-        }, mmRecChainSubCreate(chain));
-      }
+    if (mmEnumQueryNameIsRESOLVINGRe.test(queryName)) {
+      return queryName === 'serialize'
+        ? JSON.stringify(chain.recs)
 
-      mmRecChainClear(chain);
-
-      return res;
+        : (queryName === 'getCursor' ? spendCursor : spend)(
+          chain.state, { recId: 'start' }, mmRecChainSubCreate(chain));
+      // spendCursor pending removal
+      // : spend(chain.state, { recId: 'start' }, mmRecChainSubCreate(chain));
     }
 
-    return Object.assign((...fnargs) => {
-      // this.recIndex = chain.recIndex;
-      // const chainNext = mmRecChainCreateNext(this, {
-      const chainNext = mmRecChainCreateNext(chain, {
+    return mmRecChainFnCreate(staleChains, chain, (...fnargs) => {
+      // eg: row => row('field')
+      const chainNext = mmRecChainCreate(chain, {
         queryName: `${queryName}.fn`,
         queryArgs: mockdbSpecFromRawArg(fnargs, mockdbChain)
       });
         
-      // this is called when using row attrbute look ex,
-      // .filter( row => row( 'field' )( 'attribute' ).eq( 'OFFLINE' ) )
-      function attributeFn (...attributeFnArgs) {
-        const chainNextAttr = mmRecChainCreateNext(chainNext, {
+      return mmRecChainFnCreate(staleChains, chainNext, (...attributeFnArgs) => (
+        // eg: row => row('field')('attribute')
+        mmRecChainFnCreate(staleChains, mmRecChainCreate(chainNext, {
           queryName: `getField`,
           queryArgs: mockdbSpecFromRawArg(attributeFnArgs, mockdbChain)
-        });
-
-        return Object.assign(attributeFn, chainNextAttr, staleChains);
-      }
-      return Object.assign(attributeFn, chainNext, staleChains);
-    }, chain, staleChains);
+        }), chainNext)
+      ));
+    });
   };
 
   return prev;

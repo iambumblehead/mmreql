@@ -1,77 +1,49 @@
-const mmRecCHAIN = 'reqlCHAIN';
-const reqlARGSSUSPEND = 'reqlARGSSUSPEND';
+import {
+  mmEnumRecTypeCHAIN,
+  mmEnumRecTypeROW,
+  mmEnumQueryArgTypeROWFN,
+  mmEnumQueryArgTypeROW
+} from './mmEnum.mjs';
 
-// when a query is used to compose multiple, longer query chains
-// recordindex is a unique point at the chain used to recover
-// the record list from that time, rather than using recs
-// added from external chains that might have added queries
-// to this base chain
+// chain originates from nested row or sub query as a reqlCHAIN or pojo. ex,
+//  * `map(hero => hero('name'))`
+//  * `map(hero => ({ heroName: hero('name') }))`
+const mmRecChainRowFnCreate = (chain, recId) => ({
+  toString: () => mmEnumQueryArgTypeROWFN,
+  type: mmEnumQueryArgTypeROWFN,
+  recs: chain.recs,
+  recId: recId || ('orphan' + Date.now())
+});
 
-const mmRecChainIndexGet = chain => chain.recHist.length;
+const mmRecChainRowCreate = (chain, recId) => ({
+  toString: () => mmEnumQueryArgTypeROW,
+  type: mmEnumQueryArgTypeROW,
+  recs: chain.recs,
+  recId: recId || ('orphan' + Date.now())
+});
 
-const mmRecChainFromIndex = (chain, index) => (
-  chain.recHist[index].slice());
-
-
-const mmRecChainPush = (chain, rec) => {
-  chain.recs.push(rec);
-  chain.recHist.push(chain.recs.slice());
-  chain.recIndex = +chain.recHist.length;
-
-  return chain;
-};
-
-const mmRecChainRecsGet = chain => (
-  chain.recHist[Math.max(chain.recIndex - 1, 0)] || []).slice();
-
-const mmRecChainClear = chain => {
-  chain.recs.splice(0, chain.recs.length);
-  chain.recHist = [];
-
-  return chain;
-};
 
 const mmRecChainSubCreate = chain => ({
-  type: reqlARGSSUSPEND,
-  recs: chain.recs.slice(),
-  recHist: chain.recHist || [],
-  toString: () => reqlARGSSUSPEND
+  toString: () => mmEnumRecTypeROW,
+  type: mmEnumRecTypeROW,
+  recs: chain.recs.slice()
 });
 
-const mmRecChainCreate = chain => ({
+const mmRecChainCreate = (chain, rec, recs = (chain.recs || []).slice()) => ({
+  toString: () => mmEnumRecTypeCHAIN,
   state: chain.state || {},
-  recs: [],
-  recIndex: 0,
-  recHist: [],
-  toString: () => mmRecCHAIN
+  recs: rec
+    ? recs.push(rec) && recs
+    : recs
 });
 
-const mmRecChainCreateNext = (chain, rec) => mmRecChainPush({
-  ...chain,
-  recIndex: +chain.recIndex,
-  recs: mmRecChainRecsGet(chain)
-}, rec);
-
-const mmRecChainNext = (chain, rec) => {
-  // should factor this spread away (create new object instead)
-  chain = {
-    ...chain,
-    recs: mmRecChainRecsGet(chain)
-  };
-
-  chain = mmRecChainPush(chain, rec);
-
-  return chain;
-};
+const mmRecChainFnCreate = (queryFns, chain, fn) => (
+  Object.assign(fn, chain, queryFns));
 
 export {
-  mmRecChainIndexGet,
-  mmRecChainFromIndex,
-  mmRecChainClear,
-  mmRecChainPush,
-  mmRecChainRecsGet,
+  mmRecChainFnCreate,
+  mmRecChainRowFnCreate,
+  mmRecChainRowCreate,
   mmRecChainCreate,
-  mmRecChainSubCreate,
-  mmRecChainCreateNext,
-  mmRecChainNext
+  mmRecChainSubCreate
 }

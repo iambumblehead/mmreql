@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
+import mmConn from './mmConn.mjs';
 import mockdbStream from './mockdbStream.mjs';
 
 import {
-  mockdbSpecARGSSUSPENDFN,
   mockdbSpecIsSuspendNestedShallow
 } from './mockdbSpec.mjs';
 
@@ -69,12 +69,14 @@ import {
   mockdbResTableInfo
 } from './mockdbRes.mjs';
 
-const reqlERROR = 'reqlERROR';
-const reqlCHAIN = 'reqlCHAIN';
-const reqlARGSRESULT = 'reqlARGSRESULT';
-const reqlARGSSUSPEND = 'reqlARGSSUSPEND';
-const reqlARGSSUSPENDFN = 'reqlARGSSUSPENDFN';
-const reqlARGSISSUSPENDRe = /reqlARGSSUSPEND/;
+import {
+  mmEnumTypeERROR,
+  mmEnumQueryArgTypeARGS,
+  mmEnumQueryArgTypeROW,
+  mmEnumQueryArgTypeROWFN,
+  mmEnumQueryArgTypeROWIsRe,
+  mmEnumQueryArgTypeROWHasRe
+} from './mmEnum.mjs';
 
 const isBoolNumStrRe = /boolean|number|string/;
 const isBoolNumUndefRe = /boolean|number|undefined/;
@@ -84,17 +86,23 @@ const isLookObj = obj => obj
   && !(obj instanceof Date);
 
 const isReqlArgsResult = obj => isLookObj(obj)
-  && Boolean(obj.reqlARGSRESULT);
+  && Boolean(mmEnumQueryArgTypeARGS in obj);
+
+const reqlArgsParse = obj => (
+  obj[mmEnumQueryArgTypeARGS]);
+
+const reqlArgsCreate = value => (
+  { [mmEnumQueryArgTypeARGS]: value });
 
 const isReqlSuspendNestedShallow = obj => isLookObj(obj)
-  && reqlARGSISSUSPENDRe.test(Object.values(obj).join());
+  && mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join());
 
 const isReqlObj = obj => isLookObj(obj)
-  && reqlARGSISSUSPENDRe.test(obj.type);
+  && mmEnumQueryArgTypeROWIsRe.test(obj.type);
 
 const isReqlObjShallow = obj => isLookObj(obj) && (
-  reqlARGSISSUSPENDRe.test(obj.type) ||
-    reqlARGSISSUSPENDRe.test(Object.values(obj).join()));
+  mmEnumQueryArgTypeROWIsRe.test(obj.type) ||
+    mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join()));
 
 // created by 'asc' and 'desc' queries
 const isSortObj = obj => isLookObj(obj)
@@ -105,9 +113,9 @@ const sortObjParse = o => isLookObj(o)
   : null;
 
 const isConfigObj = (obj, objType = typeof obj) => obj
-      && /object|function/.test(objType)
-      && !isReqlObj(obj)
-      && !Array.isArray(obj);
+  && /object|function/.test(objType)
+  && !isReqlObj(obj)
+  && !Array.isArray(obj);
 
 // return last query argument (optionally) provides query configurations
 const queryArgsOptions = (queryArgs, queryOptionsDefault = {}) => {
@@ -125,8 +133,8 @@ const compare = (a, b, prop) => {
   return 0;
 };
 
-const isReqlArgs = value => Boolean(
-  value && value[reqlARGSRESULT]);
+// const isReqlArgs = value => Boolean(
+//  value && value[reqlARGSRESULT]);
 
 const asList = value => Array.isArray(value) ? value : [ value ];
 
@@ -155,14 +163,14 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       //   r.row('user_id').eq('xavier').or(r.row('membership').eq('join'))
       // ```
       if (qstNext.rowDepth >= 1 && i === 0 && (
-        reqlObj.recs[1] && reqlObj.recs[1].queryName !== 'row.fn')) {
+        !mmEnumQueryArgTypeROWIsRe.test(rec.queryArgs[0]))) {
         throw new Error(mockDbResErrorCannotUseNestedRow());
       } else {
         qstNext.rowDepth += 1;
       }
     }
 
-    if (reqlObj.type !== mockdbSpecARGSSUSPENDFN && rows && i === 0) {
+    if (reqlObj.type !== mmEnumQueryArgTypeROWFN && rows && i === 0) {
       // assigns row from callee to this pattern target,
       //  * this pattern must represent the beginning of a chain
       //  * this pattern is not a 'function'; pattern will not resolve row
@@ -188,11 +196,12 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       // * throw all tagged errors up to user
       qstNext.target = null;
       qstNext.error = e;
-      e[reqlERROR] = typeof e[reqlERROR] === 'boolean'
-        ? e[reqlERROR]
+ 
+      e[mmEnumTypeERROR] = typeof e[mmEnumTypeERROR] === 'boolean'
+        ? e[mmEnumTypeERROR]
         : !reqlObj.recs.slice(i + 1).some(mmRecIsCursorOrDefault);
-      
-      if (e[reqlERROR])
+
+      if (e[mmEnumTypeERROR])
         throw e;
     }
 
@@ -206,7 +215,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
     //     r.row('victories').gt(100),
     //     r.row('name').add(' is a hero'),
     //     r.row('name').add(' is very nice')))
-    target: reqlObj.type === mockdbSpecARGSSUSPENDFN ? null : qst.target,
+    target: reqlObj.type === mmEnumQueryArgTypeROWFN ? null : qst.target,
     recId: reqlObj.recId,
     rowMap: qst.rowMap || {},
     rowDepth: qst.rowDepth || 0
@@ -242,11 +251,11 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     f = mockdbSuspendArgSpend(db, qst, qspec, rows);
   } else if (Array.isArray(qspec)) {
     // detach if spec is has args
-    if (isReqlArgs(qspec.slice(-1)[0])) {
+    if (isReqlArgsResult(qspec.slice(-1)[0])) {
       f = qspec.slice(-1)[0].run();
     } else {
       f = qspec.map(v => spend(db, qst, v, rows, d + 1));
-      f = isReqlArgs(f[0]) ? f[0][reqlARGSRESULT] : f;
+      f = isReqlArgsResult(f[0]) ? reqlArgsParse(f[0]) : f;
     }
     // render nested query objects, shallow. ex `row('id')`,
     // ```
@@ -267,6 +276,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
   return f;
 };
 
+// pending removal
 const spendCursor = (db, qst, qspec, res) => {
   try {
     res = spend(db, qst, qspec);
@@ -291,44 +301,7 @@ reql.connect = (db, qst, args) => {
   if (conn.db)
     db.dbSelected = conn.db;
 
-  qst.target = {
-    connectionOptions: {
-      host,
-      port
-    },
-    db: conn.db,
-    options: {
-      host,
-      port
-    },
-    clientPort: port,
-    clientAddress: host,
-    timeout: 20,
-    pingInterval: -1,
-    silent: false,
-    socket: {
-      runningQueries: {},
-      isOpen: true,
-      nextToken: 3,
-      buffer: {
-        type: 'Buffer',
-        data: []
-      },
-      mode: 'response',
-      connectionOptions: {
-        host,
-        port
-      },
-      user,
-      password: {
-        type: 'Buffer',
-        data: [ 0 ]
-      }
-    },
-    close: function () {
-      this.open = false;
-    }
-  };
+  qst.target = new mmConn('connection', conn.db, host, port, user);
 
   return qst;
 };
@@ -345,91 +318,8 @@ reql.connectPool = (db, qst, args) => {
   if (conn.db)
     db.dbSelected = conn.db;
 
-  qst.target = {
-    draining: false,
-    healthy: true,
-    discovery: false,
-    connParam: {
-      db: conn.db,
-      user,
-      password: '',
-      buffer: 1,
-      max: 1,
-      timeout: 20,
-      pingInterval: -1,
-      timeoutError: 1000,
-      timeoutGb: 3600000,
-      maxExponent: 6,
-      silent: false
-    },
-    servers: [ {
-      host,
-      port
-    } ],
-    serverPools: [ {
-      draining: false,
-      healthy: true,
-      connections: [ {
-        connectionOptions: {
-          host,
-          port
-        },
-        db,
-        options: {
-          host,
-          port
-        },
-        clientPort: port,
-        clientAddress: host,
-        timeout: 20,
-        pingInterval: -1,
-        silent: false,
-        socket: {
-          runningQueries: {},
-          isOpen: true,
-          nextToken: 3,
-          buffer: {
-            type: 'Buffer',
-            data: []
-          },
-          mode: 'response',
-          connectionOptions: {
-            host,
-            port
-          },
-          user,
-          password: {
-            type: 'Buffer',
-            data: [ 0 ]
-          },
-          socket: {
-            connecting: false,
-            allowHalfOpen: false,
-            server: null
-          }
-        }
-      } ],
-      timers: {},
-      buffer: 1,
-      max: 1,
-      timeoutError: 1000,
-      timeoutGb: 3600000,
-      maxExponent: 6,
-      silent: false,
-      server: {
-        host,
-        port
-      },
-      connParam: {
-        db,
-        user,
-        password,
-        timeout: 20,
-        pingInterval: -1,
-        silent: false
-      }
-    } ]
-  };
+  qst.target = new mmConn(
+    'connectionPool', conn.db, host, port, user, password);
 
   return qst;
 };
@@ -445,58 +335,8 @@ reql.getPoolMaster = (db, qst) => {
 
   const { host, port, user, password } = conn;
 
-  qst.target = {
-    isHealthy: true,
-    _events: {},
-    _eventsCount: 0,
-    _maxListeners: undefined,
-    draining: false,
-    healthy: true,
-    discovery: false,
-    connParam: {
-      db: conn.db,
-      user,
-      password,
-      buffer: 1,
-      max: 1,
-      timeout: 20,
-      pingInterval: -1,
-      timeoutError: 1000,
-      timeoutGb: 3600000,
-      maxExponent: 6,
-      silent: false,
-      log: console.log
-    },
-    servers: [ { host, port } ],
-    serverPools: [ {
-      _events: {},
-      _eventsCount: 4,
-      _maxListeners: undefined,
-      draining: false,
-      healthy: true,
-      connections: [],
-      timers: {},
-      buffer: 1,
-      max: 1,
-      timeoutError: 1000,
-      timeoutGb: 3600000,
-      maxExponent: 6,
-      silent: false,
-      log: console.log,
-      server: {
-        host,
-        port
-      },
-      connParam: [ {
-        db: conn.db,
-        user,
-        password,
-        timeout: 20,
-        pingInterval: -1,
-        silent: false
-      } ]
-    } ]
-  };
+  qst.target = new mmConn(
+    'connectionPoolMaster', conn.db, host, port, user, password);
 
   return qst;
 };
@@ -1065,13 +905,13 @@ reql.nth = (db, qst, args) => {
 //           even when ...
 //
 reql.row = (db, qst, args) => {
-  if (args[0] === 'reqlARGSSUSPEND' && !(args[1] in qst.rowMap)) {
+  if (args[0] === mmEnumQueryArgTypeROW && !(args[1] in qst.rowMap)) {
     // keep this for development
     // console.log(qst.target, mockdbSpecSignature(reqlObj), args, qst.rowMap);
     throw new Error('[!!!] error: missing ARGS from ROWMAP');
   }
 
-  qst.target = args[0] === 'reqlARGSSUSPEND'
+  qst.target = args[0] === mmEnumQueryArgTypeROW
     ? qst.rowMap[args[1]][args[2]]
     : qst.target[args[0]];
   
@@ -1350,7 +1190,7 @@ reql.eqJoin = (db, qst, args) => {
   // should remove this... get table name from args[1] record
   // and call reql.config() directly
   const rightFieldConfig = args[1] && spend(db, qst, {
-    type: reqlARGSSUSPEND,
+    type: mmEnumQueryArgTypeROW,
     recs: [
       ...args[1].recs,
       { queryName: 'config', queryArgs: [] }
@@ -1460,17 +1300,13 @@ reql.not = (db, qst) => {
 };
 
 reql.gt = (db, qst, args) => {
-  const argTarget = spend(db, qst, args[0]);
-
-  qst.target = qst.target > argTarget;
+  qst.target = qst.target > spend(db, qst, args[0]);
 
   return qst;
 };
 
 reql.ge = (db, qst, args) => {
-  const argTarget = spend(db, qst, args[0]);
-
-  qst.target = qst.target >= argTarget;
+  qst.target = qst.target >= spend(db, qst, args[0]);
 
   return qst;
 };
@@ -1491,25 +1327,19 @@ reql.lt = (db, qst, args) => {
 };
 
 reql.le = (db, qst, args) => {
-  const argTarget = spend(db, qst, args[0]);
-
-  qst.target = qst.target <= argTarget;
+  qst.target = qst.target <= spend(db, qst, args[0]);
 
   return qst;
 };
 
 reql.eq = (db, qst, args) => {
-  const argTarget = spend(db, qst, args[0]);
-  
-  qst.target = qst.target === argTarget;
+  qst.target = qst.target === spend(db, qst, args[0]);
 
   return qst;
 };
 
 reql.ne = (db, qst, args) => {
-  const argTarget = spend(db, qst, args[0]);
-
-  qst.target = qst.target !== argTarget;
+  qst.target = qst.target !== spend(db, qst, args[0]);
 
   return qst;
 };
@@ -1614,7 +1444,7 @@ reql.isEmpty = (db, qst) => {
 };
 
 reql.add = (db, qst, args) => {
-  const target = qst.target;  
+  const target = qst.target === null ? qst.row : qst.target;
   const values = spend(db, qst, args);
 
   if (target == null) {
@@ -1631,7 +1461,7 @@ reql.add = (db, qst, args) => {
 };
 
 reql.sub = (db, qst, args) => {
-  const target = qst.target || qst.row;
+  const target = qst.target === null ? qst.row : qst.target;
   const values = spend(db, qst, args);
   let result;
 
@@ -1651,7 +1481,7 @@ reql.sub = (db, qst, args) => {
 };
 
 reql.mul = (db, qst, args) => {
-  const target = qst.target || qst.row;
+  const target = qst.target === null ? qst.row : qst.target;
   const values = spend(db, qst, args);
   let result;
 
@@ -1788,7 +1618,7 @@ reql.uuid = (db, qst) => {
 
 reql.expr = (db, qst, args) => {
   const [ argvalue ] = args;
-  const rowOrArgValue = reqlARGSISSUSPENDRe.test(argvalue)
+  const rowOrArgValue = mmEnumQueryArgTypeROWIsRe.test(argvalue)
     ? qst.target : argvalue;
 
   qst.target = spend(db, qst, rowOrArgValue, [ qst.target ]);
@@ -1897,7 +1727,7 @@ reql.do = (db, qst, args) => {
       : spend(db, qst, doFn, args.slice(0, -1));
 
     if (isReqlArgsResult(qst.target))
-      qst.target = qst.target.reqlARGSRESULT[0];
+      qst.target = reqlArgsParse(qst.target)[0];
 
   } else if (args.length) {
     qst.target = doFn;
@@ -2027,10 +1857,8 @@ reql.table.fn = reql.getField;
 
 // r.args(array) → special
 reql.args = (db, qst, args) => {
-  qst.target = {
-    [reqlARGSRESULT]: spend(db, qst, args[0])
-  };
-  
+  qst.target = reqlArgsCreate(spend(db, qst, args[0]));
+
   return qst;
 };
 
@@ -2285,6 +2113,9 @@ reql.getCursor = (db, qst, args) => {
   }
 
   const cursor = mockdbStream(initialDocs, !qst.isChanges);
+  // if (qst.error) {
+  //   throw new Error('cursor has error');
+  // }
   cursor.close = () => {
     cursor.destroy();
 
@@ -2307,14 +2138,17 @@ reql.getCursor = (db, qst, args) => {
   return qst;
 };
 
+reql.close = (db, qst, args) => {
+  if (qst.target && typeof qst.target.close === 'function')
+    qst.target.close();
+
+  return qst;
+};
+
 reql.isReql = true;
 
 export {
   reql as default,
   spend,
-  spendCursor,
-  reqlCHAIN,
-  reqlARGSRESULT,
-  reqlARGSSUSPEND,
-  reqlARGSSUSPENDFN
+  spendCursor
 }
