@@ -22,4 +22,4 @@ job-release-major:
 job-publish:
   extends: .publish
   before_script:
-    - npm ci --include=dev
+    - if [ -f "package-lock.json" ]; then npm ci --include=dev; else npm install; fi
