@@ -224,6 +224,10 @@ test('supports r.args()', async t => {
   const { r } = rethinkdbMocked();
 
   t.is(await r.add(r.args([ 'bar', 'baz' ])).run(), 'barbaz');
+
+  await t.throwsAsync(async () => r.add(r.args()).run(), {
+    message: 'args must be an array'
+  });
 });
 
 test('provides a faux connect function', async t => {

@@ -1603,10 +1603,8 @@ reql.uuid = (db, qst) => {
 
 reql.expr = (db, qst, args) => {
   const [ argvalue ] = args;
-  const rowOrArgValue = mmEnumQueryArgTypeROWIsRe.test(argvalue)
-    ? qst.target : argvalue;
 
-  qst.target = spend(db, qst, rowOrArgValue, [ qst.target ]);
+  qst.target = spend(db, qst, argvalue, [ qst.target ]);
 
   return qst;
 };
@@ -1843,7 +1841,11 @@ reql.table.fn = reql.getField;
 
 // r.args(array) → special
 reql.args = (db, qst, args) => {
-  qst.target = reqlArgsCreate(spend(db, qst, args[0]));
+  const result = spend(db, qst, args[0]);
+  if (!Array.isArray(result))
+    throw new Error('args must be an array');
+
+  qst.target = reqlArgsCreate(result);
 
   return qst;
 };
