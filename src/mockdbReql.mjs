@@ -133,9 +133,6 @@ const compare = (a, b, prop) => {
   return 0;
 };
 
-// const isReqlArgs = value => Boolean(
-//  value && value[reqlARGSRESULT]);
-
 const asList = value => Array.isArray(value) ? value : [ value ];
 
 const reql = {};
@@ -215,7 +212,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
     //     r.row('victories').gt(100),
     //     r.row('name').add(' is a hero'),
     //     r.row('name').add(' is very nice')))
-    target: reqlObj.type === mmEnumQueryArgTypeROWFN ? null : qst.target,
+    target: reqlObj.recs[0].queryName === 'row' ? qst.target : null,
     recId: reqlObj.recId,
     rowMap: qst.rowMap || {},
     rowDepth: qst.rowDepth || 0
@@ -1416,9 +1413,7 @@ reql.merge = (db, qst, args, reqlObj) => {
   
   // evaluate anonymous function given as merge definition
   const mergeTarget = (merges, target) => merges.reduce((p, next) => (
-    isReqlObjShallow
-      ? Object.assign(p, spend(db, qst, next, [ target ]))
-      : Object.assign(p, spend(db, qst, next))
+    Object.assign(p, spend(db, qst, next, [ target ]))
   ), { ...target });
 
   qst.target = Array.isArray(qst.target)
@@ -1444,10 +1439,10 @@ reql.isEmpty = (db, qst) => {
 };
 
 reql.add = (db, qst, args) => {
-  const target = qst.target === null ? qst.row : qst.target;
+  const target = qst.target;
   const values = spend(db, qst, args);
 
-  if (target == null) {
+  if (target === null) {
     qst.target = Array.isArray(values)
       ? values.slice(1).reduce((prev, val) => prev + val, values[0])
       : values;
@@ -1461,41 +1456,31 @@ reql.add = (db, qst, args) => {
 };
 
 reql.sub = (db, qst, args) => {
-  const target = qst.target === null ? qst.row : qst.target;
+  const target = qst.target;
   const values = spend(db, qst, args);
-  let result;
 
-  if (typeof target === 'undefined') {
-    if (Array.isArray(values)) {
-      result = values.slice(1).reduce((prev, val) => prev - val, values[0]);
-    } else {
-      result = values;
-    }
+  if (typeof target === null) {
+    qst.target = Array.isArray(values)
+      ? values.slice(1).reduce((prev, val) => prev - val, values[0])
+      : values;
   } else if (isBoolNumStrRe.test(typeof target)) {
-    result = values.reduce((prev, val) => prev - val, target);
+    qst.target = values.reduce((prev, val) => prev - val, target);
   }
-
-  qst.target = result;
 
   return qst;
 };
 
 reql.mul = (db, qst, args) => {
-  const target = qst.target === null ? qst.row : qst.target;
+  const target = qst.target;
   const values = spend(db, qst, args);
-  let result;
 
-  if (typeof target === 'undefined') {
-    if (Array.isArray(values)) {
-      result = values.slice(1).reduce((prev, val) => prev * val, values[0]);
-    } else {
-      result = values;
-    }
+  if (typeof target === null) {
+    qst.target = Array.isArray(values)
+      ? values.slice(1).reduce((prev, val) => prev * val, values[0])
+      : values;
   } else if (isBoolNumStrRe.test(typeof target)) {
-    result = values.reduce((prev, val) => prev * val, target);
+    qst.target = values.reduce((prev, val) => prev * val, target);
   }
-
-  qst.target = result;
 
   return qst;
 };
@@ -1737,23 +1722,26 @@ reql.do = (db, qst, args) => {
 };
 
 reql.or = (db, qst, args) => {
+  const rows = [ qst.target ];
+
   qst.target = args.reduce((current, arg) => (
-    current || spend(db, qst, arg, [ qst.target ])
+    current || spend(db, qst, arg, rows)
   ), qst.target);
 
   return qst;
 };
 
 reql.and = (db, qst, args) => {
+  const rows = [ qst.target ];
+
   qst.target = args.reduce((current, arg) => (
-    current && spend(db, qst, arg, [ qst.target ])
+    current && spend(db, qst, arg, rows)
   ), typeof qst.target === 'boolean' ? qst.target : true);
   
   return qst;
 };
 
 // if the conditionals return any value but false or null (i.e., “truthy” values),
-// reql.branch = {};
 reql.branch = (db, qst, args) => {
   const isResultTruthy = result => (
     result !== false && result !== null);
@@ -1818,10 +1806,8 @@ reql.union = (db, qst, args) => {
   if (queryOptions)
     args.splice(-1, 1);
 
-  let res = args.reduce((argData, value) => {
-    value = spend(db, qst, value);
-
-    return argData.concat(value);
+  let res = args.reduce((acc, arg) => {
+    return acc.concat(spend(db, qst, arg));
   }, qst.target || []);
 
   if (queryOptions && queryOptions.interleave) {
