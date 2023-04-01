@@ -21,31 +21,6 @@ const mockdbSpecIsSuspendNestedShallow = obj => obj
 const mockdbSpecIs = obj => Boolean(
   obj && mmEnumQueryArgTypeROWIsRe.test(obj.type));
 
-const mockdbSpecSignatureArg = (recarg, type = typeof recarg) => {
-  if (type === 'string') {
-    recarg = mmEnumQueryArgTypeROWIsRe.test(recarg) ? 'row' : `"${recarg}"`;
-  } else if (type === 'object') {
-    recarg = '...';
-  } else if (Array.isArray(recarg)) {
-    recarg = 'arr';
-  }
-
-  return recarg;
-};
-
-const mockdbSpecSignatureArgs = rec => rec.queryArgs[0] === mmEnumQueryArgTypeROW
-  ? rec.queryArgs[3]
-  : rec.queryArgs.map(arg => mockdbSpecSignatureArg(arg)).join(', ');
-
-// returns a human readable signature from reqlOb,
-//
-// ex, '.row("rose")("petal")'
-const mockdbSpecSignature = reqlObj => (
-  reqlObj && reqlObj.record.reduce((prev, rec) => (
-    prev + (/\.fn/.test(rec.queryName)
-      ? `(${mockdbSpecSignatureArgs(rec)})`
-      : `.${rec.queryName}(${mockdbSpecSignatureArgs(rec)})`)), ''));
-
 // ex, "table => r.db('cmdb').tableCreate(table)"
 //   [ "table =>", "table " ]
 //
@@ -121,8 +96,5 @@ export {
   mockdbSpecIsSuspendNestedShallow,
   mockdbSpecIs,
   
-  mockdbSpecSignatureArgs,
-  mockdbSpecSignature,
-
   specFromRawArg as mockdbSpecFromRawArg
 }
