@@ -1,6 +1,6 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.mjs';
 import { randomUUID } from 'crypto';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 test('`close` should work on feed', async t => {
   const { r } = rethinkdbMocked([
@@ -371,7 +371,7 @@ test('`next` should error when hitting an error -- not on the first batch', asyn
       i = i + 1;
     }
   }, {
-    message: 'No attribute `val` in object'
+    message: 'Error: No attribute `val` in object'
   });
 
   await connection.close();

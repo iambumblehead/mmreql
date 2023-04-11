@@ -1,11 +1,5 @@
-const mmEnumRecTypeCHAIN = 'reqlCHAIN';
-const mmEnumRecTypeROW = 'reqlARGSSUSPEND';
-
-const mmEnumRecTypeCHAINHasRe = new RegExp(
-  `${mmEnumRecTypeCHAIN}`);
-
-const mmEnumQueryArgTypeROWFN = 'reqlARGSSUSPENDFN';
-const mmEnumQueryArgTypeROW = 'reqlARGSSUSPEND';
+const mmEnumQueryArgTypeROWFN = 'reqlROWFN';
+const mmEnumQueryArgTypeROW = 'reqlROW';
 const mmEnumQueryArgTypeARGS = 'reqlARGSRESULT';
 
 const mmEnumQueryArgTypeROWIsRe = new RegExp(`^${mmEnumQueryArgTypeROW}`);
@@ -28,11 +22,22 @@ const mmEnumQueryNameIsRESOLVINGRe = new RegExp(
 const mmEnumQueryNameIsFIRSTTERMRe = new RegExp(
   `^(${mmEnumQueryNamesFirstTerm.join('|')})$`);
 
-export {
-  mmEnumRecTypeCHAIN,
-  mmEnumRecTypeROW,
-  mmEnumRecTypeCHAINHasRe,
+const mmEnumQueryNameIsCURSORORDEFAULTRe = /getCursor|default/
 
+const mmEnumIsLookObj = obj => obj
+  && typeof obj === 'object' && !(obj instanceof Date);
+
+const mmEnumIsRow = obj => mmEnumIsLookObj(obj)
+  && mmEnumQueryArgTypeROWIsRe.test(obj.type);
+
+const mmEnumIsRowShallow = obj => mmEnumIsLookObj(obj) && (
+  mmEnumQueryArgTypeROWIsRe.test(obj.type) ||
+    mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join()));
+
+const mmEnumIsQueryArgsResult = obj => mmEnumIsLookObj(obj)
+  && Boolean(mmEnumQueryArgTypeARGS in obj);
+
+export {
   mmEnumQueryArgTypeARGS,
   mmEnumQueryArgTypeROW,
   mmEnumQueryArgTypeROWFN,
@@ -41,6 +46,11 @@ export {
 
   mmEnumQueryNameIsRESOLVINGRe,
   mmEnumQueryNameIsFIRSTTERMRe,
+  mmEnumQueryNameIsCURSORORDEFAULTRe,
 
-  mmEnumTypeERROR
+  mmEnumTypeERROR,
+
+  mmEnumIsRow,
+  mmEnumIsRowShallow,
+  mmEnumIsQueryArgsResult
 }

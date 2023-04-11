@@ -1,5 +1,5 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.mjs';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 test('`expr` should work', async t => {
   const { r } = rethinkdbMocked();
@@ -26,7 +26,7 @@ test('`dbCreate` should create a database', async t => {
 test('`dbCreate` should throw if no argument is given', async t => {
   const { r } = rethinkdbMocked();    
 
-  await t.throws(() => (
+  await t.throwsAsync(async () => (
     r.dbCreate().run()
   ), {
     message: '`r.dbCreate` takes 1 argument, 0 provided.'

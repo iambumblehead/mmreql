@@ -1,15 +1,16 @@
 import test from 'ava';
 import timezonemock from 'timezone-mock';
-import rethinkdbMocked from '../src/mockdb.mjs';
-import {
-  mockdbResErrorExpectedTypeFOOButFoundBAR,
-  mockdbResErrorDuplicatePrimaryKey,
-  mockDbResErrorCannotUseNestedRow
-} from '../src/mockdbRes.mjs';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 import {
-  mockdbSpecIs
-} from '../src/mockdbSpec.mjs';
+  mmErrExpectedTypeFOOButFoundBAR,
+  mmErrDuplicatePrimaryKey,
+  mmErrCannotUseNestedRow,
+} from '../src/mmErr.mjs';
+
+import {
+  mmEnumIsRowShallow
+} from '../src/mmEnum.mjs';
 
 timezonemock.register('US/Pacific');
 
@@ -88,7 +89,7 @@ test('supports uuid()', async t => {
 });
 
 test('rethinkdbMocked(), returns table mapping used by mockdb', t => {
-  const { dbState } = rethinkdbMocked([
+  const { db } = rethinkdbMocked([
     [ 'marvel',
       { name: 'Iron Man', victories: 214 },
       { name: 'Jubilee', victories: 49 },
@@ -99,7 +100,7 @@ test('rethinkdbMocked(), returns table mapping used by mockdb', t => {
       { id: 3, name: 'fiery', strength: 5 } ]
   ]);
 
-  t.deepEqual(dbState.db.default, {
+  t.deepEqual(db.db.default, {
     marvel: [
       { name: 'Iron Man', victories: 214 },
       { name: 'Jubilee', victories: 49 },
@@ -387,8 +388,8 @@ test('getAll should return empty when nested args query getAll( r.args([]) )', a
   t.deepEqual(childrenNoArgs, []);
 });
 
-test('indexCreate should add index to dbState', async t => {
-  const { r, dbState } = rethinkdbMocked([
+test('indexCreate should add index to db', async t => {
+  const { r, db } = rethinkdbMocked([
     [ 'Rooms', {
       id: 'roomAId-1234',
       numeric_id: 755090
@@ -404,7 +405,7 @@ test('indexCreate should add index to dbState', async t => {
     'numeric_id'
   ]);
 
-  t.true(dbState.dbConfig_default_Rooms.indexes
+  t.true(db.dbConfig_default_Rooms.indexes
     .some(([ indexName ]) => indexName === 'numeric_id'));
 });
 
@@ -431,8 +432,8 @@ test('indexList should return indexes added by indexCreate', async t => {
   ]);
 });
 
-test('indexCreate should add compound index to dbState', async t => {
-  const { r, dbState } = rethinkdbMocked([
+test('indexCreate should add compound index to db', async t => {
+  const { r, db } = rethinkdbMocked([
     [ 'Rooms', {
       id: 'roomAId-1234',
       numeric_id: 755090
@@ -447,16 +448,16 @@ test('indexCreate should add compound index to dbState', async t => {
     r.row('numeric_id')
   ]).run();
 
-  const dbStateIndexes = dbState.dbConfig_default_Rooms.indexes;
-  const dbStateIndex = dbStateIndexes.find(i => i[0] === 'id_numeric_cid');
+  const dbIndexes = db.dbConfig_default_Rooms.indexes;
+  const dbIndex = dbIndexes.find(i => i[0] === 'id_numeric_cid');
 
-  t.is(dbStateIndex[0], 'id_numeric_cid');
-  t.true(mockdbSpecIs(dbStateIndex[1][0]));
-  t.true(mockdbSpecIs(dbStateIndex[1][1]));
+  t.is(dbIndex[0], 'id_numeric_cid');
+  t.true(mmEnumIsRowShallow(dbIndex[1][0]));
+  t.true(mmEnumIsRowShallow(dbIndex[1][1]));
 });
 
-test('indexCreate should add compound index to dbState, function generated', async t => {
-  const { r, dbState } = rethinkdbMocked([
+test('indexCreate should add compound index to db, function generated', async t => {
+  const { r, db } = rethinkdbMocked([
     [ 'Users', {
       id: 'userAId-1234',
       name_screenname: 'userA',
@@ -474,12 +475,11 @@ test('indexCreate should add compound index to dbState, function generated', asy
       row('name'), row('numeric_id') ])
     .run();
 
-  const dbStateIndexes = dbState.dbConfig_default_Users.indexes;
-  const dbStateIndex = dbStateIndexes.find(i => i[0] === 'name_numeric');
+  const dbIndexes = db.dbConfig_default_Users.indexes;
+  const dbIndex = dbIndexes.find(i => i[0] === 'name_numeric');
 
-  t.is(dbStateIndex[0], 'name_numeric');
-  t.true(mockdbSpecIs(dbStateIndex[1][0]));
-  t.true(mockdbSpecIs(dbStateIndex[1][1]));
+  t.is(dbIndex[0], 'name_numeric');
+  t.true(mmEnumIsRowShallow(dbIndex[1]));
 });
 
 test('indexCreate should return results from compound index, function generated', async t => {
@@ -2024,9 +2024,9 @@ test('throws sub query error, even when parent query has default()', async t => 
     .default('result-when-subquery')
     .run()
   ), {
-    message: mockdbResErrorExpectedTypeFOOButFoundBAR(
+    message: mmErrExpectedTypeFOOButFoundBAR(
       'STRING', 'NUMBER'
-    )
+    ).message
   });
 });
 
@@ -2049,9 +2049,9 @@ test('throws error when .match() used on NUMBER type', async t => {
     .filter(doc => doc('number').match('(?i)^john'))
     .run()
   ), {
-    message: mockdbResErrorExpectedTypeFOOButFoundBAR(
+    message: mmErrExpectedTypeFOOButFoundBAR(
       'STRING', 'NUMBER'
-    )
+    ).message
   });
 });
 
@@ -2230,7 +2230,7 @@ test('.insert(, {}) returns error if inserted document is found', async t => {
     inserted: 0,
     errors: 1,
     deleted: 0,
-    firstError: mockdbResErrorDuplicatePrimaryKey(existingDoc, conflictDoc)
+    firstError: mmErrDuplicatePrimaryKey(existingDoc, conflictDoc).message
   });
 });
 
@@ -2730,7 +2730,7 @@ test('nested r.row.and() throws error', async t => {
     .filter(r.row('user_id').ne('xavier').and(
       r.row('membership').eq('invite')
     )).run()
-  ), { message: mockDbResErrorCannotUseNestedRow() });
+  ), { message: mmErrCannotUseNestedRow().message });
 
   // use this instead
   const users = await r
@@ -2763,7 +2763,7 @@ test('nested r.row.or() throws error', async t => {
         r.row('membership').eq('join')
       )).run())
   ), {
-    message: mockDbResErrorCannotUseNestedRow()
+    message: mmErrCannotUseNestedRow().message
   }
 
   // use this instead

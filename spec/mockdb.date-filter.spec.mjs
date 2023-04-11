@@ -1,6 +1,6 @@
 import test from 'ava';
 import msfrom from 'milliseconds';
-import rethinkdbMocked from '../src/mockdb.mjs';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 test('expressions is older than date, true', async t => {
   const { r } = rethinkdbMocked();
