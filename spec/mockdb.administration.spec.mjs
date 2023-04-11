@@ -1,5 +1,5 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.mjs';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 const isUUIDre = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
 const uuidValidate = str => typeof str === 'string' && isUUIDre.test(str);
@@ -90,7 +90,7 @@ test('tables `config` should work, incl secondary indexes', async t => {
 
 test('`config` should throw if called with an argument', async t => {
   const { r } = rethinkdbMocked([ { db: 'cmdb' } ]);
-  await t.throws(() => (
+  await t.throwsAsync(async () => (
     r.db('cmdb').config('hello').run()
   ), {
     message: '`config` takes 0 arguments, 1 provided.'
@@ -98,7 +98,7 @@ test('`config` should throw if called with an argument', async t => {
 });
 
 test('`status` should work', async t => {
-  const { r, dbState } = rethinkdbMocked([ { db: 'cmdb' }, [ 'Rooms' ] ]);
+  const { r, db } = rethinkdbMocked([ { db: 'cmdb' }, [ 'Rooms' ] ]);
 
   const result = await r
     .db('cmdb')
@@ -108,7 +108,7 @@ test('`status` should work', async t => {
 
   t.like(result, {
     db: 'cmdb',
-    id: dbState.dbConfig_cmdb_Rooms.id,
+    id: db.dbConfig_cmdb_Rooms.id,
     name: 'Rooms',
     raft_leader: 'devdb_rethinkdb_multicluster',
     shards: [ {

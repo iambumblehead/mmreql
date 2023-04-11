@@ -1,5 +1,5 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.mjs';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 test('`reduce` should work -- no base ', async t => {
   const { r } = rethinkdbMocked();

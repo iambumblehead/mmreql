@@ -1,5 +1,5 @@
 import test from 'ava';
-import rethinkdbMocked from '../src/mockdb.mjs';
+import rethinkdbMocked from '../src/mmReql.mjs';
 
 test('`tableList` should return a cursor', async t => {
   const { r } = rethinkdbMocked([ [ 'Rooms' ] ]);
@@ -14,7 +14,7 @@ test('`tableList` should return a cursor', async t => {
 });
 
 test('`tableList` should show the table we created', async t => {
-  const { r, dbState } = rethinkdbMocked([ [ 'Rooms' ] ]);
+  const { r, db } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
   const tableCreateRes = await r
     .db('default')
@@ -27,7 +27,7 @@ test('`tableList` should show the table we created', async t => {
       new_val: {
         db: 'default',
         durability: 'hard',
-        id: dbState.dbConfig_default_thenewtable.id,
+        id: db.dbConfig_default_thenewtable.id,
         indexes: [],
         name: 'thenewtable',
         primary_key: 'id',
@@ -54,7 +54,7 @@ test('`tableList` should show the table we created', async t => {
 });
 
 test('`tableCreate` should create a table -- primaryKey', async t => {
-  const { r, dbState } = rethinkdbMocked([ [ 'Rooms' ] ]);
+  const { r, db } = rethinkdbMocked([ [ 'Rooms' ] ]);
   const tableCreateRes = await r
     .db('default')
     .tableCreate('thenewtable', { primaryKey: 'foo' })
@@ -66,7 +66,7 @@ test('`tableCreate` should create a table -- primaryKey', async t => {
       new_val: {
         db: 'default',
         durability: 'hard',
-        id: dbState.dbConfig_default_thenewtable.id,
+        id: db.dbConfig_default_thenewtable.id,
         indexes: [],
         name: 'thenewtable',
         primary_key: 'foo',
@@ -91,11 +91,11 @@ test('`tableCreate` should create a table -- primaryKey', async t => {
 
   t.deepEqual(infoRes, {
     db: {
-      ...dbState.dbConfig_default,
+      ...db.dbConfig_default,
       type: 'DB'
     },
     doc_count_estimates: [ 0 ],
-    id: dbState.dbConfig_default_thenewtable.id,
+    id: db.dbConfig_default_thenewtable.id,
     indexes: [],
     name: 'thenewtable',
     primary_key: 'foo',
@@ -144,7 +144,7 @@ test('`tableCreate` should throw is the name contains special char', async t => 
 });
 
 test('`tableDrop` should drop a table', async t => {
-  const { r, dbState } = rethinkdbMocked([ [ 'Rooms' ] ]);
+  const { r, db } = rethinkdbMocked([ [ 'Rooms' ] ]);
 
   const tableCreateRes = await r
     .db('default')
@@ -160,7 +160,7 @@ test('`tableDrop` should drop a table', async t => {
 
   t.deepEqual(tableListRes, [ 'Rooms', 'thenewtable' ]);
 
-  const thenewtableid = dbState.dbConfig_default_thenewtable.id;
+  const thenewtableid = db.dbConfig_default_thenewtable.id;
 
   const tableDropRes = await r
     .db('default')
