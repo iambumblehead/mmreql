@@ -1,4 +1,4 @@
-import mockdbChain from './mockdbChain.mjs'
+import mmChain from './mmChain.mjs'
 
 import {
   mockdbStateCreate,
@@ -8,11 +8,10 @@ import {
 } from './mockdbState.mjs'
 
 const buildChain = (dbState = {}) => {
-  const r = mockdbChain(dbState)
+  const r = mmChain(dbState)
 
   // make, for example, r.add callable through r.row.add
-  Object.assign(r.row, r)
-
+  // Object.assign(r.row, r)
   return {
     r: Object.assign((...args) => r.expr(... args), r),
     dbState
