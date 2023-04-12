@@ -29,6 +29,7 @@
     }
   },
   "rules": {
+    "semi": [2, "never"],
     "space-in-parens": [
       "error",
       "never",
@@ -96,7 +97,7 @@
     "no-nested-ternary": "off",
     "array-bracket-spacing": [
       "error",
-      "always"
+      "never"
     ],
     "prefer-destructuring": "off",
     "object-curly-newline": [
