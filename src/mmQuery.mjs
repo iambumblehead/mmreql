@@ -218,8 +218,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     // ```
     // row('fieldname')
     // ```
-    // seems okay now, may require adding an additonal
-    // check later, such as !isReqlObj(rows[0])
+    // seems okay now, may require deeper lookup later
     f = rows && rows[0] ? rows[0][qspec] : qspec
   } else if (mmEnumIsChain(qspec)) {
     // why re-use existing reql.rows, eg `spec.rows || rows`?
@@ -2064,8 +2063,6 @@ q.getCursor = (db, qst, args) => {
 
   return qst
 }
-
-q.isReql = true
 
 export {
   q as default,

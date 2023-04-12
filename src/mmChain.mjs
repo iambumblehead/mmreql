@@ -55,7 +55,7 @@ const chain = (() => {
       : mmQuery[queryName]
 
     return prev
-  }, {})
+  }, { isReql: true })
 
   Object.assign(chainPart.row, chainPart)
 
