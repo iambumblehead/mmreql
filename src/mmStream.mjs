@@ -1,6 +1,6 @@
 import stream from 'stream'
 
-const mockdbStreamReadable = (docs, isEmptyEnd, curIndex = 0) => new stream.Readable({
+const mmStream = (docs, isEmptyEnd, curIndex = 0) => new stream.Readable({
   objectMode: true,
   read () {
     if (curIndex < docs.length){
@@ -17,7 +17,7 @@ const mockdbStreamReadable = (docs, isEmptyEnd, curIndex = 0) => new stream.Read
 })
 
 const mockdbStream = (docs, isEmptyEnd, isChanges, isTypes) => {
-  const streamReadable = mockdbStreamReadable(docs, isEmptyEnd)
+  const streamReadable = mmStream(docs, isEmptyEnd)
 
   streamReadable.each = async (fn, onFinish) => {
     for await (const doc of streamReadable) {
