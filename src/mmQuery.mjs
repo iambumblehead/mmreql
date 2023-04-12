@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { Readable } from 'stream'
 import mmConn from './mmConn.mjs'
-import mockdbStream from './mockdbStream.mjs'
+import mmStream from './mmStream.mjs'
 
 import {
   mockdbSpecIsSuspendNestedShallow
@@ -34,16 +34,14 @@ import {
 } from './mockdbState.mjs'
 
 import {
-  mockdbTableRmDocument,
-  mockdbTableGetDocument,
-  mockdbTableSetDocument,
-  mockdbTableGetDocuments,
-  mockdbTableSetDocuments,
-  mockdbTableDocGetIndexValue,
-  mockdbTableDocEnsurePrimaryKey,
-  mockdbTableDocHasIndexValueFn,
-  mockdbTableSet
-} from './mockdbTable.mjs'
+  mmTableDocRm,
+  mmTableDocsGet,
+  mmTableDocsSet,
+  mmTableDocGetIndexValue,
+  mmTableDocEnsurePrimaryKey,
+  mmTableDocHasIndexValueFn,
+  mmTableSet
+} from './mmTable.mjs'
 
 import {
   mockdbResChangeTypeADD,
@@ -600,9 +598,9 @@ q.insert = (db, qst, args, reqlObj) => {
     .some(d => primaryKey in d)
 
   documents = documents
-    .map(doc => mockdbTableDocEnsurePrimaryKey(doc, primaryKey))
+    .map(doc => mmTableDocEnsurePrimaryKey(doc, primaryKey))
 
-  const existingDocs = mockdbTableGetDocuments(
+  const existingDocs = mmTableDocsGet(
     qst.tablelist, documents.map(doc => doc[primaryKey]), primaryKey)
 
   if (existingDocs.length) {
@@ -618,7 +616,7 @@ q.insert = (db, qst, args, reqlObj) => {
         new_val: resDoc
       }]
 
-      mockdbTableSetDocument(table, resDoc, primaryKey)
+      mmTableDocsSet(table, [resDoc], primaryKey)
 
       qst.target = mockdbResChangesFieldCreate({
         replaced: documents.length,
@@ -650,7 +648,7 @@ q.insert = (db, qst, args, reqlObj) => {
     return qst
   }
 
-  [table, documents] = mockdbTableSetDocuments(
+  [table, documents] = mmTableDocsSet(
     table, documents.map(doc => spend(db, qst, doc)), primaryKey)
 
   const changes = documents.map(doc => ({
@@ -681,13 +679,13 @@ q.update = (db, qst, args) => {
   const options = args[1] || {}
 
   const updateTarget = targetDoc => {
-    const oldDoc = mockdbTableGetDocument(queryTable, targetDoc[primaryKey], primaryKey)
+    const [oldDoc = null] = mmTableDocsGet(queryTable, [targetDoc[primaryKey]], primaryKey)
     let newDoc = updateProps === null
       ? null
       : oldDoc && Object.assign({}, oldDoc, updateProps || {})
 
     if (oldDoc && newDoc) {
-      [, newDoc] = mockdbTableSetDocument(queryTable, newDoc, primaryKey)
+      mmTableDocsSet(queryTable, [newDoc], primaryKey)
     }
 
     return [newDoc, oldDoc]
@@ -722,7 +720,7 @@ q.get = (db, qst, args) => {
   const primaryKeyValue = spend(db, qst, args[0])
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
-  const tableDoc = mockdbTableGetDocument(qst.target, primaryKeyValue, primaryKey)
+  const tableDoc = mmTableDocsGet(qst.target, [primaryKeyValue], primaryKey)[0]
 
   if (args.length === 0) {
     throw new Error(
@@ -768,7 +766,7 @@ q.getAll = (db, qst, args) => {
     return qst
   }
 
-  const tableDocHasIndex = mockdbTableDocHasIndexValueFn(
+  const tableDocHasIndex = mmTableDocHasIndexValueFn(
     tableIndexTuple, primaryKeyValues, db)
 
   qst.target = qst.target
@@ -808,17 +806,17 @@ q.replace = (db, qst, args) => {
 
   const updateTarget = targetDoc => {
     const replacement = spend(db, qst, args[0], [targetDoc])
-    const oldDoc = targetDoc &&
-      mockdbTableGetDocument(queryTable, targetDoc[primaryKey], primaryKey)
+    const [oldDoc = null] = (targetDoc &&
+      mmTableDocsGet(queryTable, [targetDoc[primaryKey]], primaryKey)) || []
 
     let newDoc = replacement === null
       ? null
       : replacement
     if (newDoc)
-      [, newDoc] = mockdbTableSetDocument(queryTable, newDoc, primaryKey)
+      mmTableDocsSet(queryTable, [newDoc], primaryKey)
 
     if (oldDoc && newDoc === null)
-      mockdbTableRmDocument(queryTable, oldDoc, primaryKey)
+      mmTableDocRm(queryTable, oldDoc, primaryKey)
 
     return [newDoc, oldDoc]
   }
@@ -989,12 +987,12 @@ q.delete = (db, qst, args) => {
     db, dbName, qst.tablename, primaryKey)
   const targetList = asList(queryTarget)
   const targetIds = targetList
-    .map(doc => mockdbTableDocGetIndexValue(doc, tableIndexTuple, spend, qst, db))
+    .map(doc => mmTableDocGetIndexValue(doc, tableIndexTuple, spend, qst, db))
     // eslint-disable-next-line security/detect-non-literal-regexp
   const targetIdRe = new RegExp(`^(${targetIds.join('|')})$`)
   const options = queryArgsOptions(args)
   const tableFiltered = queryTable.filter(doc => !targetIdRe.test(
-    mockdbTableDocGetIndexValue(doc, tableIndexTuple, spend, qst, db)))
+    mmTableDocGetIndexValue(doc, tableIndexTuple, spend, qst, db)))
   const queryConfig = queryArgsOptions(args)
   const isValidConfigKeyRe = /^(durability|returnChanges|ignoreWriteHook)$/
   const invalidConfigKey = Object.keys(queryConfig)
@@ -1017,7 +1015,7 @@ q.delete = (db, qst, args) => {
     return changes
   }, [])
 
-  mockdbTableSet(queryTable, tableFiltered)
+  mmTableSet(queryTable, tableFiltered)
 
   db = mockdbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
@@ -1561,7 +1559,7 @@ q.orderBy = (db, qst, args) => {
     } else if (argsSortPropValue) {
       value = doc[argsSortPropValue]
     } else {
-      value = mockdbTableDocGetIndexValue(doc, tableIndexTuple, spend, qst, db)
+      value = mmTableDocGetIndexValue(doc, tableIndexTuple, spend, qst, db)
     }
 
     return value
@@ -1934,7 +1932,7 @@ q.changes = (db, qst, args) => {
     })
   }
 
-  const cursor = mockdbStream(
+  const cursor = mmStream(
     initialDocs, !qst.isChanges, true, qst.includeTypes)
 
   cursor.close = () => {
@@ -2100,7 +2098,7 @@ q.getCursor = (db, qst, args) => {
     })
   }
 
-  const cursor = mockdbStream(initialDocs, !qst.isChanges)
+  const cursor = mmStream(initialDocs, !qst.isChanges)
   // if (qst.error) {
   //   throw new Error('cursor has error');
   // }
