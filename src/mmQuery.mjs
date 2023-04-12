@@ -68,7 +68,6 @@ import {
   mmEnumQueryArgTypeARGSIG,
   mmEnumQueryArgTypeARGS,
   mmEnumQueryArgTypeCHAIN,
-  mmEnumQueryArgTypeCHAINFN,
   mmEnumQueryNameIsCURSORORDEFAULTRe,
   mmEnumIsQueryArgsResult,
   mmEnumIsChainShallow,
@@ -125,7 +124,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
   if (rows && rows.length) {
     qst.rowMap[reqlObj.recId] = rows.slice()
   }
-
+  
   const val = reqlObj.recs.reduce((qstNext, rec, i) => {
     // avoid mutating original args w/ suspended values
     const queryArgs = rec[1].slice()
@@ -152,7 +151,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       }
     }
 
-    if (reqlObj.type !== mmEnumQueryArgTypeCHAINFN && rows && i === 0) {
+    if (i === 0 && rows && !/\(.*\)/.test(reqlObj.recId)) {
       // assigns row from callee to this pattern target,
       //  * this pattern must represent the beginning of a chain
       //  * this pattern is not a 'function'; pattern will not resolve row

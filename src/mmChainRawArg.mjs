@@ -1,21 +1,14 @@
 import mmConn from './mmConn.mjs'
 
 import {
-  mmEnumQueryArgTypeCHAIN,
   mmEnumQueryArgTypeCHAINIsRe,
   mmEnumQueryArgTypeARGSIG
 } from './mmEnum.mjs'
 
 import {
-  mmChainRecNext,
-  mmChainRecRowFnCreate
+  mmChainRecNext
 } from './mmChainRec.mjs'
-/*
-import {
-  mmRecChainRowCreate,
-  mmRecChainRowFnCreate
-} from './mmRecChain.mjs'  
-*/
+
 const isBoolNumUndefRe = /boolean|number|undefined/
 
 // ex, "table => r.db('cmdb').tableCreate(table)"
@@ -40,14 +33,15 @@ const fnStrParseArgs = fnStr => String(fnStr)
 //
 // chain arg is used rather than importing chain, because
 // recursive error between this function and chain
-const mockdbChainSuspendArgFn = (chainCreate, arg) => {
+const mockdbChainSuspendArgFn = (chainCreate, recId, arg) => {
   const fnArgNames = fnStrParseArgs(arg)
-  const fnArgSig = `${mmEnumQueryArgTypeARGSIG}.${fnArgNames}`
+  const fnArgSig = fnArgNames.join()
+  const fnRecId = (recId || '') + '(' + fnArgSig + ')'
 
   let argchain = arg(
     ...fnArgNames.map((argName, i) => (
       chainCreate()
-        .row(mmEnumQueryArgTypeARGSIG, fnArgSig, i, argName.trim())
+        .row(mmEnumQueryArgTypeARGSIG, fnRecId, i, argName.trim())
     ))
   )
 
@@ -57,24 +51,25 @@ const mockdbChainSuspendArgFn = (chainCreate, arg) => {
   }
 
   return Array.isArray(argchain)
-    ? argchain.map(argc => mmChainRecRowFnCreate(argc, fnArgSig))
-    : mmChainRecRowFnCreate(argchain, fnArgSig)
+    ? argchain.map(argc => mmChainRecNext(argc, null, fnRecId))
+    : mmChainRecNext(argchain, null, fnRecId)
 }
 
 // deeply recurse data converting chain leaves to spec
-const mmChainRawArg = (arg, chainCreate, type = typeof arg) => {
+const mmChainRawArg = (arg, recId, chainCreate, type = typeof arg) => {
   if (isBoolNumUndefRe.test(type)
     || arg instanceof Date || arg instanceof mmConn || !arg) {
     arg = arg
   } else if (Array.isArray(arg)) {
-    arg = arg.map(a => mmChainRawArg(a, chainCreate))
+    arg = arg.map(a => mmChainRawArg(a, recId, chainCreate))
   } else if (mmEnumQueryArgTypeCHAINIsRe.test(arg)) {
     arg = mmChainRecNext(arg)
   } else if (typeof arg === 'function') {
-    arg = mockdbChainSuspendArgFn(chainCreate, arg)
+    arg = mockdbChainSuspendArgFn(chainCreate, recId, arg)
   } else if (type === 'object') {
-    arg = Object.keys(arg)
-      .reduce((a, k) => (a[k] = mmChainRawArg(arg[k], chainCreate), a), {})
+    arg = Object.keys(arg).reduce((a, k) => (
+      a[k] = mmChainRawArg(arg[k], recId, chainCreate),
+      a), {})
   }
 
   return arg

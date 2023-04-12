@@ -1,4 +1,3 @@
-const mmEnumQueryArgTypeCHAINFN = 'reqlARGSCHAINFN'
 const mmEnumQueryArgTypeCHAIN = 'reqlARGSCHAIN'
 const mmEnumQueryArgTypeARGS = 'reqlARGSRESULT'
 const mmEnumQueryArgTypeARGSIG = 'reqlARGSIG'
@@ -42,7 +41,6 @@ export {
   mmEnumQueryArgTypeARGS,
   mmEnumQueryArgTypeARGSIG,
   mmEnumQueryArgTypeCHAIN,
-  mmEnumQueryArgTypeCHAINFN,
   mmEnumQueryArgTypeCHAINIsRe,
   mmEnumQueryArgTypeCHAINHasRe,
 
