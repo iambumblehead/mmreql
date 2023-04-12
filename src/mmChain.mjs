@@ -17,7 +17,7 @@ import {
 
 const chainFnCreate = (chains, queryName) => function (...args) {
   const chain = mmChainRecNext(this, [
-    queryName, mmChainRawArg(args, mmChain)])
+    queryName, mmChainRawArg(args, this.recId, mmChain)])
 
   // must not follow another term, ex: r.expr( ... ).desc( 'foo' )
   if (chain.recs.length > 1 && mmEnumQueryNameIsFIRSTTERMRe.test(queryName)) {
@@ -33,12 +33,12 @@ const chainFnCreate = (chains, queryName) => function (...args) {
   return mmChainRecFnCreate(chains, chain, (...fnargs) => {
     // eg: row => row('field')
     const chainNext = mmChainRecNext(chain, [
-      `${queryName}.fn`, mmChainRawArg(fnargs, mmChain)])
+      `${queryName}.fn`, mmChainRawArg(fnargs, chain.recId, mmChain)])
 
     return mmChainRecFnCreate(chains, chainNext, (...attributeFnArgs) => (
       // eg: row => row('field')('attribute')
       mmChainRecFnCreate(chains, mmChainRecNext(chainNext, [
-        'getField', mmChainRawArg(attributeFnArgs, mmChain)
+        'getField', mmChainRawArg(attributeFnArgs, chainNext.recId, mmChain)
       ]), chainNext)
     ))
   })

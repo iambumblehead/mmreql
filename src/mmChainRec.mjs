@@ -1,28 +1,16 @@
 import {
-  mmEnumQueryArgTypeCHAINFN,
   mmEnumQueryArgTypeCHAIN
 } from './mmEnum.mjs'
 
-// chain originates from nested row or sub query as a reqlCHAIN or pojo. ex,
+// creates chain from previous chain, incl nested row and sub query. ex,
 //  * `map(hero => hero('name'))`
 //  * `map(hero => ({ heroName: hero('name') }))`
-const mmChainRecRowFnCreate = (chain, recId) => ({
-  toString: () => mmEnumQueryArgTypeCHAINFN,
-  type: mmEnumQueryArgTypeCHAINFN,
-  recs: chain.recs,
-  recId: recId || ('orphan' + Date.now())
-})
-
-// creates chain from previous chain
-const mmChainRecNext = (chain, rec, recs = (chain.recs || []).slice()) => ({
+const mmChainRecNext = (chain, rec, id, recs = (chain.recs || []).slice()) => ({
   toString: () => mmEnumQueryArgTypeCHAIN,
   type: mmEnumQueryArgTypeCHAIN,
   state: chain.state || {},
-  recs: rec
-    ? recs.push(rec) && recs
-    : recs,
-  recId: (chain.recId || '') +
-    (rec ? '/' + rec[0] : '')
+  recId: id || ((chain.recId || '') + (rec ? '.' + rec[0] : '')),
+  recs: rec ? recs.push(rec) && recs : recs
 })
 
 const mmChainRecFnCreate = (queryFns, chain, fn) => (
@@ -30,6 +18,5 @@ const mmChainRecFnCreate = (queryFns, chain, fn) => (
 
 export {
   mmChainRecFnCreate,
-  mmChainRecRowFnCreate,
   mmChainRecNext
 }
