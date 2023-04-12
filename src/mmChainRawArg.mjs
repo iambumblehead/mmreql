@@ -1,8 +1,8 @@
 import mmConn from './mmConn.mjs'
 
 import {
-  mmEnumQueryArgTypeROW,
-  mmEnumQueryArgTypeROWIsRe
+  mmEnumQueryArgTypeCHAIN,
+  mmEnumQueryArgTypeCHAINIsRe
 } from './mmEnum.mjs'
 
 import {
@@ -46,12 +46,12 @@ const mockdbChainSuspendArgFn = (chainCreate, arg) => {
   let argchain = arg(
     ...fnArgNames.map((argName, i) => (
       chainCreate()
-        .row(mmEnumQueryArgTypeROW, fnArgSig, i, argName.trim())
+        .row(mmEnumQueryArgTypeCHAIN, fnArgSig, i, argName.trim())
     ))
   )
 
   // if raw data are returned, convert to chain
-  if (!mmEnumQueryArgTypeROWIsRe.test(String(argchain))) {
+  if (!mmEnumQueryArgTypeCHAINIsRe.test(String(argchain))) {
     argchain = chainCreate().expr(argchain)
   }
 
@@ -91,7 +91,7 @@ const mmChainRawArg = (arg, chainCreate, type = typeof arg) => {
     || arg instanceof Date || arg instanceof mmConn || !arg) {
     arg = arg
   } else if (isChain(arg)) {
-    // arg = mockdbSpecFromChain(mmEnumQueryArgTypeROW, arg);
+    // arg = mockdbSpecFromChain(mmEnumQueryArgTypeCHAIN, arg);
     arg = mmChainRecNext(arg)
   } else if (typeof arg === 'function') {
     arg = mockdbChainSuspendArgFn(chainCreate, arg)

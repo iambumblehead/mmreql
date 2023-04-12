@@ -9,7 +9,7 @@ import {
 } from '../src/mmErr.mjs'
 
 import {
-  mmEnumIsRowShallow
+  mmEnumIsChainShallow
 } from '../src/mmEnum.mjs'
 
 timezonemock.register('US/Pacific')
@@ -452,8 +452,8 @@ test('indexCreate should add compound index to dbState', async t => {
   const dbStateIndex = dbStateIndexes.find(i => i[0] === 'id_numeric_cid')
 
   t.is(dbStateIndex[0], 'id_numeric_cid')
-  t.true(mmEnumIsRowShallow(dbStateIndex[1][0]))
-  t.true(mmEnumIsRowShallow(dbStateIndex[1][1]))
+  t.true(mmEnumIsChainShallow(dbStateIndex[1][0]))
+  t.true(mmEnumIsChainShallow(dbStateIndex[1][1]))
 })
 
 test('indexCreate should add compound index to dbState, function generated', async t => {
@@ -479,7 +479,7 @@ test('indexCreate should add compound index to dbState, function generated', asy
   const dbStateIndex = dbStateIndexes.find(i => i[0] === 'name_numeric')
 
   t.is(dbStateIndex[0], 'name_numeric')
-  t.true(mmEnumIsRowShallow(dbStateIndex[1]))
+  t.true(mmEnumIsChainShallow(dbStateIndex[1]))
 })
 
 test('indexCreate should return results from compound index, function generated', async t => {

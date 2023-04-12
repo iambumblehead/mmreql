@@ -66,13 +66,13 @@ import {
 import {
   mmEnumTypeERROR,
   mmEnumQueryArgTypeARGS,
-  mmEnumQueryArgTypeROW,
-  mmEnumQueryArgTypeROWFN,
-  mmEnumQueryArgTypeROWIsRe,
+  mmEnumQueryArgTypeCHAIN,
+  mmEnumQueryArgTypeCHAINFN,
+  mmEnumQueryArgTypeCHAINIsRe,
   mmEnumQueryNameIsCURSORORDEFAULTRe,
   mmEnumIsQueryArgsResult,
-  mmEnumIsRowShallow,
-  mmEnumIsRow
+  mmEnumIsChainShallow,
+  mmEnumIsChain
 } from './mmEnum.mjs'
 
 const isBoolNumStrRe = /boolean|number|string/
@@ -98,7 +98,7 @@ const sortObjParse = o => isLookObj(o)
 
 const isConfigObj = (obj, objType = typeof obj) => obj
   && /object|function/.test(objType)
-  && !mmEnumIsRow(obj)
+  && !mmEnumIsChain(obj)
   && !Array.isArray(obj)
 
 // return last query argument (optionally) provides query configurations
@@ -144,14 +144,14 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       //   r.row('user_id').eq('xavier').or(r.row('membership').eq('join'))
       // ```
       if (qstNext.rowDepth >= 1 && i === 0 && (
-        !mmEnumQueryArgTypeROWIsRe.test(rec.queryArgs[0]))) {
+        !mmEnumQueryArgTypeCHAINIsRe.test(rec.queryArgs[0]))) {
         throw mmErrCannotUseNestedRow()
       } else {
         qstNext.rowDepth += 1
       }
     }
 
-    if (reqlObj.type !== mmEnumQueryArgTypeROWFN && rows && i === 0) {
+    if (reqlObj.type !== mmEnumQueryArgTypeCHAINFN && rows && i === 0) {
       // assigns row from callee to this pattern target,
       //  * this pattern must represent the beginning of a chain
       //  * this pattern is not a 'function'; pattern will not resolve row
@@ -221,7 +221,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     // seems okay now, may require adding an additonal
     // check later, such as !isReqlObj(rows[0])
     f = rows && rows[0] ? rows[0][qspec] : qspec
-  } else if (mmEnumIsRow(qspec)) {
+  } else if (mmEnumIsChain(qspec)) {
     // why re-use existing reql.rows, eg `spec.rows || rows`?
     // ```
     // r.expr([{ type: 'boot' }]).contains(row => r
@@ -247,7 +247,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     //  .merge(row => ({ oldid: row('id'), id: 0 }))
     //  .run()
     // ```    
-  } else if (mmEnumIsRowShallow(qspec)) {
+  } else if (mmEnumIsChainShallow(qspec)) {
     f = Object.keys(qspec).reduce((prev, key) => {
       prev[key] = spend(db, qst, qspec[key], rows, d + 1)
 
@@ -496,7 +496,7 @@ q.indexCreate = (db, qst, args) => {
   const config = queryArgsOptions(args)
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
 
-  const fields = mmEnumIsRowShallow(args[1])
+  const fields = mmEnumIsChainShallow(args[1])
     ? args[1]
     : [indexName]
 
@@ -570,7 +570,7 @@ q.insert = (db, qst, args, reqlObj) => {
     qst.tablelist, documents.map(doc => doc[primaryKey]), primaryKey)
 
   if (existingDocs.length) {
-    if (mmEnumIsRow(options.conflict)) {
+    if (mmEnumIsChain(options.conflict)) {
       const resDoc = spend(db, qst, options.conflict, [
         documents[0].id,
         existingDocs[0],
@@ -856,13 +856,13 @@ q.nth = (db, qst, args) => {
 //           even when ...
 //
 q.row = (db, qst, args) => {
-  if (args[0] === mmEnumQueryArgTypeROW && !(args[1] in qst.rowMap)) {
+  if (args[0] === mmEnumQueryArgTypeCHAIN && !(args[1] in qst.rowMap)) {
     // keep this for development
     // console.log(qst.target, mockdbSpecSignature(reqlObj), args, qst.rowMap);
     throw new Error('[!!!] error: missing ARGS from ROWMAP')
   }
 
-  qst.target = args[0] === mmEnumQueryArgTypeROW
+  qst.target = args[0] === mmEnumQueryArgTypeCHAIN
     ? qst.rowMap[args[1]][args[2]]
     : qst.target[args[0]]
   
@@ -993,7 +993,7 @@ q.contains = (db, qst, args) => {
     throw mmErrExpectedTypeFOOButFoundBAR('SEQUENCE', 'SINGLE_SELECTION')
   }
 
-  if (mmEnumIsRow(args[0])) {
+  if (mmEnumIsChain(args[0])) {
     qst.target = queryTarget.some(target => {
       const res = spend(db, qst, args[0], [target])
 
@@ -1136,7 +1136,7 @@ q.eqJoin = (db, qst, args) => {
   // should remove this... get table name from args[1] record
   // and call q.config() directly
   const rightFieldConfig = args[1] && spend(db, qst, {
-    type: mmEnumQueryArgTypeROW,
+    type: mmEnumQueryArgTypeCHAIN,
     recs: [
       ...args[1].recs,
       { queryName: 'config', queryArgs: [] }
@@ -1472,7 +1472,7 @@ q.ungroup = (db, qst) => {
 
 q.orderBy = (db, qst, args) => {
   const queryTarget = qst.target
-  const queryOptions = mmEnumIsRow(args[0])
+  const queryOptions = mmEnumIsChain(args[0])
     ? args[0]
     : queryArgsOptions(args)
   const queryOptionsIndex = spend(db, qst, queryOptions.index)
@@ -1493,7 +1493,7 @@ q.orderBy = (db, qst, args) => {
     // ex, queryOptions,
     //  ({ index: r.desc('date') })
     //  doc => doc('upvotes')
-    if (mmEnumIsRowShallow(queryOptions)) {
+    if (mmEnumIsChainShallow(queryOptions)) {
       value = spend(db, qst, queryOptions, [doc])
 
       const sortObj = sortObjParse(value)
@@ -1645,7 +1645,7 @@ q.without = (db, qst, args) => {
 q.do = (db, qst, args) => {
   const [doFn] = args.slice(-1)
 
-  if (mmEnumIsRow(doFn)) {
+  if (mmEnumIsChain(doFn)) {
     qst.target = args.length === 1
       ? spend(db, qst, doFn, [qst.target])
       : spend(db, qst, doFn, args.slice(0, -1))
