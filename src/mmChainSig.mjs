@@ -3,7 +3,7 @@ import {
   mmEnumQueryArgTypeROWIsRe
 } from './mmEnum.mjs'
 
-const mmRecChainSigArg = (recarg, type = typeof recarg) => {
+const mmChainSigArg = (recarg, type = typeof recarg) => {
   if (type === 'string') {
     recarg = mmEnumQueryArgTypeROWIsRe.test(recarg) ? 'row' : `"${recarg}"`
   } else if (type === 'object') {
@@ -15,17 +15,17 @@ const mmRecChainSigArg = (recarg, type = typeof recarg) => {
   return recarg
 }
 
-const mmRecChainSigArgs = rec => rec.queryArgs[0] === mmEnumQueryArgTypeROW
+const mmChainSigArgs = rec => rec.queryArgs[0] === mmEnumQueryArgTypeROW
   ? rec.queryArgs[3]
-  : rec.queryArgs.map(arg => mmRecChainSigArg(arg)).join(', ')
+  : rec.queryArgs.map(arg => mmChainSigArg(arg)).join(', ')
 
 // returns a human readable signature from reqlOb,
 //
 // ex, '.row("rose")("petal")'
-const mmRecChainSig = reqlObj => (
+const mmChainSig = reqlObj => (
   reqlObj && reqlObj.recs.reduce((prev, rec) => (
     prev + (/\.fn/.test(rec.queryName)
-      ? `(${mmRecChainSigArgs(rec)})`
-      : `.${rec.queryName}(${mmRecChainSigArgs(rec)})`)), ''))
+      ? `(${mmChainSigArgs(rec)})`
+      : `.${rec.queryName}(${mmChainSigArgs(rec)})`)), ''))
 
-export default mmRecChainSig
+export default mmChainSig

@@ -1,9 +1,3 @@
-const mmEnumRecTypeCHAIN = 'reqlCHAIN'
-const mmEnumRecTypeROW = 'reqlARGSSUSPEND'
-
-const mmEnumRecTypeCHAINHasRe = new RegExp(
-  `${mmEnumRecTypeCHAIN}`)
-
 const mmEnumQueryArgTypeROWFN = 'reqlARGSSUSPENDFN'
 const mmEnumQueryArgTypeROW = 'reqlARGSSUSPEND'
 const mmEnumQueryArgTypeARGS = 'reqlARGSRESULT'
@@ -44,10 +38,6 @@ const mmEnumIsQueryArgsResult = obj => mmEnumIsLookObj(obj)
   && Boolean(mmEnumQueryArgTypeARGS in obj)
 
 export {
-  mmEnumRecTypeCHAIN,
-  mmEnumRecTypeROW,
-  mmEnumRecTypeCHAINHasRe,
-
   mmEnumQueryArgTypeARGS,
   mmEnumQueryArgTypeROW,
   mmEnumQueryArgTypeROWFN,
