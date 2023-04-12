@@ -371,7 +371,7 @@ test('`next` should error when hitting an error -- not on the first batch', asyn
       i = i + 1
     }
   }, {
-    message: 'No attribute `val` in object'
+    message: 'Error: No attribute `val` in object'
   })
 
   await connection.close()

@@ -1,6 +1,6 @@
 import stream from 'stream'
 
-const mmStream = (docs, isEmptyEnd, curIndex = 0) => new stream.Readable({
+const mmStreamReadable = (docs, isEmptyEnd, curIndex = 0) => new stream.Readable({
   objectMode: true,
   read () {
     if (curIndex < docs.length){
@@ -16,8 +16,8 @@ const mmStream = (docs, isEmptyEnd, curIndex = 0) => new stream.Readable({
     
 })
 
-const mockdbStream = (docs, isEmptyEnd, isChanges, isTypes) => {
-  const streamReadable = mmStream(docs, isEmptyEnd)
+const mmStream = (docs, isEmptyEnd, isChanges, isTypes) => {
+  const streamReadable = mmStreamReadable(docs, isEmptyEnd)
 
   streamReadable.each = async (fn, onFinish) => {
     for await (const doc of streamReadable) {
@@ -36,6 +36,9 @@ const mockdbStream = (docs, isEmptyEnd, isChanges, isTypes) => {
       delete value.type
     }
 
+    if (value && 'error' in value)
+      reject(new Error(value.error))
+
     return value === null
       ? reject(new Error('No more rows in the cursor.'))
       : resolve(isChanges ? value : value.new_val)
@@ -44,4 +47,4 @@ const mockdbStream = (docs, isEmptyEnd, isChanges, isTypes) => {
   return streamReadable
 }
 
-export default mockdbStream
+export default mmStream

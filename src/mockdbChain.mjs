@@ -5,8 +5,7 @@ import {
 } from './mmRecChain.mjs'
 
 import queryReql, {
-  spend,
-  spendCursor
+  spend
 } from './mmQuery.mjs'
 
 import mmChainRawArg from './mmChainRawArg.mjs'
@@ -31,11 +30,7 @@ const staleChains = Object.keys(queryReql).reduce((prev, queryName) => {
     if (mmEnumQueryNameIsRESOLVINGRe.test(queryName)) {
       return queryName === 'serialize'
         ? JSON.stringify(chain.recs)
-
-        : (queryName === 'getCursor' ? spendCursor : spend)(
-          chain.state, { recId: 'start' }, mmRecChainSubCreate(chain))
-      // spendCursor pending removal
-      // : spend(chain.state, { recId: 'start' }, mmRecChainSubCreate(chain));
+        : spend(chain.state, { recId: 'start' }, mmRecChainSubCreate(chain));
     }
 
     return mmRecChainFnCreate(staleChains, chain, (...fnargs) => {

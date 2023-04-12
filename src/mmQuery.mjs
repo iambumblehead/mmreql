@@ -92,10 +92,6 @@ const isReqlSuspendNestedShallow = obj => isLookObj(obj)
 const isReqlObj = obj => isLookObj(obj)
   && mmEnumQueryArgTypeROWIsRe.test(obj.type)
 
-const isReqlObjShallow = obj => isLookObj(obj) && (
-  mmEnumQueryArgTypeROWIsRe.test(obj.type) ||
-    mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join()))
-
 // created by 'asc' and 'desc' queries
 const isSortObj = obj => isLookObj(obj)
   && 'sortBy' in obj
@@ -113,7 +109,7 @@ const isConfigObj = (obj, objType = typeof obj) => obj
 const queryArgsOptions = (queryArgs, queryOptionsDefault = {}) => {
   const queryOptions = queryArgs.slice(-1)[0] || {}
 
-  return (isConfigObj(queryOptions))
+  return isConfigObj(queryOptions)
     ? queryOptions
     : queryOptionsDefault
 }
@@ -185,7 +181,10 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       // * throw all tagged errors up to user
       qstNext.target = null
       qstNext.error = e
- 
+
+      if (reqlObj.recs.slice(-1)[0].queryName === 'getCursor')
+        return qstNext
+
       e[mmEnumTypeERROR] = typeof e[mmEnumTypeERROR] === 'boolean'
         ? e[mmEnumTypeERROR]
         : !reqlObj.recs.slice(i + 1).some(o => mmEnumQueryNameIsCURSORORDEFAULTRe.test(o.queryName))
@@ -263,17 +262,6 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
   }
 
   return f
-}
-
-// pending removal
-const spendCursor = (db, qst, qspec, res) => {
-  try {
-    res = spend(db, qst, qspec)
-  } catch (e) {
-    res = { next: () => new Promise((resolve, reject) => reject(e)) }
-  }
-
-  return res
 }
 
 const mockdbReqlQueryOrStateDbName = (qst, db) => (
@@ -2092,6 +2080,10 @@ q.getCursor = (db, qst, args) => {
     })
   }
 
+  if (qst.error) {
+    initialDocs.push({ error: qst.error })
+  }
+
   const cursor = mmStream(initialDocs, !qst.isChanges)
   // if (qst.error) {
   //   throw new Error('cursor has error');
@@ -2129,6 +2121,5 @@ q.isReql = true
 
 export {
   q as default,
-  spend,
-  spendCursor
+  spend
 }
