@@ -9,9 +9,7 @@ import queryReql, {
   spendCursor
 } from './mmQuery.mjs'
 
-import {
-  mockdbSpecFromRawArg
-} from './mockdbSpec.mjs'
+import mmChainRawArg from './mmChainRawArg.mjs'
 
 import {
   mmEnumQueryNameIsRESOLVINGRe,
@@ -22,7 +20,7 @@ const staleChains = Object.keys(queryReql).reduce((prev, queryName) => {
   prev[queryName] = function (...args) {
     const chain = mmRecChainCreate(this, {
       queryName,
-      queryArgs: mockdbSpecFromRawArg(args, mockdbChain)
+      queryArgs: mmChainRawArg(args, mockdbChain)
     })
 
     // must not follow another term, ex: r.expr( ... ).desc( 'foo' )
@@ -44,14 +42,14 @@ const staleChains = Object.keys(queryReql).reduce((prev, queryName) => {
       // eg: row => row('field')
       const chainNext = mmRecChainCreate(chain, {
         queryName: `${queryName}.fn`,
-        queryArgs: mockdbSpecFromRawArg(fnargs, mockdbChain)
+        queryArgs: mmChainRawArg(fnargs, mockdbChain)
       })
         
       return mmRecChainFnCreate(staleChains, chainNext, (...attributeFnArgs) => (
         // eg: row => row('field')('attribute')
         mmRecChainFnCreate(staleChains, mmRecChainCreate(chainNext, {
           queryName: `getField`,
-          queryArgs: mockdbSpecFromRawArg(attributeFnArgs, mockdbChain)
+          queryArgs: mmChainRawArg(attributeFnArgs, mockdbChain)
         }), chainNext)
       ))
     })

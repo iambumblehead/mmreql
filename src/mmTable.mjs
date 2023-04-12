@@ -1,8 +1,5 @@
 import { randomUUID } from 'crypto'
-import {
-  mockdbSpecIs,
-  mockdbSpecIsSuspendNestedShallow
-} from './mockdbSpec.mjs'
+import { mmEnumIsRowShallow } from './mmEnum.mjs'
 
 const mmTableDocIsPrimaryKey = (doc, primaryKey) => Boolean(
   doc && /number|string/.test(typeof doc[primaryKey]))
@@ -65,10 +62,10 @@ const mmTableSet = (table, docs) => {
 const mmTableDocGetIndexValue = (doc, indexTuple, spend, qst, dbState, indexValueDefault) => {
   const [indexName, spec] = indexTuple
 
-  if (mockdbSpecIs(spec)) {
-    indexValueDefault = spend(dbState, qst, spec, [doc])
-  } else if (Array.isArray(spec) && mockdbSpecIsSuspendNestedShallow(spec)) {
-    indexValueDefault = spec.map(field => spend(dbState, qst, field, [doc]))
+  if (mmEnumIsRowShallow(spec)) {
+    indexValueDefault = Array.isArray(spec)
+      ? spec.map(field => spend(dbState, qst, field, [doc]))
+      : spend(dbState, qst, spec, [doc])
   } else {
     indexValueDefault = doc[indexName]
   }

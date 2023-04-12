@@ -4,10 +4,6 @@ import mmConn from './mmConn.mjs'
 import mmStream from './mmStream.mjs'
 
 import {
-  mockdbSpecIsSuspendNestedShallow
-} from './mockdbSpec.mjs'
-
-import {
   mmRecIsCursorOrDefault
 } from './mmRec.mjs'
 
@@ -73,7 +69,8 @@ import {
   mmEnumQueryArgTypeROW,
   mmEnumQueryArgTypeROWFN,
   mmEnumQueryArgTypeROWIsRe,
-  mmEnumQueryArgTypeROWHasRe
+  mmEnumQueryArgTypeROWHasRe,
+  mmEnumIsRowShallow
 } from './mmEnum.mjs'
 
 const isBoolNumStrRe = /boolean|number|string/
@@ -527,7 +524,7 @@ q.indexCreate = (db, qst, args) => {
   const config = queryArgsOptions(args)
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
 
-  const fields = isReqlObj(args[1]) || mockdbSpecIsSuspendNestedShallow(args[1])
+  const fields = mmEnumIsRowShallow(args[1])
     ? args[1]
     : [indexName]
 
