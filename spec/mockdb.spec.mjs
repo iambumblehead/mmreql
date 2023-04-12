@@ -1693,7 +1693,7 @@ test('supports .ne(), applied to row', async t => {
     .run()
 
   // r function not yet supported
-  // t.is( await r( true ).not().run(), false );
+  // t.is( await r( true ).not().run(), false )
   t.deepEqual(res, [{
     id: 'playerId-1234',
     score: 10
@@ -3486,7 +3486,7 @@ test('complex changefeed query', async t => {
     }
   })
 
-  await r.table(tableRoomMemberships).insert(membershipDocNext).run();
+  await r.table(tableRoomMemberships).insert(membershipDocNext).run()
   const streamIterateResult = await streamIterate
 
   t.deepEqual(streamIterateResult, {

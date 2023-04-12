@@ -120,7 +120,7 @@ const asList = value => Array.isArray(value) ? value : [value]
 
 const q = {}
 
-const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
+const spendRecs = (db, qst, reqlObj, rows) => {
   if (rows && rows.length) {
     qst.rowMap[reqlObj.recId] = rows.slice()
   }
@@ -231,7 +231,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     // but '.contains( ... )' would define incorrect row 'cleat'.
     //
     // current unit-tests pass, but logic could be wrong in some situations
-    f = mockdbSuspendArgSpend(db, qst, qspec, rows)
+    f = spendRecs(db, qst, qspec, rows)
   } else if (Array.isArray(qspec)) {
     // detach if spec is has args
     if (mmEnumIsQueryArgsResult(qspec.slice(-1)[0])) {
@@ -278,7 +278,6 @@ q.connect = (db, qst, args) => {
   return qst
 }
 
-
 q.connectPool = (db, qst, args) => {
   const [conn] = args
   const { host, port, user, password } = conn
@@ -321,7 +320,7 @@ q.db = (db, qst, args) => {
   const isValidDbNameRe = /^[A-Za-z0-9_]*$/
 
   if (!args.length) {
-    throw mmErrArgumentsNumber('r.dbCreate', 1, args.length)
+    throw mmErrArgumentsNumber('r.db', 1, args.length)
   }
 
   if (!isValidDbNameRe.test(dbName)) {
@@ -534,7 +533,7 @@ q.indexList = (db, qst) => {
   return qst
 }
 // pass query down to 'spend' and copy data
-q.insert = (db, qst, args, reqlObj) => {
+q.insert = (db, qst, args) => {
   // both argument types (list or atom) resolved to a list here
   let documents = Array.isArray(args[0]) ? args[0] : args.slice(0, 1)
   let table = qst.tablelist
@@ -645,7 +644,7 @@ q.update = (db, qst, args) => {
 
   const updateTarget = targetDoc => {
     const [oldDoc = null] = mmTableDocsGet(queryTable, [targetDoc[primaryKey]], primaryKey)
-    let newDoc = updateProps === null
+    const newDoc = updateProps === null
       ? null
       : oldDoc && Object.assign({}, oldDoc, updateProps || {})
 
@@ -769,7 +768,7 @@ q.replace = (db, qst, args) => {
     const [oldDoc = null] = (targetDoc &&
       mmTableDocsGet(queryTable, [targetDoc[primaryKey]], primaryKey)) || []
 
-    let newDoc = replacement === null
+    const newDoc = replacement === null
       ? null
       : replacement
     if (newDoc)
@@ -868,12 +867,12 @@ q.row = (db, qst, args) => {
   return qst
 }
 
-q.row.fn = (db, qst, args, reqlObj) => {
+q.row.fn = (db, qst, args) => {
   if (typeof args[0] === 'string' && !(args[0] in qst.target)) {
     throw mmErrNoAttributeInObject(args[0])
   }
 
-  return q.getField(db, qst, args, reqlObj)
+  return q.getField(db, qst, args)
 }
 
 q.default = (db, qst, args) => {
@@ -1350,7 +1349,7 @@ q.min = (db, qst, args) => {
   return qst
 }
 
-q.merge = (db, qst, args, reqlObj) => {
+q.merge = (db, qst, args) => {
   if (args.length === 0) {
     throw mmErrArgumentsNumber('merge', 1, args.length, true)
   }
@@ -2064,7 +2063,4 @@ q.getCursor = (db, qst, args) => {
   return qst
 }
 
-export {
-  q as default,
-  spend
-}
+export default Object.assign(spend, q)

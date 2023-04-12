@@ -11,7 +11,6 @@ const buildChain = (dbState = {}) => {
   const r = mmChain(dbState)
 
   // make, for example, r.add callable through r.row.add
-  // Object.assign(r.row, r)
   return {
     r: Object.assign((...args) => r.expr(... args), r),
     dbState

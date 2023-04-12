@@ -1,13 +1,6 @@
-import {
-  mmChainRecNext,
-  mmChainRecFnCreate
-} from './mmChainRec.mjs'
-
-import mmQuery, {
-  spend
-} from './mmQuery.mjs'
-
 import mmChainRawArg from './mmChainRawArg.mjs'
+import mmChainRecNext from './mmChainRec.mjs'
+import mmQuery from './mmQuery.mjs'
 
 import {
   mmEnumQueryNameIsRESOLVINGRe,
@@ -16,8 +9,9 @@ import {
 } from './mmEnum.mjs'
 
 const chainFnCreate = (chains, queryName) => function (...args) {
+  const chainCreate = mmChain // eslint-disable-line no-use-before-define
   const chain = mmChainRecNext(this, [
-    queryName, mmChainRawArg(args, this.recId, mmChain)])
+    queryName, mmChainRawArg(args, this.recId, chainCreate)])
 
   // must not follow another term, ex: r.expr( ... ).desc( 'foo' )
   if (chain.recs.length > 1 && mmEnumQueryNameIsFIRSTTERMRe.test(queryName)) {
@@ -27,21 +21,21 @@ const chainFnCreate = (chains, queryName) => function (...args) {
   if (mmEnumQueryNameIsRESOLVINGRe.test(queryName)) {
     return queryName === 'serialize'
       ? JSON.stringify(chain.recs)
-      : spend(chain.state, { recId: chain.recId }, mmChainRecNext(chain))
+      : mmQuery(chain.state, { recId: chain.recId }, mmChainRecNext(chain))
   }
 
-  return mmChainRecFnCreate(chains, chain, (...fnargs) => {
+  return Object.assign((...fnargs) => {
     // eg: row => row('field')
     const chainNext = mmChainRecNext(chain, [
-      `${queryName}.fn`, mmChainRawArg(fnargs, chain.recId, mmChain)])
+      `${queryName}.fn`, mmChainRawArg(fnargs, chain.recId, chainCreate)])
 
-    return mmChainRecFnCreate(chains, chainNext, (...attributeFnArgs) => (
+    return Object.assign((...attributeFnArgs) => (
       // eg: row => row('field')('attribute')
-      mmChainRecFnCreate(chains, mmChainRecNext(chainNext, [
-        'getField', mmChainRawArg(attributeFnArgs, chainNext.recId, mmChain)
-      ]), chainNext)
-    ))
-  })
+      Object.assign(chainNext, mmChainRecNext(chainNext, [
+        'getField', mmChainRawArg(attributeFnArgs, chainNext.recId, chainCreate)
+      ]), chains)
+    ), chainNext, chains)
+  }, chain, chains)
 }
 
 const chain = (() => {

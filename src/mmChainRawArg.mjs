@@ -1,13 +1,10 @@
 import mmConn from './mmConn.mjs'
+import mmChainRecNext from './mmChainRec.mjs'
 
 import {
   mmEnumQueryArgTypeCHAINIsRe,
   mmEnumQueryArgTypeARGSIG
 } from './mmEnum.mjs'
-
-import {
-  mmChainRecNext
-} from './mmChainRec.mjs'
 
 const isBoolNumUndefRe = /boolean|number|undefined/
 
