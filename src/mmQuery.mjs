@@ -36,28 +36,32 @@ import {
 } from './mmTable.mjs'
 
 import {
-  mockdbResChangeTypeADD,
-  mockdbResChangeTypeINITIAL,
+  mmResChangeTypeADD,
+  mmResChangeTypeINITIAL,
+  mmResChangesCreate,
+  mmResChangesFieldCreate,
+  mmResTableStatus,
+  mmResTableInfo
+} from './mmRes.mjs'
 
-  mockdbResChangesCreate,
-  mockdbResChangesFieldCreate,
-  mockdbResErrorArgumentsNumber,
-  mockdbResErrorDuplicatePrimaryKey,
-  mockdbResErrorIndexOutOfBounds,
-  mockdbResErrorUnrecognizedOption,
-  mockdbResErrorInvalidTableName,
-  mockdbResErrorInvalidDbName,
-  mockdbResErrorTableExists,
-  mockdbResErrorTableDoesNotExist,
-  mockdbResErrorSecondArgumentOfQueryMustBeObject,
-  mockdbResErrorPrimaryKeyWrongType,
-  mockdbResErrorNotATIMEpsudotype,
-  mockDbResErrorCannotUseNestedRow,
-  mockDbResErrorNoAttributeInObject,
-  mockdbResErrorExpectedTypeFOOButFoundBAR,
-  mockdbResTableStatus,
-  mockdbResTableInfo
-} from './mockdbRes.mjs'
+import {
+  mmErrArgumentsNumber,
+  mmErrDuplicatePrimaryKey,
+  mmErrIndexOutOfBounds,
+  mmErrUnrecognizedOption,
+  mmErrInvalidTableName,
+  mmErrInvalidDbName,
+  mmErrTableExists,
+  mmErrTableDoesNotExist,
+  mmErrSecondArgumentOfQueryMustBeObject,
+  mmErrPrimaryKeyWrongType,
+  mmErrNotATIMEpsudotype,
+  mmErrCannotUseNestedRow,
+  mmErrNoAttributeInObject,
+  mmErrExpectedTypeFOOButFoundBAR,
+  mmErrCannotReduceOverEmptyStream,
+  mmErrCannotCallFOOonBARTYPEvalue
+} from './mmErr.mjs'
 
 import {
   mmEnumTypeERROR,
@@ -149,7 +153,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       // ```
       if (qstNext.rowDepth >= 1 && i === 0 && (
         !mmEnumQueryArgTypeROWIsRe.test(rec.queryArgs[0]))) {
-        throw new Error(mockDbResErrorCannotUseNestedRow())
+        throw mmErrCannotUseNestedRow()
       } else {
         qstNext.rowDepth += 1
       }
@@ -326,13 +330,11 @@ q.db = (db, qst, args) => {
   const isValidDbNameRe = /^[A-Za-z0-9_]*$/
 
   if (!args.length) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('r.dbCreate', 1, args.length))
+    throw mmErrArgumentsNumber('r.dbCreate', 1, args.length)
   }
 
   if (!isValidDbNameRe.test(dbName)) {
-    throw new Error(
-      mockdbResErrorInvalidDbName(dbName))
+    throw mmErrInvalidDbName(dbName)
   }
 
   qst.db = dbName
@@ -350,8 +352,7 @@ q.dbCreate = (db, qst, args) => {
   const dbName = spend(db, qst, args[0])
 
   if (!args.length)
-    throw new Error(
-      mockdbResErrorArgumentsNumber('r.dbCreate', 1, args.length))
+    throw mmErrArgumentsNumber('r.dbCreate', 1, args.length)
 
   mockdbStateDbCreate(db, dbName)
 
@@ -372,8 +373,7 @@ q.dbDrop = (db, qst, args) => {
   const tables = mockdbStateDbGet(db, dbName)
 
   if (args.length !== 1) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('r.dbDrop', 1, args.length))
+    throw mmErrArgumentsNumber('r.dbDrop', 1, args.length)
   }
 
   db = mockdbStateDbDrop(db, dbName)
@@ -392,8 +392,7 @@ q.dbDrop = (db, qst, args) => {
 
 q.config = (db, qst, args) => {
   if (args.length) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('config', 0, args.length))
+    throw mmErrArgumentsNumber('config', 0, args.length)
   }
 
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
@@ -415,14 +414,14 @@ q.status = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tableConfig = mockdbStateTableConfigGet(db, dbName, qst.tablename)
 
-  qst.target = mockdbResTableStatus(tableConfig)
+  qst.target = mmResTableStatus(tableConfig)
 
   return qst
 }
 
 q.info = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  qst.target = mockdbResTableInfo(db, dbName, qst.tablename)
+  qst.target = mmResTableInfo(db, dbName, qst.tablename)
 
   return qst
 }
@@ -445,26 +444,22 @@ q.tableCreate = (db, qst, args) => {
     .find(k => !isValidConfigKeyRe.test(k))
 
   if (invalidConfigKey) {
-    throw new Error(
-      mockdbResErrorUnrecognizedOption(
-        invalidConfigKey, config[invalidConfigKey]))
+    throw mmErrUnrecognizedOption(
+      invalidConfigKey, config[invalidConfigKey])
   }
 
   if (!tableName) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('r.tableCreate', 1, 0, true))
+    throw mmErrArgumentsNumber('r.tableCreate', 1, 0, true)
   }
 
   if (!isValidTableNameRe.test(tableName)) {
-    throw new Error(
-      mockdbResErrorInvalidTableName(tableName))
+    throw mmErrInvalidTableName(tableName)
   }
 
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tables = mockdbStateDbGet(db, dbName)
   if (tableName in tables) {
-    throw new Error(
-      mockdbResErrorTableExists(dbName, tableName))
+    throw mmErrTableExists(dbName, tableName)
   }
 
   db = mockdbStateTableCreate(db, dbName, tableName, config)
@@ -561,19 +556,16 @@ q.insert = (db, qst, args, reqlObj) => {
     .find(k => !isValidConfigKeyRe.test(k))
 
   if (args.length > 1 && (!args[1] || typeof args[1] !== 'object')) {
-    throw new Error(
-      mockdbResErrorSecondArgumentOfQueryMustBeObject('insert'))
+    throw mmErrSecondArgumentOfQueryMustBeObject('insert')
   }
 
   if (invalidConfigKey) {
-    throw new Error(
-      mockdbResErrorUnrecognizedOption(
-        invalidConfigKey, options[invalidConfigKey]))
+    throw mmErrUnrecognizedOption(
+      invalidConfigKey, options[invalidConfigKey])
   }
 
   if (documents.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('insert', 1, 0))
+    throw mmErrArgumentsNumber('insert', 1, 0)
   }
 
   const documentIsPrimaryKeyPredefined = documents
@@ -600,7 +592,7 @@ q.insert = (db, qst, args, reqlObj) => {
 
       mmTableDocsSet(table, [resDoc], primaryKey)
 
-      qst.target = mockdbResChangesFieldCreate({
+      qst.target = mmResChangesFieldCreate({
         replaced: documents.length,
         changes: options.returnChanges === true ? changes : undefined
       })
@@ -618,12 +610,12 @@ q.insert = (db, qst, args, reqlObj) => {
 
       return qst
     } else {
-      qst.target = mockdbResChangesFieldCreate({
+      qst.target = mmResChangesFieldCreate({
         errors: 1,
-        firstError: mockdbResErrorDuplicatePrimaryKey(
+        firstError: mmErrDuplicatePrimaryKey(
           existingDocs[0],
           documents.find(doc => doc[primaryKey] === existingDocs[0][primaryKey])
-        )
+        ).message
       })
     }
         
@@ -639,9 +631,9 @@ q.insert = (db, qst, args, reqlObj) => {
   }))
 
   db = mockdbStateTableCursorsPushChanges(
-    db, dbName, qst.tablename, changes, mockdbResChangeTypeADD)
+    db, dbName, qst.tablename, changes, mmResChangeTypeADD)
 
-  qst.target = mockdbResChangesFieldCreate({
+  qst.target = mmResChangesFieldCreate({
     ...(documentIsPrimaryKeyPredefined || {
       generated_keys: documents.map(doc => doc[primaryKey])
     }),
@@ -690,7 +682,7 @@ q.update = (db, qst, args) => {
   db = mockdbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
 
-  qst.target = mockdbResChangesCreate(changesDocs, {
+  qst.target = mmResChangesCreate(changesDocs, {
     unchanged: targetList.length - changesDocs.length,
     changes: options.returnChanges === true ? changesDocs : undefined
   })
@@ -705,14 +697,12 @@ q.get = (db, qst, args) => {
   const tableDoc = mmTableDocsGet(qst.target, [primaryKeyValue], primaryKey)[0]
 
   if (args.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('get', 1, 0))
+    throw mmErrArgumentsNumber('get', 1, 0)
   }
 
   if (!isBoolNumStrRe.test(typeof primaryKeyValue)
     && !Array.isArray(primaryKeyValue)) {
-    throw new Error(
-      mockdbResErrorPrimaryKeyWrongType(primaryKeyValue))
+    throw mmErrPrimaryKeyWrongType(primaryKeyValue)
   }
 
   // define primaryKeyValue on qst to use in subsequent change() query
@@ -775,15 +765,12 @@ q.replace = (db, qst, args) => {
   const invalidConfigKey = Object.keys(config)
     .find(k => !isValidConfigKeyRe.test(k))
   if (invalidConfigKey) {
-    throw new Error(
-      mockdbResErrorUnrecognizedOption(
-        invalidConfigKey, config[invalidConfigKey]))
+    throw mmErrUnrecognizedOption(
+      invalidConfigKey, config[invalidConfigKey])
   }
 
   if (!args.length) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber(
-        'replace', 1, args.length, true))
+    throw mmErrArgumentsNumber('replace', 1, args.length, true)
   }
 
   const updateTarget = targetDoc => {
@@ -818,7 +805,7 @@ q.replace = (db, qst, args) => {
   db = mockdbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
 
-  qst.target = mockdbResChangesCreate(changesDocs, {
+  qst.target = mmResChangesCreate(changesDocs, {
     changes: config.returnChanges === true
       ? changesDocs : undefined
   })
@@ -830,9 +817,7 @@ q.prepend = (db, qst, args) => {
   const prependValue = spend(db, qst, args[0])
 
   if (typeof prependValue === 'undefined') {
-    throw new Error(
-      mockdbResErrorArgumentsNumber(
-        'prepend', 1, 0, false))
+    throw mmErrArgumentsNumber('prepend', 1, 0, false)
   }
 
   qst.target.unshift(prependValue)
@@ -844,9 +829,7 @@ q.difference = (db, qst, args) => {
   const differenceValues = spend(db, qst, args[0])
 
   if (typeof differenceValues === 'undefined') {
-    throw new Error(
-      mockdbResErrorArgumentsNumber(
-        'difference', 1, 0, false))
+    throw mmErrArgumentsNumber('difference', 1, 0, false)
   }
 
   qst.target = qst.target
@@ -859,8 +842,7 @@ q.nth = (db, qst, args) => {
   const nthIndex = spend(db, qst, args[0])
 
   if (nthIndex >= qst.target.length) {
-    throw new Error(
-      mockdbResErrorIndexOutOfBounds(nthIndex))
+    throw mmErrIndexOutOfBounds(nthIndex)
   }
 
   qst.target = qst.target[nthIndex]
@@ -897,7 +879,7 @@ q.row = (db, qst, args) => {
 
 q.row.fn = (db, qst, args, reqlObj) => {
   if (typeof args[0] === 'string' && !(args[0] in qst.target)) {
-    throw new Error(mockDbResErrorNoAttributeInObject(args[0]))
+    throw mmErrNoAttributeInObject(args[0])
   }
 
   return q.getField(db, qst, args, reqlObj)
@@ -951,8 +933,7 @@ q.match = (db, qst, args) => {
   const regex = new RegExp(regexString, flags)
 
   if (typeof qst.target === 'number') {
-    throw new Error(
-      mockdbResErrorExpectedTypeFOOButFoundBAR('STRING', 'NUMBER'))
+    throw mmErrExpectedTypeFOOButFoundBAR('STRING', 'NUMBER')
   }
 
   qst.target = regex.test(qst.target)
@@ -981,9 +962,8 @@ q.delete = (db, qst, args) => {
     .find(k => !isValidConfigKeyRe.test(k))
 
   if (invalidConfigKey) {
-    throw new Error(
-      mockdbResErrorUnrecognizedOption(
-        invalidConfigKey, queryConfig[invalidConfigKey]))
+    throw mmErrUnrecognizedOption(
+      invalidConfigKey, queryConfig[invalidConfigKey])
   }
 
   const changesDocs = targetList.reduce((changes, targetDoc) => {
@@ -1002,7 +982,7 @@ q.delete = (db, qst, args) => {
   db = mockdbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
 
-  qst.target = mockdbResChangesFieldCreate({
+  qst.target = mmResChangesFieldCreate({
     deleted: changesDocs.length,
     changes: options.returnChanges === true ? changesDocs : undefined
   })
@@ -1018,9 +998,7 @@ q.contains = (db, qst, args) => {
   }
 
   if (!Array.isArray(qst.target)) {
-    throw new Error(
-      mockdbResErrorExpectedTypeFOOButFoundBAR(
-        'SEQUENCE', 'SINGLE_SELECTION'))
+    throw mmErrExpectedTypeFOOButFoundBAR('SEQUENCE', 'SINGLE_SELECTION')
   }
 
   if (isReqlObj(args[0])) {
@@ -1043,12 +1021,11 @@ q.contains = (db, qst, args) => {
 // from every object in the sequence, skipping objects that lack it.
 //
 // https://rethinkdb.com/api/javascript/get_field
-q.getField = (db, qst, args, reqlObj) => {
+q.getField = (db, qst, args) => {
   const [fieldName] = spend(db, qst, args)
 
   if (args.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('(...)', 1, args.length))
+    throw mmErrArgumentsNumber('(...)', 1, args.length)
   }
 
   // if ( Array.isArray( qst.target ) ) {
@@ -1180,14 +1157,12 @@ q.eqJoin = (db, qst, args) => {
     .find(k => !isValidConfigKeyRe.test(k))
 
   if (invalidConfigKey) {
-    throw new Error(
-      mockdbResErrorUnrecognizedOption(
-        invalidConfigKey, queryConfig[invalidConfigKey]))
+    throw mmErrUnrecognizedOption(
+      invalidConfigKey, queryConfig[invalidConfigKey])
   }
     
   if (args.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('eqJoin', 2, 0, true))
+    throw mmErrArgumentsNumber('eqJoin', 2, 0, true)
   }
 
   qst.target = queryTarget.reduce((joins, item) => {
@@ -1269,7 +1244,7 @@ q.not = (db, qst) => {
   const queryTarget = qst.target
 
   if (typeof queryTarget !== 'boolean')
-    throw new Error('Cannot call not() on non-boolean value.')
+    throw mmErrCannotCallFOOonBARTYPEvalue('not()', 'non-boolean')
 
   qst.target = !queryTarget
 
@@ -1292,8 +1267,7 @@ q.lt = (db, qst, args) => {
   const argTarget = spend(db, qst, args[0])
   
   if (argTarget instanceof Date && !(qst.target instanceof Date)) {
-    throw new Error(
-      mockdbResErrorNotATIMEpsudotype('forEach', 1, args.length))
+    throw mmErrNotATIMEpsudotype('forEach', 1, args.length)
   }
 
   if (typeof qst.target === typeof qst.target) {
@@ -1387,8 +1361,7 @@ q.min = (db, qst, args) => {
 
 q.merge = (db, qst, args, reqlObj) => {
   if (args.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('merge', 1, args.length, true))
+    throw mmErrArgumentsNumber('merge', 1, args.length, true)
   }
   
   // evaluate anonymous function given as merge definition
@@ -1548,8 +1521,7 @@ q.orderBy = (db, qst, args) => {
   }
 
   if (!args.length) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('orderBy', 1, args.length, true))
+    throw mmErrArgumentsNumber('orderBy', 1, args.length, true)
   }
 
   qst.target = queryTarget.sort((doca, docb) => {
@@ -1595,8 +1567,7 @@ q.expr.fn = (db, qst, args) => {
   } else if (args[0] in qst.target) {
     qst.target = qst.target[args[0]]
   } else {
-    throw new Error(
-      mockDbResErrorNoAttributeInObject(args[0]))
+    throw mmErrNoAttributeInObject(args[0])
   }
 
   return qst
@@ -1646,9 +1617,7 @@ q.without = (db, qst, args) => {
     .map(doc => withoutFromDoc(doc, withoutlist))
 
   if (args.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber(
-        'without', 1, args.length))
+    throw mmErrArgumentsNumber('without', 1, args.length)
   }
 
   args = spend(db, qst, args)
@@ -1806,8 +1775,7 @@ q.table = (db, qst, args) => {
   const table = dbState[tablename]
 
   if (!Array.isArray(dbState[tablename])) {
-    throw new Error(
-      mockdbResErrorTableDoesNotExist(dbName, tablename))
+    throw mmErrTableDoesNotExist(dbName, tablename)
   }
 
   qst.tablename = tablename
@@ -1902,7 +1870,7 @@ q.changes = (db, qst, args) => {
       if (cursorTargetType === 'doc' || item || /string|number|boolean/.test(typeof item)) {
         if (queryOptions.includeInitial) {
           initialDocs.push({
-            type: mockdbResChangeTypeINITIAL,
+            type: mmResChangeTypeINITIAL,
             new_val: item
           })
         } else {
@@ -1973,13 +1941,12 @@ q.changes = (db, qst, args) => {
 //
 q.reduce = (db, qst, args) => {
   if (args.length === 0) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('reduce', 1, args.length))
+    throw mmErrArgumentsNumber('reduce', 1, args.length)
   }
 
   // live rethinkdb inst returns sequence of 0 as error
   if (qst.target.length === 0) {
-    throw new Error('Cannot reduce over an empty stream.')
+    throw mmErrCannotReduceOverEmptyStream()
   }
 
   // live rethinkdb inst returns sequence of 1 atom
@@ -2008,8 +1975,7 @@ q.fold = (db, qst, args) => {
   const [startVal, reduceFn] = args
 
   if (args.length < 2) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('fold', 2, args.length))
+    throw mmErrArgumentsNumber('fold', 2, args.length)
   }
 
   qst.target = qst.target
@@ -2022,8 +1988,7 @@ q.forEach =  (db, qst, args) => {
   const [forEachRow] = args
 
   if (args.length !== 1) {
-    throw new Error(
-      mockdbResErrorArgumentsNumber('forEach', 1, args.length))
+    throw mmErrArgumentsNumber('forEach', 1, args.length)
   }
 
   qst.target = qst.target.reduce((st, arg) => {
@@ -2085,9 +2050,7 @@ q.getCursor = (db, qst, args) => {
   }
 
   const cursor = mmStream(initialDocs, !qst.isChanges)
-  // if (qst.error) {
-  //   throw new Error('cursor has error');
-  // }
+
   cursor.close = () => {
     cursor.destroy()
 

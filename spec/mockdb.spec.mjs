@@ -1,11 +1,12 @@
 import test from 'ava'
 import timezonemock from 'timezone-mock'
 import rethinkdbMocked from '../src/mockdb.mjs'
+
 import {
-  mockdbResErrorExpectedTypeFOOButFoundBAR,
-  mockdbResErrorDuplicatePrimaryKey,
-  mockDbResErrorCannotUseNestedRow
-} from '../src/mockdbRes.mjs'
+  mmErrExpectedTypeFOOButFoundBAR,
+  mmErrDuplicatePrimaryKey,
+  mmErrCannotUseNestedRow
+} from '../src/mmErr.mjs'
 
 import {
   mmEnumIsRowShallow
@@ -2023,9 +2024,9 @@ test('throws sub query error, even when parent query has default()', async t => 
     .default('result-when-subquery')
     .run()
   ), {
-    message: mockdbResErrorExpectedTypeFOOButFoundBAR(
+    message: mmErrExpectedTypeFOOButFoundBAR(
       'STRING', 'NUMBER'
-    )
+    ).message
   })
 })
 
@@ -2047,10 +2048,10 @@ test('throws error when .match() used on NUMBER type', async t => {
     .table('users')
     .filter(doc => doc('number').match('(?i)^john'))
     .run()
-  ), {
-    message: mockdbResErrorExpectedTypeFOOButFoundBAR(
+  ), { 
+    message: mmErrExpectedTypeFOOButFoundBAR(
       'STRING', 'NUMBER'
-    )
+    ).message
   })
 })
 
@@ -2229,7 +2230,7 @@ test('.insert(, {}) returns error if inserted document is found', async t => {
     inserted: 0,
     errors: 1,
     deleted: 0,
-    firstError: mockdbResErrorDuplicatePrimaryKey(existingDoc, conflictDoc)
+    firstError: mmErrDuplicatePrimaryKey(existingDoc, conflictDoc).message
   })
 })
 
@@ -2729,7 +2730,7 @@ test('nested r.row.and() throws error', async t => {
     .filter(r.row('user_id').ne('xavier').and(
       r.row('membership').eq('invite')
     )).run()
-  ), { message: mockDbResErrorCannotUseNestedRow() })
+  ), { message: mmErrCannotUseNestedRow().message })    
 
   // use this instead
   const users = await r
@@ -2762,7 +2763,7 @@ test('nested r.row.or() throws error', async t => {
         r.row('membership').eq('join')
       )).run())
   ), {
-    message: mockDbResErrorCannotUseNestedRow()
+    message: mmErrCannotUseNestedRow().message
   }
 
   // use this instead
