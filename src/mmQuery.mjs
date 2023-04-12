@@ -4,26 +4,26 @@ import mmConn from './mmConn.mjs'
 import mmStream from './mmStream.mjs'
 
 import {
-  mockdbStateAggregate,
-  mockdbStateDbCreate,
-  mockdbStateDbDrop,
-  mockdbStateDbGet,
-  mockdbStateTableIndexAdd,
-  mockdbStateTableGetIndexNames,
-  mockdbStateTableGetIndexTuple,
-  mockdbStateTableGetPrimaryKey,
-  mockdbStateTableCursorSet,
-  mockdbStateTableDocCursorSet,
-  mockdbStateTableCursorSplice,
-  mockdbStateTableDocCursorSplice,
-  mockdbStateTableCursorsPushChanges,
-  mockdbStateTableCursorsGetOrCreate,
-  mockdbStateTableDocCursorsGetOrCreate,
-  mockdbStateTableConfigGet,
-  mockdbStateTableCreate,
-  mockdbStateTableDrop,
-  mockdbStateDbConfigGet
-} from './mockdbState.mjs'
+  mmDbStateAggregate,
+  mmDbStateDbCreate,
+  mmDbStateDbDrop,
+  mmDbStateDbGet,
+  mmDbStateTableIndexAdd,
+  mmDbStateTableGetIndexNames,
+  mmDbStateTableGetIndexTuple,
+  mmDbStateTableGetPrimaryKey,
+  mmDbStateTableCursorSet,
+  mmDbStateTableDocCursorSet,
+  mmDbStateTableCursorSplice,
+  mmDbStateTableDocCursorSplice,
+  mmDbStateTableCursorsPushChanges,
+  mmDbStateTableCursorsGetOrCreate,
+  mmDbStateTableDocCursorsGetOrCreate,
+  mmDbStateTableConfigGet,
+  mmDbStateTableCreate,
+  mmDbStateTableDrop,
+  mmDbStateDbConfigGet
+} from './mmDbState.mjs'
 
 import {
   mmTableDocRm,
@@ -69,9 +69,10 @@ import {
   mmEnumQueryArgTypeROW,
   mmEnumQueryArgTypeROWFN,
   mmEnumQueryArgTypeROWIsRe,
-  mmEnumQueryArgTypeROWHasRe,
   mmEnumQueryNameIsCURSORORDEFAULTRe,
-  mmEnumIsRowShallow
+  mmEnumIsQueryArgsResult,
+  mmEnumIsRowShallow,
+  mmEnumIsRow
 } from './mmEnum.mjs'
 
 const isBoolNumStrRe = /boolean|number|string/
@@ -81,20 +82,11 @@ const isLookObj = obj => obj
   && typeof obj === 'object'
   && !(obj instanceof Date)
 
-const isReqlArgsResult = obj => isLookObj(obj)
-  && Boolean(mmEnumQueryArgTypeARGS in obj)
-
 const reqlArgsParse = obj => (
   obj[mmEnumQueryArgTypeARGS])
 
 const reqlArgsCreate = value => (
   { [mmEnumQueryArgTypeARGS]: value })
-
-const isReqlSuspendNestedShallow = obj => isLookObj(obj)
-  && mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join())
-
-const isReqlObj = obj => isLookObj(obj)
-  && mmEnumQueryArgTypeROWIsRe.test(obj.type)
 
 // created by 'asc' and 'desc' queries
 const isSortObj = obj => isLookObj(obj)
@@ -106,7 +98,7 @@ const sortObjParse = o => isLookObj(o)
 
 const isConfigObj = (obj, objType = typeof obj) => obj
   && /object|function/.test(objType)
-  && !isReqlObj(obj)
+  && !mmEnumIsRow(obj)
   && !Array.isArray(obj)
 
 // return last query argument (optionally) provides query configurations
@@ -229,7 +221,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     // seems okay now, may require adding an additonal
     // check later, such as !isReqlObj(rows[0])
     f = rows && rows[0] ? rows[0][qspec] : qspec
-  } else if (isReqlObj(qspec)) {
+  } else if (mmEnumIsRow(qspec)) {
     // why re-use existing reql.rows, eg `spec.rows || rows`?
     // ```
     // r.expr([{ type: 'boot' }]).contains(row => r
@@ -243,11 +235,11 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     f = mockdbSuspendArgSpend(db, qst, qspec, rows)
   } else if (Array.isArray(qspec)) {
     // detach if spec is has args
-    if (isReqlArgsResult(qspec.slice(-1)[0])) {
+    if (mmEnumIsQueryArgsResult(qspec.slice(-1)[0])) {
       f = qspec.slice(-1)[0].run()
     } else {
       f = qspec.map(v => spend(db, qst, v, rows, d + 1))
-      f = isReqlArgsResult(f[0]) ? reqlArgsParse(f[0]) : f
+      f = mmEnumIsQueryArgsResult(f[0]) ? reqlArgsParse(f[0]) : f
     }
     // render nested query objects, shallow. ex `row('id')`,
     // ```
@@ -255,7 +247,7 @@ const spend = (db, qst, qspec, rows, d = 0, type = typeof qspec, f = null) => {
     //  .merge(row => ({ oldid: row('id'), id: 0 }))
     //  .run()
     // ```    
-  } else if (isReqlSuspendNestedShallow(qspec)) {
+  } else if (mmEnumIsRowShallow(qspec)) {
     f = Object.keys(qspec).reduce((prev, key) => {
       prev[key] = spend(db, qst, qspec[key], rows, d + 1)
 
@@ -354,11 +346,11 @@ q.dbCreate = (db, qst, args) => {
   if (!args.length)
     throw mmErrArgumentsNumber('r.dbCreate', 1, args.length)
 
-  mockdbStateDbCreate(db, dbName)
+  mmDbStateDbCreate(db, dbName)
 
   qst.target = {
     config_changes: [{
-      new_val: mockdbStateDbConfigGet(dbName),
+      new_val: mmDbStateDbConfigGet(dbName),
       old_val: null
     }],
     dbs_created: 1
@@ -369,14 +361,14 @@ q.dbCreate = (db, qst, args) => {
 
 q.dbDrop = (db, qst, args) => {
   const [dbName] = args
-  const dbConfig = mockdbStateDbConfigGet(db, dbName)
-  const tables = mockdbStateDbGet(db, dbName)
+  const dbConfig = mmDbStateDbConfigGet(db, dbName)
+  const tables = mmDbStateDbGet(db, dbName)
 
   if (args.length !== 1) {
     throw mmErrArgumentsNumber('r.dbDrop', 1, args.length)
   }
 
-  db = mockdbStateDbDrop(db, dbName)
+  db = mmDbStateDbDrop(db, dbName)
 
   qst.target = {
     config_changes: [{
@@ -398,13 +390,13 @@ q.config = (db, qst, args) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
 
   if (qst.tablename) {
-    qst.target = mockdbStateTableConfigGet(db, dbName, qst.tablename)
+    qst.target = mmDbStateTableConfigGet(db, dbName, qst.tablename)
     qst.target = { // remove indexes data added for internal use
       ...qst.target,
       indexes: qst.target.indexes.map(i => i[0])
     }
   } else {
-    qst.target = mockdbStateDbConfigGet(db, dbName, qst.tableName)
+    qst.target = mmDbStateDbConfigGet(db, dbName, qst.tableName)
   }
 
   return qst
@@ -412,7 +404,7 @@ q.config = (db, qst, args) => {
 
 q.status = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tableConfig = mockdbStateTableConfigGet(db, dbName, qst.tablename)
+  const tableConfig = mmDbStateTableConfigGet(db, dbName, qst.tablename)
 
   qst.target = mmResTableStatus(tableConfig)
 
@@ -428,7 +420,7 @@ q.info = (db, qst) => {
 
 q.tableList = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tables = mockdbStateDbGet(db, dbName)
+  const tables = mmDbStateDbGet(db, dbName)
 
   qst.target = Object.keys(tables)
 
@@ -457,14 +449,14 @@ q.tableCreate = (db, qst, args) => {
   }
 
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tables = mockdbStateDbGet(db, dbName)
+  const tables = mmDbStateDbGet(db, dbName)
   if (tableName in tables) {
     throw mmErrTableExists(dbName, tableName)
   }
 
-  db = mockdbStateTableCreate(db, dbName, tableName, config)
+  db = mmDbStateTableCreate(db, dbName, tableName, config)
 
-  const tableConfig = mockdbStateTableConfigGet(db, dbName, tableName)
+  const tableConfig = mmDbStateTableConfigGet(db, dbName, tableName)
 
   qst.target = {
     tables_created: 1,
@@ -480,9 +472,9 @@ q.tableCreate = (db, qst, args) => {
 q.tableDrop = (db, qst, args) => {
   const [tableName] = args
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tableConfig = mockdbStateTableConfigGet(db, dbName, tableName)
+  const tableConfig = mmDbStateTableConfigGet(db, dbName, tableName)
 
-  db = mockdbStateTableDrop(db, dbName, tableName)
+  db = mmDbStateTableDrop(db, dbName, tableName)
     
   qst.target = {
     tables_dropped: 1,
@@ -508,7 +500,7 @@ q.indexCreate = (db, qst, args) => {
     ? args[1]
     : [indexName]
 
-  mockdbStateTableIndexAdd(
+  mmDbStateTableIndexAdd(
     db, dbName, qst.tablename, indexName, fields, config)
 
   // should throw ReqlRuntimeError if index exits already
@@ -519,7 +511,7 @@ q.indexCreate = (db, qst, args) => {
 
 q.indexWait = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tableIndexList = mockdbStateTableGetIndexNames(
+  const tableIndexList = mmDbStateTableGetIndexNames(
     db, dbName, qst.tablename)
 
   qst.target = tableIndexList.map(indexName => ({
@@ -536,7 +528,7 @@ q.indexWait = (db, qst) => {
 
 q.indexList = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tableConfig = mockdbStateTableConfigGet(db, dbName, qst.tablename)
+  const tableConfig = mmDbStateTableConfigGet(db, dbName, qst.tablename)
 
   qst.target = tableConfig.indexes.map(i => i[0])
 
@@ -548,7 +540,7 @@ q.insert = (db, qst, args, reqlObj) => {
   let documents = Array.isArray(args[0]) ? args[0] : args.slice(0, 1)
   let table = qst.tablelist
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+  const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
   const options = args[1] || {}
 
   const isValidConfigKeyRe = /^(returnChanges|durability|conflict)$/
@@ -578,7 +570,7 @@ q.insert = (db, qst, args, reqlObj) => {
     qst.tablelist, documents.map(doc => doc[primaryKey]), primaryKey)
 
   if (existingDocs.length) {
-    if (isReqlObj(options.conflict)) {
+    if (mmEnumIsRow(options.conflict)) {
       const resDoc = spend(db, qst, options.conflict, [
         documents[0].id,
         existingDocs[0],
@@ -630,7 +622,7 @@ q.insert = (db, qst, args, reqlObj) => {
     new_val: doc
   }))
 
-  db = mockdbStateTableCursorsPushChanges(
+  db = mmDbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changes, mmResChangeTypeADD)
 
   qst.target = mmResChangesFieldCreate({
@@ -649,7 +641,7 @@ q.update = (db, qst, args) => {
   const queryTable = qst.tablelist
   const updateProps = spend(db, qst, args[0])
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+  const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
   const options = args[1] || {}
 
   const updateTarget = targetDoc => {
@@ -679,7 +671,7 @@ q.update = (db, qst, args) => {
     return changes
   }, [])
 
-  db = mockdbStateTableCursorsPushChanges(
+  db = mmDbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
 
   qst.target = mmResChangesCreate(changesDocs, {
@@ -693,7 +685,7 @@ q.update = (db, qst, args) => {
 q.get = (db, qst, args) => {
   const primaryKeyValue = spend(db, qst, args[0])
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+  const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
   const tableDoc = mmTableDocsGet(qst.target, [primaryKeyValue], primaryKey)[0]
 
   if (args.length === 0) {
@@ -730,8 +722,8 @@ q.getAll = (db, qst, args) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const { tablename } = qst
   const primaryKey = queryOptions.index
-    || mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
-  const tableIndexTuple = mockdbStateTableGetIndexTuple(db, dbName, tablename, primaryKey)
+    || mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+  const tableIndexTuple = mmDbStateTableGetIndexTuple(db, dbName, tablename, primaryKey)
   if (primaryKeyValues.length === 0) {
     qst.target = []
 
@@ -758,7 +750,7 @@ q.replace = (db, qst, args) => {
   const queryTarget = qst.target
   const queryTable = qst.tablelist
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+  const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
   const config = queryArgsOptions(args.slice(1))
 
   const isValidConfigKeyRe = /^(returnChanges|durability|nonAtomic|ignoreWriteHook)$/
@@ -802,7 +794,7 @@ q.replace = (db, qst, args) => {
     return changes
   }, [])
 
-  db = mockdbStateTableCursorsPushChanges(
+  db = mmDbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
 
   qst.target = mmResChangesCreate(changesDocs, {
@@ -945,8 +937,8 @@ q.delete = (db, qst, args) => {
   const queryTarget = qst.target
   const queryTable = qst.tablelist
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
-  const tableIndexTuple = mockdbStateTableGetIndexTuple(
+  const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+  const tableIndexTuple = mmDbStateTableGetIndexTuple(
     db, dbName, qst.tablename, primaryKey)
   const targetList = asList(queryTarget)
   const targetIds = targetList
@@ -979,7 +971,7 @@ q.delete = (db, qst, args) => {
 
   mmTableSet(queryTable, tableFiltered)
 
-  db = mockdbStateTableCursorsPushChanges(
+  db = mmDbStateTableCursorsPushChanges(
     db, dbName, qst.tablename, changesDocs)
 
   qst.target = mmResChangesFieldCreate({
@@ -1001,7 +993,7 @@ q.contains = (db, qst, args) => {
     throw mmErrExpectedTypeFOOButFoundBAR('SEQUENCE', 'SINGLE_SELECTION')
   }
 
-  if (isReqlObj(args[0])) {
+  if (mmEnumIsRow(args[0])) {
     qst.target = queryTarget.some(target => {
       const res = spend(db, qst, args[0], [target])
 
@@ -1480,7 +1472,7 @@ q.ungroup = (db, qst) => {
 
 q.orderBy = (db, qst, args) => {
   const queryTarget = qst.target
-  const queryOptions = isReqlObj(args[0])
+  const queryOptions = mmEnumIsRow(args[0])
     ? args[0]
     : queryArgsOptions(args)
   const queryOptionsIndex = spend(db, qst, queryOptions.index)
@@ -1491,7 +1483,7 @@ q.orderBy = (db, qst, args) => {
   const indexName = indexSortBy || indexString || 'id'
   let fieldSortDirection = ''
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const tableIndexTuple = mockdbStateTableGetIndexTuple(db, dbName, qst.tablename, indexName)
+  const tableIndexTuple = mmDbStateTableGetIndexTuple(db, dbName, qst.tablename, indexName)
   const sortDirection = (isAscending, dir = fieldSortDirection || indexSortDirection) => (
     isAscending * (dir === 'asc' ? 1 : -1))
 
@@ -1501,7 +1493,7 @@ q.orderBy = (db, qst, args) => {
     // ex, queryOptions,
     //  ({ index: r.desc('date') })
     //  doc => doc('upvotes')
-    if (isReqlObj(queryOptions) || isReqlSuspendNestedShallow(queryOptions)) {
+    if (mmEnumIsRowShallow(queryOptions)) {
       value = spend(db, qst, queryOptions, [doc])
 
       const sortObj = sortObjParse(value)
@@ -1653,12 +1645,12 @@ q.without = (db, qst, args) => {
 q.do = (db, qst, args) => {
   const [doFn] = args.slice(-1)
 
-  if (isReqlObj(doFn)) {
+  if (mmEnumIsRow(doFn)) {
     qst.target = args.length === 1
       ? spend(db, qst, doFn, [qst.target])
       : spend(db, qst, doFn, args.slice(0, -1))
 
-    if (isReqlArgsResult(qst.target))
+    if (mmEnumIsQueryArgsResult(qst.target))
       qst.target = reqlArgsParse(qst.target)[0]
 
   } else if (args.length) {
@@ -1723,7 +1715,7 @@ q.distinct = (db, qst, args) => {
         // skip if target is filtered, concatenated or manipulated in some way
         && !/string|boolean|number/.test(typeof qst.target[0])) {
     const primaryKey = queryOptions.index
-            || mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+            || mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
 
     const keys = {}
     qst.target = qst.target.reduce((disti, row) => {
@@ -1771,7 +1763,7 @@ q.union = (db, qst, args) => {
 q.table = (db, qst, args) => {
   const [tablename] = args
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
-  const dbState = mockdbStateDbGet(db, dbName)
+  const dbState = mmDbStateDbGet(db, dbName)
   const table = dbState[tablename]
 
   if (!Array.isArray(dbState[tablename])) {
@@ -1838,7 +1830,7 @@ q.changes = (db, qst, args) => {
   const queryTarget = qst.target
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const queryTargetFuture = qst.target || {
-    [mockdbStateTableGetPrimaryKey(db, dbName, tableName)]: qst.primaryKeyValue
+    [mmDbStateTableGetPrimaryKey(db, dbName, tableName)]: qst.primaryKeyValue
   }
   const queryOptions = queryArgsOptions(args) || {}
   const cursorTargetType = tableName
@@ -1855,10 +1847,10 @@ q.changes = (db, qst, args) => {
   }
 
   if (cursorTargetType === 'doc') {
-    cursors = mockdbStateTableDocCursorsGetOrCreate(
+    cursors = mmDbStateTableDocCursorsGetOrCreate(
       db, dbName, tableName, queryTargetFuture)
   } else if (cursorTargetType === 'table') {
-    cursors = mockdbStateTableCursorsGetOrCreate(
+    cursors = mmDbStateTableCursorsGetOrCreate(
       db, dbName, tableName)
   }
 
@@ -1890,17 +1882,17 @@ q.changes = (db, qst, args) => {
     cursor.destroy()
 
     if (cursorTargetType === 'doc')
-      db = mockdbStateTableDocCursorSplice(db, dbName, tableName, queryTargetFuture, cursorIndex)
+      db = mmDbStateTableDocCursorSplice(db, dbName, tableName, queryTargetFuture, cursorIndex)
     if (cursorTargetType === 'table')
-      db = mockdbStateTableCursorSplice(db, dbName, tableName, cursorIndex)
+      db = mmDbStateTableCursorSplice(db, dbName, tableName, cursorIndex)
 
     return new Promise((resolve /*, reject */) => resolve())
   }
 
   if (cursorTargetType === 'doc')
-    db = mockdbStateTableDocCursorSet(db, dbName, tableName, queryTargetFuture, cursor)
+    db = mmDbStateTableDocCursorSet(db, dbName, tableName, queryTargetFuture, cursor)
   else if (cursorTargetType === 'table')
-    db = mockdbStateTableCursorSet(db, dbName, tableName, cursor)
+    db = mmDbStateTableCursorSet(db, dbName, tableName, cursor)
 
   if (!qst.isChanges) {
     if (cursorTargetType === 'table') {
@@ -1908,7 +1900,7 @@ q.changes = (db, qst, args) => {
         new_val: doc
       }))
 
-      db = mockdbStateTableCursorsPushChanges(
+      db = mmDbStateTableCursorsPushChanges(
         db, dbName, tableName, changes)
     }
   }
@@ -1994,7 +1986,7 @@ q.forEach =  (db, qst, args) => {
   qst.target = qst.target.reduce((st, arg) => {
     const result = spend(db, qst, forEachRow, [arg])
 
-    return mockdbStateAggregate(st, result)
+    return mmDbStateAggregate(st, result)
   }, {})
 
   return qst
@@ -2013,7 +2005,7 @@ q.getCursor = (db, qst, args) => {
   const tableName = qst.tablename
   const queryTarget = qst.target
   const queryTargetFuture = qst.target || {
-    [mockdbStateTableGetPrimaryKey(db, dbName, tableName)]: qst.primaryKeyValue
+    [mmDbStateTableGetPrimaryKey(db, dbName, tableName)]: qst.primaryKeyValue
   }
   const queryOptions = queryArgsOptions(args)
   const cursorTargetType = tableName
@@ -2026,10 +2018,10 @@ q.getCursor = (db, qst, args) => {
   }
 
   if (cursorTargetType === 'doc') {
-    cursors = mockdbStateTableDocCursorsGetOrCreate(
+    cursors = mmDbStateTableDocCursorsGetOrCreate(
       db, dbName, tableName, queryTargetFuture)
   } else if (cursorTargetType === 'table') {
-    cursors = mockdbStateTableCursorsGetOrCreate(
+    cursors = mmDbStateTableCursorsGetOrCreate(
       db, dbName, tableName)
   }
   const cursorIndex = cursors ? cursors.length : null
@@ -2055,27 +2047,20 @@ q.getCursor = (db, qst, args) => {
     cursor.destroy()
 
     if (cursorTargetType === 'table')
-      db = mockdbStateTableCursorSplice(db, dbName, tableName, cursorIndex)
+      db = mmDbStateTableCursorSplice(db, dbName, tableName, cursorIndex)
     if (cursorTargetType === 'doc')
-      db = mockdbStateTableDocCursorSplice(db, dbName, tableName, queryTargetFuture, cursorIndex)
+      db = mmDbStateTableDocCursorSplice(db, dbName, tableName, queryTargetFuture, cursorIndex)
 
     return new Promise((resolve /*, reject*/) => resolve())
   }
 
   if (cursorTargetType === 'table') {
-    db = mockdbStateTableCursorSet(db, dbName, tableName, cursor)
+    db = mmDbStateTableCursorSet(db, dbName, tableName, cursor)
   } else if (cursorTargetType === 'doc') {
-    db = mockdbStateTableDocCursorSet(db, dbName, tableName, queryTargetFuture, cursor)
+    db = mmDbStateTableDocCursorSet(db, dbName, tableName, queryTargetFuture, cursor)
   }
 
   qst.target = cursor
-
-  return qst
-}
-
-q.close = (db, qst, args) => {
-  if (qst.target && typeof qst.target.close === 'function')
-    qst.target.close()
 
   return qst
 }

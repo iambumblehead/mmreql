@@ -1,11 +1,11 @@
 import mmChain from './mmChain.mjs'
 
 import {
-  mockdbStateCreate,
-  mockdbStateDbCreate,
-  mockdbStateTableSet,
-  mockdbStateTableCreate
-} from './mockdbState.mjs'
+  mmDbStateCreate,
+  mmDbStateDbCreate,
+  mmDbStateTableSet,
+  mmDbStateTableCreate
+} from './mmDbState.mjs'
 
 const buildChain = (dbState = {}) => {
   const r = mmChain(dbState)
@@ -19,7 +19,7 @@ const buildChain = (dbState = {}) => {
 }
 
 const buildDb = (tables, config) => {
-  const dbConfig = config || mockdbStateCreate(
+  const dbConfig = config || mmDbStateCreate(
     (tables[0] && tables[0].db) ? tables[0] : {})
   const dbConfigTables = (tables[0] && tables[0].db)
     ? tables.slice(1)
@@ -29,14 +29,14 @@ const buildDb = (tables, config) => {
     const tableConfig = Array.isArray(tablelist[1]) && tablelist[1]
 
     if (!Array.isArray(tablelist)) {
-      dbState = mockdbStateDbCreate(dbState, tablelist.db)
+      dbState = mmDbStateDbCreate(dbState, tablelist.db)
       dbState = buildDb(arr.slice(i + 1), dbState)
       arr.splice(1)
       return dbState
     }
 
-    dbState = mockdbStateTableCreate(dbState, dbState.dbSelected, tablelist[0], tableConfig[0])
-    dbState = mockdbStateTableSet(
+    dbState = mmDbStateTableCreate(dbState, dbState.dbSelected, tablelist[0], tableConfig[0])
+    dbState = mmDbStateTableSet(
       dbState, dbState.dbSelected, tablelist[0], tablelist.slice(tableConfig ? 2 : 1))
 
     return dbState

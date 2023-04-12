@@ -1,7 +1,7 @@
 import {
-  mockdbStateDbConfigGet as mmDbConfigGet,
-  mockdbStateTableConfigGet as mmDbTableConfigGet
-} from './mockdbState.mjs'
+  mmDbStateDbConfigGet,
+  mmDbStateTableConfigGet
+} from './mmDbState.mjs'
 
 const mmResChangeTypeADD = 'add'
 const mmResChangeTypeREMOVE = 'remove'
@@ -69,8 +69,8 @@ const mmResTableStatus = opts => mockdbFilterUndefined({
 })
 
 const mmResTableInfo = (dbst, dbName, tableName) => {
-  const tableConfig = mmDbTableConfigGet(dbst, dbName, tableName)
-  const dbConfig = mmDbConfigGet(dbst, dbName)
+  const tableConfig = mmDbStateTableConfigGet(dbst, dbName, tableName)
+  const dbConfig = mmDbStateDbConfigGet(dbst, dbName)
 
   return mockdbFilterUndefined({
     db: {
