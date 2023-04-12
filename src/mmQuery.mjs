@@ -4,10 +4,6 @@ import mmConn from './mmConn.mjs'
 import mmStream from './mmStream.mjs'
 
 import {
-  mmRecIsCursorOrDefault
-} from './mmRec.mjs'
-
-import {
   mockdbStateAggregate,
   mockdbStateDbCreate,
   mockdbStateDbDrop,
@@ -70,6 +66,7 @@ import {
   mmEnumQueryArgTypeROWFN,
   mmEnumQueryArgTypeROWIsRe,
   mmEnumQueryArgTypeROWHasRe,
+  mmEnumQueryNameIsCURSORORDEFAULTRe,
   mmEnumIsRowShallow
 } from './mmEnum.mjs'
 
@@ -141,7 +138,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
     // avoid mutating original args w/ suspended values
     const queryArgs = rec.queryArgs.slice()
 
-    if (qstNext.error && !mmRecIsCursorOrDefault(rec))
+    if (qstNext.error && !mmEnumQueryNameIsCURSORORDEFAULTRe.test(rec.queryName))
       return qstNext
     
     if (rec.queryName === 'row') {
@@ -191,7 +188,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
  
       e[mmEnumTypeERROR] = typeof e[mmEnumTypeERROR] === 'boolean'
         ? e[mmEnumTypeERROR]
-        : !reqlObj.recs.slice(i + 1).some(mmRecIsCursorOrDefault)
+        : !reqlObj.recs.slice(i + 1).some(o => mmEnumQueryNameIsCURSORORDEFAULTRe.test(o.queryName))
 
       if (e[mmEnumTypeERROR])
         throw e
