@@ -1,5 +1,5 @@
 import test from 'ava'
-import rethinkdbMocked from '../src/mockdb.mjs'
+import rethinkdbMocked from '../src/mmReql.mjs'
 import { randomUUID } from 'crypto'
 
 test('`close` should work on feed', async t => {

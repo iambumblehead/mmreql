@@ -1,5 +1,5 @@
 import test from 'ava'
-import rethinkdbMocked from '../src/mockdb.mjs'
+import rethinkdbMocked from '../src/mmReql.mjs'
 
 test('`tableList` should return a cursor', async t => {
   const { r } = rethinkdbMocked([['Rooms']])

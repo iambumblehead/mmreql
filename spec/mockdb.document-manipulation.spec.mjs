@@ -1,5 +1,5 @@
 import test from 'ava'
-import rethinkdbMocked from '../src/mockdb.mjs'
+import rethinkdbMocked from '../src/mmReql.mjs'
 
 test('`without` should work', async t => {
   const { r } = rethinkdbMocked()
@@ -21,7 +21,7 @@ test('`without` should work', async t => {
 test('`without` should throw if no argument has been passed', async t => {
   const { r } = rethinkdbMocked([['Rooms']])
     
-  await t.throws(() => (r        
+  await t.throwsAsync(async () => (r        
     .table('Rooms')
     .without()
     .run()

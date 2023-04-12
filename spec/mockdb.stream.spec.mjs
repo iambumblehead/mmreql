@@ -1,7 +1,7 @@
 import test from 'ava'
 import { Readable } from 'stream'
 import { randomUUID } from 'crypto'
-import rethinkdbMocked from '../src/mockdb.mjs'
+import rethinkdbMocked from '../src/mmReql.mjs'
 
 test('table().getCursor() should return a stream', async t => {
   const { r } = rethinkdbMocked([

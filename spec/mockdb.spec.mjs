@@ -1,6 +1,6 @@
 import test from 'ava'
 import timezonemock from 'timezone-mock'
-import rethinkdbMocked from '../src/mockdb.mjs'
+import rethinkdbMocked from '../src/mmReql.mjs'
 
 import {
   mmErrExpectedTypeFOOButFoundBAR,
