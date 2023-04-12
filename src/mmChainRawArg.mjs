@@ -5,16 +5,16 @@ import {
   mmEnumQueryArgTypeROWIsRe
 } from './mmEnum.mjs'
 
-// import {
-//   mmChainRecNext,
-//   mmChainRecRowFnCreate
-// } from './mmChainRec.mjs'
-
+import {
+  mmChainRecNext,
+  mmChainRecRowFnCreate
+} from './mmChainRec.mjs'
+/*
 import {
   mmRecChainRowCreate,
   mmRecChainRowFnCreate
 } from './mmRecChain.mjs'  
-
+*/
 const isBoolNumUndefRe = /boolean|number|undefined/
 
 // ex, "table => r.db('cmdb').tableCreate(table)"
@@ -56,8 +56,8 @@ const mockdbChainSuspendArgFn = (chainCreate, arg) => {
   }
 
   return Array.isArray(argchain)
-    ? argchain.map(argc => mmRecChainRowFnCreate(argc, fnArgSig))
-    : mmRecChainRowFnCreate(argchain, fnArgSig)
+    ? argchain.map(argc => mmChainRecRowFnCreate(argc, fnArgSig))
+    : mmChainRecRowFnCreate(argchain, fnArgSig)
 }
 
 /*
@@ -92,7 +92,7 @@ const mmChainRawArg = (arg, chainCreate, type = typeof arg) => {
     arg = arg
   } else if (isChain(arg)) {
     // arg = mockdbSpecFromChain(mmEnumQueryArgTypeROW, arg);
-    arg = mmRecChainRowCreate(arg)
+    arg = mmChainRecNext(arg)
   } else if (typeof arg === 'function') {
     arg = mockdbChainSuspendArgFn(chainCreate, arg)
   } else if (Array.isArray(arg)) {
