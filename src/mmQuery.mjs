@@ -135,7 +135,7 @@ const compare = (a, b, prop) => {
 
 const asList = value => Array.isArray(value) ? value : [value]
 
-const reql = {}
+const q = {}
 
 const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
   if (rows && rows.length) {
@@ -184,8 +184,8 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
 
     try {
       qstNext = (/\.fn/.test(rec.queryName)
-        ? reql[rec.queryName.replace(/\.fn/, '')].fn
-        : reql[rec.queryName]
+        ? q[rec.queryName.replace(/\.fn/, '')].fn
+        : q[rec.queryName]
       )(db, qstNext, queryArgs, reqlObj)
     } catch (e) {
       // do not throw error if chain subsequently uses `.default(...)`
@@ -287,7 +287,7 @@ const spendCursor = (db, qst, qspec, res) => {
 const mockdbReqlQueryOrStateDbName = (qst, db) => (
   qst.db || db.dbSelected)
 
-reql.connect = (db, qst, args) => {
+q.connect = (db, qst, args) => {
   const [conn] = args
   const { host, port, user /*, password*/ } = conn
 
@@ -304,7 +304,7 @@ reql.connect = (db, qst, args) => {
 }
 
 
-reql.connectPool = (db, qst, args) => {
+q.connectPool = (db, qst, args) => {
   const [conn] = args
   const { host, port, user, password } = conn
 
@@ -321,7 +321,7 @@ reql.connectPool = (db, qst, args) => {
   return qst
 }
 
-reql.getPoolMaster = (db, qst) => {
+q.getPoolMaster = (db, qst) => {
   const conn = db.dbConnections[0] || {
     db: 'default',
     host: 'localhost',
@@ -338,10 +338,10 @@ reql.getPoolMaster = (db, qst) => {
   return qst
 }
 
-reql.getPool = reql.getPoolMaster
+q.getPool = q.getPoolMaster
 
 // used for selecting/specifying db, not supported yet
-reql.db = (db, qst, args) => {
+q.db = (db, qst, args) => {
   const [dbName] = args
   const isValidDbNameRe = /^[A-Za-z0-9_]*$/
 
@@ -360,13 +360,13 @@ reql.db = (db, qst, args) => {
   return qst
 }
 
-reql.dbList = (db, qst) => {
+q.dbList = (db, qst) => {
   qst.target = Object.keys(db.db)
 
   return qst
 }
 
-reql.dbCreate = (db, qst, args) => {
+q.dbCreate = (db, qst, args) => {
   const dbName = spend(db, qst, args[0])
 
   if (!args.length)
@@ -386,7 +386,7 @@ reql.dbCreate = (db, qst, args) => {
   return qst
 }
 
-reql.dbDrop = (db, qst, args) => {
+q.dbDrop = (db, qst, args) => {
   const [dbName] = args
   const dbConfig = mockdbStateDbConfigGet(db, dbName)
   const tables = mockdbStateDbGet(db, dbName)
@@ -410,7 +410,7 @@ reql.dbDrop = (db, qst, args) => {
   return qst
 }
 
-reql.config = (db, qst, args) => {
+q.config = (db, qst, args) => {
   if (args.length) {
     throw new Error(
       mockdbResErrorArgumentsNumber('config', 0, args.length))
@@ -431,7 +431,7 @@ reql.config = (db, qst, args) => {
   return qst
 }
 
-reql.status = (db, qst) => {
+q.status = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tableConfig = mockdbStateTableConfigGet(db, dbName, qst.tablename)
 
@@ -440,14 +440,14 @@ reql.status = (db, qst) => {
   return qst
 }
 
-reql.info = (db, qst) => {
+q.info = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   qst.target = mockdbResTableInfo(db, dbName, qst.tablename)
 
   return qst
 }
 
-reql.tableList = (db, qst) => {
+q.tableList = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tables = mockdbStateDbGet(db, dbName)
 
@@ -456,7 +456,7 @@ reql.tableList = (db, qst) => {
   return qst
 }
 
-reql.tableCreate = (db, qst, args) => {
+q.tableCreate = (db, qst, args) => {
   const tableName = spend(db, qst, args[0])
   const isValidConfigKeyRe = /^(primaryKey|durability)$/
   const isValidTableNameRe = /^[A-Za-z0-9_]*$/
@@ -502,7 +502,7 @@ reql.tableCreate = (db, qst, args) => {
   return qst
 }
 
-reql.tableDrop = (db, qst, args) => {
+q.tableDrop = (db, qst, args) => {
   const [tableName] = args
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tableConfig = mockdbStateTableConfigGet(db, dbName, tableName)
@@ -524,7 +524,7 @@ reql.tableDrop = (db, qst, args) => {
 // .indexCreate( 'foo', { multi: true })
 // .indexCreate( 'things', r.row( 'hobbies' ).add( r.row( 'sports' ) ), { multi: true })
 // .indexCreate([ r.row('id'), r.row('numeric_id') ])
-reql.indexCreate = (db, qst, args) => {
+q.indexCreate = (db, qst, args) => {
   const [indexName] = args
   const config = queryArgsOptions(args)
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
@@ -542,7 +542,7 @@ reql.indexCreate = (db, qst, args) => {
   return qst
 }
 
-reql.indexWait = (db, qst) => {
+q.indexWait = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tableIndexList = mockdbStateTableGetIndexNames(
     db, dbName, qst.tablename)
@@ -559,7 +559,7 @@ reql.indexWait = (db, qst) => {
   return qst
 }
 
-reql.indexList = (db, qst) => {
+q.indexList = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tableConfig = mockdbStateTableConfigGet(db, dbName, qst.tablename)
 
@@ -568,7 +568,7 @@ reql.indexList = (db, qst) => {
   return qst
 }
 // pass query down to 'spend' and copy data
-reql.insert = (db, qst, args, reqlObj) => {
+q.insert = (db, qst, args, reqlObj) => {
   // both argument types (list or atom) resolved to a list here
   let documents = Array.isArray(args[0]) ? args[0] : args.slice(0, 1)
   let table = qst.tablelist
@@ -633,8 +633,8 @@ reql.insert = (db, qst, args, reqlObj) => {
       const conflictDocs = documents.filter(doc => conflictIdRe.test(doc[primaryKey]))
 
       qst = options.conflict === 'update'
-        ? reql.update(db, qst, conflictDocs)
-        : reql.replace(db, qst, conflictDocs)
+        ? q.update(db, qst, conflictDocs)
+        : q.replace(db, qst, conflictDocs)
 
       return qst
     } else {
@@ -672,7 +672,7 @@ reql.insert = (db, qst, args, reqlObj) => {
   return qst
 }
 
-reql.update = (db, qst, args) => {
+q.update = (db, qst, args) => {
   const queryTarget = qst.target
   const queryTable = qst.tablelist
   const updateProps = spend(db, qst, args[0])
@@ -718,7 +718,7 @@ reql.update = (db, qst, args) => {
   return qst
 }
 
-reql.get = (db, qst, args) => {
+q.get = (db, qst, args) => {
   const primaryKeyValue = spend(db, qst, args[0])
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const primaryKey = mockdbStateTableGetPrimaryKey(db, dbName, qst.tablename)
@@ -743,13 +743,13 @@ reql.get = (db, qst, args) => {
   return qst
 }
 
-reql.get.fn = (db, qst, args) => {
+q.get.fn = (db, qst, args) => {
   qst.target = spend(db, qst, args[0], [qst.target])
   
   return qst
 }
 
-reql.getAll = (db, qst, args) => {
+q.getAll = (db, qst, args) => {
   const queryOptions = queryArgsOptions(args)
   const primaryKeyValues = spend(
     db,
@@ -784,7 +784,7 @@ reql.getAll = (db, qst, args) => {
 // with null, the document will be deleted. Since update and replace
 // operations are performed atomically, this allows atomic inserts and
 // deletes as well.
-reql.replace = (db, qst, args) => {
+q.replace = (db, qst, args) => {
   const queryTarget = qst.target
   const queryTable = qst.tablelist
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
@@ -846,7 +846,7 @@ reql.replace = (db, qst, args) => {
   return qst
 }
 
-reql.prepend = (db, qst, args) => {
+q.prepend = (db, qst, args) => {
   const prependValue = spend(db, qst, args[0])
 
   if (typeof prependValue === 'undefined') {
@@ -860,7 +860,7 @@ reql.prepend = (db, qst, args) => {
   return qst
 }
 
-reql.difference = (db, qst, args) => {
+q.difference = (db, qst, args) => {
   const differenceValues = spend(db, qst, args[0])
 
   if (typeof differenceValues === 'undefined') {
@@ -875,7 +875,7 @@ reql.difference = (db, qst, args) => {
   return qst
 }
 
-reql.nth = (db, qst, args) => {
+q.nth = (db, qst, args) => {
   const nthIndex = spend(db, qst, args[0])
 
   if (nthIndex >= qst.target.length) {
@@ -901,7 +901,7 @@ reql.nth = (db, qst, args) => {
 // question: should it be possible for qst.target to be defined here?
 //           even when ...
 //
-reql.row = (db, qst, args) => {
+q.row = (db, qst, args) => {
   if (args[0] === mmEnumQueryArgTypeROW && !(args[1] in qst.rowMap)) {
     // keep this for development
     // console.log(qst.target, mockdbSpecSignature(reqlObj), args, qst.rowMap);
@@ -915,15 +915,15 @@ reql.row = (db, qst, args) => {
   return qst
 }
 
-reql.row.fn = (db, qst, args, reqlObj) => {
+q.row.fn = (db, qst, args, reqlObj) => {
   if (typeof args[0] === 'string' && !(args[0] in qst.target)) {
     throw new Error(mockDbResErrorNoAttributeInObject(args[0]))
   }
 
-  return reql.getField(db, qst, args, reqlObj)
+  return q.getField(db, qst, args, reqlObj)
 }
 
-reql.default = (db, qst, args) => {
+q.default = (db, qst, args) => {
   if (qst.target === null) {
     qst.error = null
     qst.target = spend(db, qst, args[0])
@@ -933,7 +933,7 @@ reql.default = (db, qst, args) => {
 }
 
 // time.during(startTime, endTime[, {leftBound: "closed", rightBound: "open"}]) → bool
-reql.during = (db, qst, args) => {
+q.during = (db, qst, args) => {
   const [start, end] = args
   const startTime = spend(db, qst, start)
   const endTime = spend(db, qst, end)
@@ -946,7 +946,7 @@ reql.during = (db, qst, args) => {
   return qst
 }
 
-reql.append = (db, qst, args) => {
+q.append = (db, qst, args) => {
   qst.target = spend(db, qst, args).reduce((list, val) => {
     list.push(val)
 
@@ -958,7 +958,7 @@ reql.append = (db, qst, args) => {
 
 // NOTE rethinkdb uses re2 syntax
 // re using re2-specific syntax will fail
-reql.match = (db, qst, args) => {
+q.match = (db, qst, args) => {
   let regexString = spend(db, qst, args[0])
 
   let flags = ''
@@ -980,7 +980,7 @@ reql.match = (db, qst, args) => {
   return qst
 }
 
-reql.delete = (db, qst, args) => {
+q.delete = (db, qst, args) => {
   const queryTarget = qst.target
   const queryTable = qst.tablelist
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
@@ -1030,7 +1030,7 @@ reql.delete = (db, qst, args) => {
   return qst
 }
 
-reql.contains = (db, qst, args) => {
+q.contains = (db, qst, args) => {
   const queryTarget = qst.target
 
   if (!args.length) {
@@ -1063,7 +1063,7 @@ reql.contains = (db, qst, args) => {
 // from every object in the sequence, skipping objects that lack it.
 //
 // https://rethinkdb.com/api/javascript/get_field
-reql.getField = (db, qst, args, reqlObj) => {
+q.getField = (db, qst, args, reqlObj) => {
   const [fieldName] = spend(db, qst, args)
 
   if (args.length === 0) {
@@ -1084,7 +1084,7 @@ reql.getField = (db, qst, args, reqlObj) => {
   return qst
 }
 
-reql.filter = (db, qst, args) => {
+q.filter = (db, qst, args) => {
   if (qst.target instanceof Readable
     && 'changesTarget' in qst) {
     // eg, changes().filter( filterQuery )
@@ -1108,15 +1108,15 @@ reql.filter = (db, qst, args) => {
   return qst
 }
 
-reql.filter.fn = reql.getField
+q.filter.fn = q.getField
 
-reql.count = (db, qst) => {
+q.count = (db, qst) => {
   qst.target = qst.target.length
 
   return qst
 }
 
-reql.pluck = (db, qst, args) => {
+q.pluck = (db, qst, args) => {
   const queryTarget = qst.target
   const pluckObj = (obj, props) => props.reduce((plucked, prop) => {
     plucked[prop] = obj[prop]
@@ -1132,7 +1132,7 @@ reql.pluck = (db, qst, args) => {
   return qst
 }
 
-reql.hasFields = (db, qst, args) => {
+q.hasFields = (db, qst, args) => {
   const queryTarget = qst.target
   const itemHasFields = item => Boolean(item && args
     .every(name => Object.prototype.hasOwnProperty.call(item, name)))
@@ -1144,7 +1144,7 @@ reql.hasFields = (db, qst, args) => {
   return qst
 }
 
-reql.slice = (db, qst, args) => {
+q.slice = (db, qst, args) => {
   const [begin, end] = spend(db, qst, args.slice(0, 2))
 
   if (qst.isGrouped) { // slice from each group
@@ -1160,7 +1160,7 @@ reql.slice = (db, qst, args) => {
   return qst
 }
 
-reql.skip = (db, qst, args) => {
+q.skip = (db, qst, args) => {
   const count = spend(db, qst, args[0])
 
   qst.target = qst.target.slice(count)
@@ -1168,7 +1168,7 @@ reql.skip = (db, qst, args) => {
   return qst
 }
 
-reql.limit = (db, qst, args) => {
+q.limit = (db, qst, args) => {
   qst.target = qst.target.slice(0, args[0])
 
   return qst
@@ -1177,7 +1177,7 @@ reql.limit = (db, qst, args) => {
 // Documents in the result set consist of pairs of left-hand and right-hand documents,
 // matched when the field on the left-hand side exists and is non-null and an entry
 // with that field’s value exists in the specified index on the right-hand side.
-reql.eqJoin = (db, qst, args) => {
+q.eqJoin = (db, qst, args) => {
   const queryTarget = qst.target
   const isNonNull = v => v !== null && v !== undefined
   const queryConfig = queryArgsOptions(args)
@@ -1185,7 +1185,7 @@ reql.eqJoin = (db, qst, args) => {
   const rightFields = spend(db, qst, args[1])
 
   // should remove this... get table name from args[1] record
-  // and call reql.config() directly
+  // and call q.config() directly
   const rightFieldConfig = args[1] && spend(db, qst, {
     type: mmEnumQueryArgTypeROW,
     recs: [
@@ -1236,18 +1236,18 @@ reql.eqJoin = (db, qst, args) => {
   return qst
 }
 
-reql.eqJoin.fn = reql.getField
+q.eqJoin.fn = q.getField
 
 // Used to ‘zip’ up the result of a join by merging the ‘right’ fields into
 // ‘left’ fields of each member of the sequence.
-reql.zip = (db, qst) => {
+q.zip = (db, qst) => {
   qst.target = qst.target
     .map(t => ({ ...t.left, ...t.right }))
 
   return qst
 }
 
-reql.innerJoin = (db, qst, args) => {
+q.innerJoin = (db, qst, args) => {
   const queryTarget = qst.target
   const [otherSequence, joinFunc] = args
   const otherTable = spend(db, qst, otherSequence)
@@ -1267,25 +1267,25 @@ reql.innerJoin = (db, qst, args) => {
   return qst
 }
 
-reql.now = (db, qst) => {
+q.now = (db, qst) => {
   qst.target = new Date()
 
   return qst
 }
 
-reql.toEpochTime = (db, qst) => {
+q.toEpochTime = (db, qst) => {
   qst.target = (new Date(qst.target)).getTime() / 1000
 
   return qst
 }
 
-reql.epochTime = (db, qst, args) => {
+q.epochTime = (db, qst, args) => {
   qst.target = new Date(args[0] * 1000)
 
   return qst
 }
 
-reql.not = (db, qst) => {
+q.not = (db, qst) => {
   const queryTarget = qst.target
 
   if (typeof queryTarget !== 'boolean')
@@ -1296,19 +1296,19 @@ reql.not = (db, qst) => {
   return qst
 }
 
-reql.gt = (db, qst, args) => {
+q.gt = (db, qst, args) => {
   qst.target = qst.target > spend(db, qst, args[0])
 
   return qst
 }
 
-reql.ge = (db, qst, args) => {
+q.ge = (db, qst, args) => {
   qst.target = qst.target >= spend(db, qst, args[0])
 
   return qst
 }
 
-reql.lt = (db, qst, args) => {
+q.lt = (db, qst, args) => {
   const argTarget = spend(db, qst, args[0])
   
   if (argTarget instanceof Date && !(qst.target instanceof Date)) {
@@ -1323,25 +1323,25 @@ reql.lt = (db, qst, args) => {
   return qst
 }
 
-reql.le = (db, qst, args) => {
+q.le = (db, qst, args) => {
   qst.target = qst.target <= spend(db, qst, args[0])
 
   return qst
 }
 
-reql.eq = (db, qst, args) => {
+q.eq = (db, qst, args) => {
   qst.target = qst.target === spend(db, qst, args[0])
 
   return qst
 }
 
-reql.ne = (db, qst, args) => {
+q.ne = (db, qst, args) => {
   qst.target = qst.target !== spend(db, qst, args[0])
 
   return qst
 }
 
-reql.max = (db, qst, args) => {
+q.max = (db, qst, args) => {
   const targetList = qst.target
   const getListMax = (list, prop) => list.reduce((maxDoc, doc) => (
     maxDoc[prop] > doc[prop] ? maxDoc : doc
@@ -1365,7 +1365,7 @@ reql.max = (db, qst, args) => {
   return qst
 }
 
-reql.max.fn = (db, qst, args) => {
+q.max.fn = (db, qst, args) => {
   const field = spend(db, qst, args[0])
 
   if (qst.isGrouped) {
@@ -1381,7 +1381,7 @@ reql.max.fn = (db, qst, args) => {
   return qst
 }
 
-reql.min = (db, qst, args) => {
+q.min = (db, qst, args) => {
   const targetList = qst.target
   const getListMin = (list, prop) => list.reduce((maxDoc, doc) => (
     maxDoc[prop] < doc[prop] ? maxDoc : doc
@@ -1405,7 +1405,7 @@ reql.min = (db, qst, args) => {
   return qst
 }
 
-reql.merge = (db, qst, args, reqlObj) => {
+q.merge = (db, qst, args, reqlObj) => {
   if (args.length === 0) {
     throw new Error(
       mockdbResErrorArgumentsNumber('merge', 1, args.length, true))
@@ -1423,7 +1423,7 @@ reql.merge = (db, qst, args, reqlObj) => {
   return qst
 }
 
-reql.concatMap = (db, qst, args) => {
+q.concatMap = (db, qst, args) => {
   const [func] = args
 
   qst.target = qst
@@ -1432,13 +1432,13 @@ reql.concatMap = (db, qst, args) => {
   return qst
 }
 
-reql.isEmpty = (db, qst) => {
+q.isEmpty = (db, qst) => {
   qst.target = qst.target.length === 0
 
   return qst
 }
 
-reql.add = (db, qst, args) => {
+q.add = (db, qst, args) => {
   const target = qst.target
   const values = spend(db, qst, args)
 
@@ -1455,7 +1455,7 @@ reql.add = (db, qst, args) => {
   return qst
 }
 
-reql.sub = (db, qst, args) => {
+q.sub = (db, qst, args) => {
   const target = qst.target
   const values = spend(db, qst, args)
 
@@ -1470,7 +1470,7 @@ reql.sub = (db, qst, args) => {
   return qst
 }
 
-reql.mul = (db, qst, args) => {
+q.mul = (db, qst, args) => {
   const target = qst.target
   const values = spend(db, qst, args)
 
@@ -1487,7 +1487,7 @@ reql.mul = (db, qst, args) => {
 
 // .group(field | function..., [{index: <indexname>, multi: false}]) → grouped_stream
 // arg can be stringy field name, { index: 'indexname' }, { multi: true }
-reql.group = (db, qst, args) => {
+q.group = (db, qst, args) => {
   const queryTarget = qst.target
   const [arg] = args
   const groupedData = queryTarget.reduce((group, item) => {
@@ -1511,7 +1511,7 @@ reql.group = (db, qst, args) => {
 }
 
 // array.sample(number) → array
-reql.sample = (db, qst, args) => {
+q.sample = (db, qst, args) => {
   qst.target = qst.target
     .sort(() => 0.5 - Math.random())
     .slice(0, args)
@@ -1519,13 +1519,13 @@ reql.sample = (db, qst, args) => {
   return qst
 }
 
-reql.ungroup = (db, qst) => {
+q.ungroup = (db, qst) => {
   qst.isGrouped = false
 
   return qst
 }
 
-reql.orderBy = (db, qst, args) => {
+q.orderBy = (db, qst, args) => {
   const queryTarget = qst.target
   const queryOptions = isReqlObj(args[0])
     ? args[0]
@@ -1583,25 +1583,25 @@ reql.orderBy = (db, qst, args) => {
 }
 
 // Return the hour in a time object as a number between 0 and 23.
-reql.hours = (db, qst) => {
+q.hours = (db, qst) => {
   qst.target = new Date(qst.target).getHours()
 
   return qst
 }
 
-reql.minutes = (db, qst) => {
+q.minutes = (db, qst) => {
   qst.target = new Date(qst.target).getMinutes()
 
   return qst
 }
 
-reql.uuid = (db, qst) => {
+q.uuid = (db, qst) => {
   qst.target = randomUUID()
 
   return qst
 }
 
-reql.expr = (db, qst, args) => {
+q.expr = (db, qst, args) => {
   const [argvalue] = args
 
   qst.target = spend(db, qst, argvalue, [qst.target])
@@ -1609,7 +1609,7 @@ reql.expr = (db, qst, args) => {
   return qst
 }
 
-reql.expr.fn = (db, qst, args) => {
+q.expr.fn = (db, qst, args) => {
   if (Array.isArray(qst.target)) {
     qst.target = qst.target.map(t => t[args[0]])
   } else if (args[0] in qst.target) {
@@ -1622,7 +1622,7 @@ reql.expr.fn = (db, qst, args) => {
   return qst
 }
 
-reql.coerceTo = (db, qst, args) => {
+q.coerceTo = (db, qst, args) => {
   const [coerceType] = args
   let resolved = spend(db, qst, qst.target)
 
@@ -1634,26 +1634,26 @@ reql.coerceTo = (db, qst, args) => {
   return qst
 }
 
-reql.upcase = (db, qst) => {
+q.upcase = (db, qst) => {
   qst.target = String(qst.target).toUpperCase()
 
   return qst
 }
 
-reql.downcase = (db, qst) => {
+q.downcase = (db, qst) => {
   qst.target = String(qst.target).toLowerCase()
 
   return qst
 }
 
-reql.map = (db, qst, args) => {
+q.map = (db, qst, args) => {
   qst.target = qst
     .target.map(t => spend(db, qst, args[0], [t]))
 
   return qst
 }
 
-reql.without = (db, qst, args) => {
+q.without = (db, qst, args) => {
   const queryTarget = qst.target
 
   const withoutFromDoc = (doc, withoutlist) => withoutlist
@@ -1701,7 +1701,7 @@ reql.without = (db, qst, args) => {
 
 // Call an anonymous function using return values from other
 // ReQL commands or queries as arguments.
-reql.do = (db, qst, args) => {
+q.do = (db, qst, args) => {
   const [doFn] = args.slice(-1)
 
   if (isReqlObj(doFn)) {
@@ -1719,7 +1719,7 @@ reql.do = (db, qst, args) => {
   return qst
 }
 
-reql.or = (db, qst, args) => {
+q.or = (db, qst, args) => {
   const rows = [qst.target]
 
   qst.target = args.reduce((current, arg) => (
@@ -1729,7 +1729,7 @@ reql.or = (db, qst, args) => {
   return qst
 }
 
-reql.and = (db, qst, args) => {
+q.and = (db, qst, args) => {
   const rows = [qst.target]
 
   qst.target = args.reduce((current, arg) => (
@@ -1740,7 +1740,7 @@ reql.and = (db, qst, args) => {
 }
 
 // if the conditionals return any value but false or null (i.e., “truthy” values),
-reql.branch = (db, qst, args) => {
+q.branch = (db, qst, args) => {
   const isResultTruthy = result => (
     result !== false && result !== null)
 
@@ -1764,7 +1764,7 @@ reql.branch = (db, qst, args) => {
 
 // Rethink has its own alg for finding distinct,
 // but unique by ID should be sufficient here.
-reql.distinct = (db, qst, args) => {
+q.distinct = (db, qst, args) => {
   const queryOptions = queryArgsOptions(args)
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
 
@@ -1798,7 +1798,7 @@ reql.distinct = (db, qst, args) => {
   return qst
 }
 
-reql.union = (db, qst, args) => {
+q.union = (db, qst, args) => {
   const queryOptions = queryArgsOptions(args, null)
 
   if (queryOptions)
@@ -1819,7 +1819,7 @@ reql.union = (db, qst, args) => {
   return qst
 }
 
-reql.table = (db, qst, args) => {
+q.table = (db, qst, args) => {
   const [tablename] = args
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const dbState = mockdbStateDbGet(db, dbName)
@@ -1837,10 +1837,10 @@ reql.table = (db, qst, args) => {
   return qst
 }
 
-reql.table.fn = reql.getField
+q.table.fn = q.getField
 
 // r.args(array) → special
-reql.args = (db, qst, args) => {
+q.args = (db, qst, args) => {
   const result = spend(db, qst, args[0])
   if (!Array.isArray(result))
     throw new Error('args must be an array')
@@ -1850,7 +1850,7 @@ reql.args = (db, qst, args) => {
   return qst
 }
 
-reql.desc = (db, qst, args) => {
+q.desc = (db, qst, args) => {
   qst.target = {
     sortBy: spend(db, qst, args[0], [qst.target]),
     sortDirection: 'desc'
@@ -1859,7 +1859,7 @@ reql.desc = (db, qst, args) => {
   return qst
 }
 
-reql.asc = (db, qst, args) => {
+q.asc = (db, qst, args) => {
   qst.target = {
     sortBy: spend(db, qst, args[0], [qst.target]),
     sortDirection: 'asc'
@@ -1868,7 +1868,7 @@ reql.asc = (db, qst, args) => {
   return qst
 }
 
-reql.run = (db, qst) => {
+q.run = (db, qst) => {
   if (qst.error) {
     throw new Error(qst.error)
   }
@@ -1877,15 +1877,15 @@ reql.run = (db, qst) => {
   return qst
 }
 
-reql.drain = reql.run
+q.drain = q.run
 
-reql.serialize = (db, qst) => {
+q.serialize = (db, qst) => {
   qst.target = JSON.stringify(qst.chain)
 
   return qst
 }
 
-reql.changes = (db, qst, args) => {
+q.changes = (db, qst, args) => {
   const tableName = qst.tablename
   const queryTarget = qst.target
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
@@ -1991,7 +1991,7 @@ reql.changes = (db, qst, args) => {
 //
 // > 'Cannot perform bracket on a non-object non-sequence `8`.'
 //
-reql.reduce = (db, qst, args) => {
+q.reduce = (db, qst, args) => {
   if (args.length === 0) {
     throw new Error(
       mockdbResErrorArgumentsNumber('reduce', 1, args.length))
@@ -2024,7 +2024,7 @@ reql.reduce = (db, qst, args) => {
 //  * it passes an initial base value to the function with the
 //    first element in place of the previous reduction result.
 //
-reql.fold = (db, qst, args) => {
+q.fold = (db, qst, args) => {
   const [startVal, reduceFn] = args
 
   if (args.length < 2) {
@@ -2038,7 +2038,7 @@ reql.fold = (db, qst, args) => {
   return qst
 }
 
-reql.forEach =  (db, qst, args) => {
+q.forEach =  (db, qst, args) => {
   const [forEachRow] = args
 
   if (args.length !== 1) {
@@ -2055,7 +2055,7 @@ reql.forEach =  (db, qst, args) => {
   return qst
 }
 
-reql.getCursor = (db, qst, args) => {
+q.getCursor = (db, qst, args) => {
   // returning the changes()-defined 'target' here causes node to hang un-predictably
   if (qst.target instanceof Readable
       && 'changesTarget' in qst) {
@@ -2126,17 +2126,17 @@ reql.getCursor = (db, qst, args) => {
   return qst
 }
 
-reql.close = (db, qst, args) => {
+q.close = (db, qst, args) => {
   if (qst.target && typeof qst.target.close === 'function')
     qst.target.close()
 
   return qst
 }
 
-reql.isReql = true
+q.isReql = true
 
 export {
-  reql as default,
+  q as default,
   spend,
   spendCursor
 }
