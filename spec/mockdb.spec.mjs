@@ -174,9 +174,9 @@ test('r.serialize() returns a call record', t => {
   const recording = r.table('marvel').get('1').serialize()
 
   t.is(recording, JSON.stringify([
-    { queryName: 'table', queryArgs: ['marvel'] },
-    { queryName: 'get', queryArgs: ['1'] },
-    { queryName: 'serialize', queryArgs:[] }
+    ['table', ['marvel']],
+    ['get', ['1']],
+    ['serialize', []]
   ]))
 })
 

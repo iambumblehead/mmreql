@@ -22,7 +22,7 @@ const mmChainRecNext = (chain, rec, recs = (chain.recs || []).slice()) => ({
     ? recs.push(rec) && recs
     : recs,
   recId: (chain.recId || '') +
-    (rec ? '/' + rec.queryName : '')
+    (rec ? '/' + rec[0] : '')
 })
 
 const mmChainRecFnCreate = (queryFns, chain, fn) => (
