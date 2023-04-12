@@ -21,7 +21,8 @@ const mmChainRecNext = (chain, rec, recs = (chain.recs || []).slice()) => ({
   recs: rec
     ? recs.push(rec) && recs
     : recs,
-  recId: 'orphan' + Date.now()
+  recId: (chain.recId || '') +
+    (rec ? '/' + rec.queryName : '')
 })
 
 const mmChainRecFnCreate = (queryFns, chain, fn) => (

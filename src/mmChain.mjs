@@ -11,7 +11,8 @@ import mmChainRawArg from './mmChainRawArg.mjs'
 
 import {
   mmEnumQueryNameIsRESOLVINGRe,
-  mmEnumQueryNameIsFIRSTTERMRe
+  mmEnumQueryNameIsFIRSTTERMRe,
+  mmEnumQueryArgTypeCHAIN
 } from './mmEnum.mjs'
 
 const chainFnCreate = (chains, queryName) => function (...args) {
@@ -55,7 +56,10 @@ const chain = (() => {
       : mmQuery[queryName]
 
     return prev
-  }, { isReql: true })
+  }, {
+    toString: () => mmEnumQueryArgTypeCHAIN,
+    type: mmEnumQueryArgTypeCHAIN
+  })
 
   Object.assign(chainPart.row, chainPart)
 

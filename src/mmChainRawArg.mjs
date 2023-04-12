@@ -52,7 +52,7 @@ const mockdbChainSuspendArgFn = (chainCreate, arg) => {
   )
 
   // if raw data are returned, convert to chain
-  if (!mmEnumQueryArgTypeCHAINIsRe.test(String(argchain))) {
+  if (!mmEnumQueryArgTypeCHAINIsRe.test(argchain)) {
     argchain = chainCreate().expr(argchain)
   }
 
@@ -61,42 +61,17 @@ const mockdbChainSuspendArgFn = (chainCreate, arg) => {
     : mmChainRecRowFnCreate(argchain, fnArgSig)
 }
 
-/*
 // deeply recurse data converting chain leaves to spec
 const mmChainRawArg = (arg, chainCreate, type = typeof arg) => {
   if (isBoolNumUndefRe.test(type)
     || arg instanceof Date || arg instanceof mmConn || !arg) {
     arg = arg
-  } else if (typeof arg === 'function') {
-    arg = arg.isReql
-      ? mmRecChainRowCreate(arg)
-      : mockdbChainSuspendArgFn(chainCreate, arg)
   } else if (Array.isArray(arg)) {
     arg = arg.map(a => mmChainRawArg(a, chainCreate))
-  } else if (type === 'object') {
-    arg = Object.keys(arg)
-      .reduce((a, k) => (a[k] = mmChainRawArg(arg[k], chainCreate), a), {})
-  }
-
-  return arg
-}
-*/
-
-// should be renamed
-const isChain = obj => Boolean(
-  obj && /object|function/.test(typeof obj) && obj.isReql)
-
-// deeply recurse data converting chain leaves to spec
-const mmChainRawArg = (arg, chainCreate, type = typeof arg) => {
-  if (isBoolNumUndefRe.test(type)
-    || arg instanceof Date || arg instanceof mmConn || !arg) {
-    arg = arg
-  } else if (isChain(arg)) {
+  } else if (mmEnumQueryArgTypeCHAINIsRe.test(arg)) {
     arg = mmChainRecNext(arg)
   } else if (typeof arg === 'function') {
     arg = mockdbChainSuspendArgFn(chainCreate, arg)
-  } else if (Array.isArray(arg)) {
-    arg = arg.map(a => mmChainRawArg(a, chainCreate))
   } else if (type === 'object') {
     arg = Object.keys(arg)
       .reduce((a, k) => (a[k] = mmChainRawArg(arg[k], chainCreate), a), {})
