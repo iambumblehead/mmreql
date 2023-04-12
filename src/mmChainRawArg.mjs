@@ -91,7 +91,6 @@ const mmChainRawArg = (arg, chainCreate, type = typeof arg) => {
     || arg instanceof Date || arg instanceof mmConn || !arg) {
     arg = arg
   } else if (isChain(arg)) {
-    // arg = mockdbSpecFromChain(mmEnumQueryArgTypeCHAIN, arg);
     arg = mmChainRecNext(arg)
   } else if (typeof arg === 'function') {
     arg = mockdbChainSuspendArgFn(chainCreate, arg)

@@ -3459,3 +3459,39 @@ test('supports complex filtering', async t => {
 
   t.deepEqual(userFriendIds.sort(), [friendAId, friendBId].sort())
 })
+
+test('complex changefeed query', async t => {
+  const tableRoomMemberships = 'RoomMemberships'
+  const { r } = rethinkdbMocked([
+    [tableRoomMemberships,
+      { id: 1, room_membership_type: 'group' },
+      { id: 2, room_membership_type: 'direct' }
+    ]
+  ])
+
+  const membershipDocNext =
+    { id: 3, room_membership_type: 'direct' }
+
+  const dbChangeStreamGet = () => r
+    .table(tableRoomMemberships).changes()
+    .filter(row => row('old_val').eq(null).or(row('new_val').eq(null).or(
+      row('old_val')('room_membership_type').ne(
+        row('new_val')('room_membership_type')))))
+    .run()
+
+  const streamIterate = new Promise(async resolve => {
+    const streamTest = dbChangeStreamGet()
+    for await (const emitted of streamTest) {
+      resolve(emitted)
+    }
+  })
+
+  await r.table(tableRoomMemberships).insert(membershipDocNext).run();
+  const streamIterateResult = await streamIterate
+
+  t.deepEqual(streamIterateResult, {
+    old_val: null,
+    new_val: membershipDocNext,
+    type: 'add'
+  })
+})
