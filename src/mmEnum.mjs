@@ -1,6 +1,7 @@
 const mmEnumQueryArgTypeCHAINFN = 'reqlARGSCHAINFN'
 const mmEnumQueryArgTypeCHAIN = 'reqlARGSCHAIN'
 const mmEnumQueryArgTypeARGS = 'reqlARGSRESULT'
+const mmEnumQueryArgTypeARGSIG = 'reqlARGSIG'
 
 const mmEnumQueryArgTypeCHAINIsRe = new RegExp(`^${mmEnumQueryArgTypeCHAIN}`)
 const mmEnumQueryArgTypeCHAINHasRe = new RegExp(`${mmEnumQueryArgTypeCHAIN}`)
@@ -39,6 +40,7 @@ const mmEnumIsQueryArgsResult = obj => mmEnumIsLookObj(obj)
 
 export {
   mmEnumQueryArgTypeARGS,
+  mmEnumQueryArgTypeARGSIG,
   mmEnumQueryArgTypeCHAIN,
   mmEnumQueryArgTypeCHAINFN,
   mmEnumQueryArgTypeCHAINIsRe,

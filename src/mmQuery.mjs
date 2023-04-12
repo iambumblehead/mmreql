@@ -65,6 +65,7 @@ import {
 
 import {
   mmEnumTypeERROR,
+  mmEnumQueryArgTypeARGSIG,
   mmEnumQueryArgTypeARGS,
   mmEnumQueryArgTypeCHAIN,
   mmEnumQueryArgTypeCHAINFN,
@@ -144,7 +145,8 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       //   r.row('user_id').eq('xavier').or(r.row('membership').eq('join'))
       // ```
       if (qstNext.rowDepth >= 1 && i === 0 && (
-        !mmEnumQueryArgTypeCHAINIsRe.test(rec.queryArgs[0]))) {
+        // existance of ARGSIG indicates row function was used
+        mmEnumQueryArgTypeARGSIG !== rec.queryArgs[0])) {
         throw mmErrCannotUseNestedRow()
       } else {
         qstNext.rowDepth += 1
@@ -855,13 +857,13 @@ q.nth = (db, qst, args) => {
 //           even when ...
 //
 q.row = (db, qst, args) => {
-  if (args[0] === mmEnumQueryArgTypeCHAIN && !(args[1] in qst.rowMap)) {
+  if (args[0] === mmEnumQueryArgTypeARGSIG && !(args[1] in qst.rowMap)) {
     // keep this for development
     // console.log(qst.target, mockdbSpecSignature(reqlObj), args, qst.rowMap);
     throw new Error('[!!!] error: missing ARGS from ROWMAP')
   }
 
-  qst.target = args[0] === mmEnumQueryArgTypeCHAIN
+  qst.target = args[0] === mmEnumQueryArgTypeARGSIG
     ? qst.rowMap[args[1]][args[2]]
     : qst.target[args[0]]
   

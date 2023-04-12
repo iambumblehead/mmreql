@@ -2,7 +2,8 @@ import mmConn from './mmConn.mjs'
 
 import {
   mmEnumQueryArgTypeCHAIN,
-  mmEnumQueryArgTypeCHAINIsRe
+  mmEnumQueryArgTypeCHAINIsRe,
+  mmEnumQueryArgTypeARGSIG
 } from './mmEnum.mjs'
 
 import {
@@ -41,12 +42,12 @@ const fnStrParseArgs = fnStr => String(fnStr)
 // recursive error between this function and chain
 const mockdbChainSuspendArgFn = (chainCreate, arg) => {
   const fnArgNames = fnStrParseArgs(arg)
-  const fnArgSig = `reqlARGSIG.${fnArgNames}`
+  const fnArgSig = `${mmEnumQueryArgTypeARGSIG}.${fnArgNames}`
 
   let argchain = arg(
     ...fnArgNames.map((argName, i) => (
       chainCreate()
-        .row(mmEnumQueryArgTypeCHAIN, fnArgSig, i, argName.trim())
+        .row(mmEnumQueryArgTypeARGSIG, fnArgSig, i, argName.trim())
     ))
   )
 
