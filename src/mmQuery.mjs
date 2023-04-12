@@ -69,7 +69,6 @@ import {
   mmEnumQueryArgTypeARGS,
   mmEnumQueryArgTypeCHAIN,
   mmEnumQueryArgTypeCHAINFN,
-  mmEnumQueryArgTypeCHAINIsRe,
   mmEnumQueryNameIsCURSORORDEFAULTRe,
   mmEnumIsQueryArgsResult,
   mmEnumIsChainShallow,
@@ -129,12 +128,12 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
 
   const val = reqlObj.recs.reduce((qstNext, rec, i) => {
     // avoid mutating original args w/ suspended values
-    const queryArgs = rec.queryArgs.slice()
+    const queryArgs = rec[1].slice()
 
-    if (qstNext.error && !mmEnumQueryNameIsCURSORORDEFAULTRe.test(rec.queryName))
+    if (qstNext.error && !mmEnumQueryNameIsCURSORORDEFAULTRe.test(rec[0]))
       return qstNext
     
-    if (rec.queryName === 'row') {
+    if (rec[0] === 'row') {
       // following authentic rethinkdb, disallow most nested short-hand
       // row queries. legacy 'rethinkdb' driver is sometimes more permissive
       // than newer rethinkdb-ts: rethinkdb-ts behaviour preferred here
@@ -146,7 +145,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       // ```
       if (qstNext.rowDepth >= 1 && i === 0 && (
         // existance of ARGSIG indicates row function was used
-        mmEnumQueryArgTypeARGSIG !== rec.queryArgs[0])) {
+        mmEnumQueryArgTypeARGSIG !== rec[1][0])) {
         throw mmErrCannotUseNestedRow()
       } else {
         qstNext.rowDepth += 1
@@ -169,9 +168,9 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
     }
 
     try {
-      qstNext = (/\.fn/.test(rec.queryName)
-        ? q[rec.queryName.replace(/\.fn/, '')].fn
-        : q[rec.queryName]
+      qstNext = (/\.fn/.test(rec[0])
+        ? q[rec[0].replace(/\.fn/, '')].fn
+        : q[rec[0]]
       )(db, qstNext, queryArgs, reqlObj)
     } catch (e) {
       // do not throw error if chain subsequently uses `.default(...)`
@@ -180,12 +179,12 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
       qstNext.target = null
       qstNext.error = e
 
-      if (reqlObj.recs.slice(-1)[0].queryName === 'getCursor')
+      if (reqlObj.recs.slice(-1)[0][0] === 'getCursor')
         return qstNext
 
       e[mmEnumTypeERROR] = typeof e[mmEnumTypeERROR] === 'boolean'
         ? e[mmEnumTypeERROR]
-        : !reqlObj.recs.slice(i + 1).some(o => mmEnumQueryNameIsCURSORORDEFAULTRe.test(o.queryName))
+        : !reqlObj.recs.slice(i + 1).some(o => mmEnumQueryNameIsCURSORORDEFAULTRe.test(o[0]))
 
       if (e[mmEnumTypeERROR])
         throw e
@@ -201,7 +200,7 @@ const mockdbSuspendArgSpend = (db, qst, reqlObj, rows) => {
     //     r.row('victories').gt(100),
     //     r.row('name').add(' is a hero'),
     //     r.row('name').add(' is very nice')))
-    target: reqlObj.recs[0].queryName === 'row' ? qst.target : null,
+    target: reqlObj.recs[0][0] === 'row' ? qst.target : null,
     recId: reqlObj.recId,
     rowMap: qst.rowMap || {},
     rowDepth: qst.rowDepth || 0
@@ -1140,7 +1139,7 @@ q.eqJoin = (db, qst, args) => {
     type: mmEnumQueryArgTypeCHAIN,
     recs: [
       ...args[1].recs,
-      { queryName: 'config', queryArgs: [] }
+      ['config', []]
     ]
   })
   

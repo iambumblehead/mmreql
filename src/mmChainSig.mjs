@@ -15,17 +15,17 @@ const mmChainSigArg = (recarg, type = typeof recarg) => {
   return recarg
 }
 
-const mmChainSigArgs = rec => rec.queryArgs[0] === mmEnumQueryArgTypeROW
-  ? rec.queryArgs[3]
-  : rec.queryArgs.map(arg => mmChainSigArg(arg)).join(', ')
+const mmChainSigArgs = rec => rec[1][0] === mmEnumQueryArgTypeROW
+  ? rec[1][3]
+  : rec[1].map(arg => mmChainSigArg(arg)).join(', ')
 
 // returns a human readable signature from reqlOb,
 //
 // ex, '.row("rose")("petal")'
 const mmChainSig = reqlObj => (
   reqlObj && reqlObj.recs.reduce((prev, rec) => (
-    prev + (/\.fn/.test(rec.queryName)
+    prev + (/\.fn/.test(rec[0])
       ? `(${mmChainSigArgs(rec)})`
-      : `.${rec.queryName}(${mmChainSigArgs(rec)})`)), ''))
+      : `.${rec[0]}(${mmChainSigArgs(rec)})`)), ''))
 
 export default mmChainSig
