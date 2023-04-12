@@ -28,6 +28,21 @@ const mmEnumQueryNameIsRESOLVINGRe = new RegExp(
 const mmEnumQueryNameIsFIRSTTERMRe = new RegExp(
   `^(${mmEnumQueryNamesFirstTerm.join('|')})$`)
 
+const mmEnumQueryNameIsCURSORORDEFAULTRe = /getCursor|default/
+
+const mmEnumIsLookObj = obj => obj
+  && typeof obj === 'object' && !(obj instanceof Date)
+
+const mmEnumIsRow = obj => mmEnumIsLookObj(obj)
+  && mmEnumQueryArgTypeROWIsRe.test(obj.type)
+
+const mmEnumIsRowShallow = obj => mmEnumIsLookObj(obj) && (
+  mmEnumQueryArgTypeROWIsRe.test(obj.type) ||
+    mmEnumQueryArgTypeROWHasRe.test(Object.values(obj).join()))
+
+const mmEnumIsQueryArgsResult = obj => mmEnumIsLookObj(obj)
+  && Boolean(mmEnumQueryArgTypeARGS in obj)
+
 export {
   mmEnumRecTypeCHAIN,
   mmEnumRecTypeROW,
@@ -41,6 +56,11 @@ export {
 
   mmEnumQueryNameIsRESOLVINGRe,
   mmEnumQueryNameIsFIRSTTERMRe,
+  mmEnumQueryNameIsCURSORORDEFAULTRe,
 
-  mmEnumTypeERROR
+  mmEnumTypeERROR,
+
+  mmEnumIsRow,
+  mmEnumIsRowShallow,
+  mmEnumIsQueryArgsResult
 }
