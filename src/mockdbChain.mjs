@@ -7,7 +7,7 @@ import {
 import queryReql, {
   spend,
   spendCursor
-} from './mockdbReql.mjs'
+} from './mmQuery.mjs'
 
 import {
   mockdbSpecFromRawArg
