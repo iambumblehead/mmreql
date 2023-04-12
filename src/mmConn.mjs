@@ -31,13 +31,13 @@ const connectionCreate = (db, host, port, user) => ({
     user,
     password: {
       type: 'Buffer',
-      data: [ 0 ]
+      data: [0]
     }
   },
   close: function () {
-    this.open = false;
+    this.open = false
   }
-});
+})
 
 const connectionPoolCreate = (db, host, port, user, pass) => ({
   draining: false,
@@ -56,11 +56,11 @@ const connectionPoolCreate = (db, host, port, user, pass) => ({
     maxExponent: 6,
     silent: false
   },
-  servers: [ {
+  servers: [{
     host,
     port
-  } ],
-  serverPools: [ {
+  }],
+  serverPools: [{
     draining: false,
     healthy: true,
     connections: [
@@ -85,8 +85,8 @@ const connectionPoolCreate = (db, host, port, user, pass) => ({
       pingInterval: -1,
       silent: false
     }
-  } ]
-});
+  }]
+})
 
 const connectionPoolMasterCreate = (db, host, port, user, pass) => ({
   isHealthy: true,
@@ -109,11 +109,11 @@ const connectionPoolMasterCreate = (db, host, port, user, pass) => ({
     maxExponent: 6,
     silent: false
   },
-  servers: [ {
+  servers: [{
     host,
     port
-  } ],
-  serverPools: [ {
+  }],
+  serverPools: [{
     _events: {},
     _eventsCount: 4,
     _maxListeners: undefined,
@@ -132,24 +132,24 @@ const connectionPoolMasterCreate = (db, host, port, user, pass) => ({
       host,
       port
     },
-    connParam: [ {
+    connParam: [{
       db: db,
       user,
       password: pass || '',
       timeout: 20,
       pingInterval: -1,
       silent: false
-    } ]
-  } ]
-});
+    }]
+  }]
+})
 
 const connectionTypes = {
   connection: connectionCreate,
   connectionPool: connectionPoolCreate,
   connectionPoolMaster: connectionPoolMasterCreate
-};
+}
 
 export default function mmConn (type, db, host, port, user, pass) {
   return Object.assign(
-    this, connectionTypes[type](db, host, port, user, pass));
+    this, connectionTypes[type](db, host, port, user, pass))
 }

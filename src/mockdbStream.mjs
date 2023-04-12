@@ -1,47 +1,47 @@
-import stream from 'stream';
+import stream from 'stream'
 
 const mockdbStreamReadable = (docs, isEmptyEnd, curIndex = 0) => new stream.Readable({
   objectMode: true,
   read () {
     if (curIndex < docs.length){
-      var data = docs[ curIndex ];
+      var data = docs[ curIndex ]
 
-      curIndex = curIndex + 1;
+      curIndex = curIndex + 1
 
-      this.push(data);
+      this.push(data)
     } else if (isEmptyEnd) {
-      this.push(null); // ends the stream, emits 'end'
+      this.push(null) // ends the stream, emits 'end'
     }
   }
     
-});
+})
 
 const mockdbStream = (docs, isEmptyEnd, isChanges, isTypes) => {
-  const streamReadable = mockdbStreamReadable(docs, isEmptyEnd);
+  const streamReadable = mockdbStreamReadable(docs, isEmptyEnd)
 
   streamReadable.each = async (fn, onFinish) => {
     for await (const doc of streamReadable) {
-      fn(null, doc);
+      fn(null, doc)
     }
 
     if (typeof onFinish === 'function')
-      onFinish();
-  };
+      onFinish()
+  }
 
   streamReadable.next = async () => new Promise(async (resolve, reject) => {
-    const value = await streamReadable.read();
+    const value = await streamReadable.read()
 
     // 'type' is info returned to some cursors: 'add', 'update', 'inital' etc
     if (value && ('new_val' in value || 'old_val' in value) && !isTypes) {
-      delete value.type;
+      delete value.type
     }
 
     return value === null
       ? reject(new Error('No more rows in the cursor.'))
-      : resolve(isChanges ? value : value.new_val);
-  });
+      : resolve(isChanges ? value : value.new_val)
+  })
 
-  return streamReadable;
-};
+  return streamReadable
+}
 
-export default mockdbStream;
+export default mockdbStream

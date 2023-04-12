@@ -3,7 +3,7 @@ import {
   mmEnumRecTypeROW,
   mmEnumQueryArgTypeROWFN,
   mmEnumQueryArgTypeROW
-} from './mmEnum.mjs';
+} from './mmEnum.mjs'
 
 // chain originates from nested row or sub query as a reqlCHAIN or pojo. ex,
 //  * `map(hero => hero('name'))`
@@ -13,21 +13,21 @@ const mmRecChainRowFnCreate = (chain, recId) => ({
   type: mmEnumQueryArgTypeROWFN,
   recs: chain.recs,
   recId: recId || ('orphan' + Date.now())
-});
+})
 
 const mmRecChainRowCreate = (chain, recId) => ({
   toString: () => mmEnumQueryArgTypeROW,
   type: mmEnumQueryArgTypeROW,
   recs: chain.recs,
   recId: recId || ('orphan' + Date.now())
-});
+})
 
 
 const mmRecChainSubCreate = chain => ({
   toString: () => mmEnumRecTypeROW,
   type: mmEnumRecTypeROW,
   recs: chain.recs.slice()
-});
+})
 
 const mmRecChainCreate = (chain, rec, recs = (chain.recs || []).slice()) => ({
   toString: () => mmEnumRecTypeCHAIN,
@@ -35,10 +35,10 @@ const mmRecChainCreate = (chain, rec, recs = (chain.recs || []).slice()) => ({
   recs: rec
     ? recs.push(rec) && recs
     : recs
-});
+})
 
 const mmRecChainFnCreate = (queryFns, chain, fn) => (
-  Object.assign(fn, chain, queryFns));
+  Object.assign(fn, chain, queryFns))
 
 export {
   mmRecChainFnCreate,
