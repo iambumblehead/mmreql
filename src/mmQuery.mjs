@@ -27,6 +27,7 @@ import {
 
 import {
   mmTableDocRm,
+  mmTableDocGet,
   mmTableDocsGet,
   mmTableDocsSet,
   mmTableDocGetIndexValue,
@@ -38,8 +39,9 @@ import {
 import {
   mmResChangeTypeADD,
   mmResChangeTypeINITIAL,
-  mmResChangesCreate,
+  mmResChangesSpecFinal,
   mmResChangesFieldCreate,
+  mmResChangesSpecPush,
   mmResTableStatus,
   mmResTableInfo
 } from './mmRes.mjs'
@@ -565,7 +567,7 @@ q.insert = (db, qst, args) => {
     .map(doc => mmTableDocEnsurePrimaryKey(doc, primaryKey))
 
   const existingDocs = mmTableDocsGet(
-    qst.tablelist, documents.map(doc => doc[primaryKey]), primaryKey)
+    qst.tablelist, documents, primaryKey)
 
   if (existingDocs.length) {
     if (mmEnumIsChain(options.conflict)) {
@@ -575,17 +577,17 @@ q.insert = (db, qst, args) => {
         documents[0]
       ])
 
-      const changes = [{
-        old_val: existingDocs[0],
-        new_val: resDoc
-      }]
+      const resSpec = mmResChangesSpecPush(
+        mmResChangesFieldCreate({ changes: [] }), {
+          old_val: existingDocs[0],
+          new_val: resDoc,
+          generated_key: documentIsPrimaryKeyPredefined
+            ? null : resDoc[primaryKey]
+        })
 
       mmTableDocsSet(table, [resDoc], primaryKey)
 
-      qst.target = mmResChangesFieldCreate({
-        replaced: documents.length,
-        changes: options.returnChanges === true ? changes : undefined
-      })
+      qst.target = mmResChangesSpecFinal(resSpec, options)
 
       return qst
     } else if (/^(update|replace)$/.test(options.conflict)) {
@@ -615,21 +617,19 @@ q.insert = (db, qst, args) => {
   [table, documents] = mmTableDocsSet(
     table, documents.map(doc => spend(db, qst, doc)), primaryKey)
 
-  const changes = documents.map(doc => ({
-    old_val: null,
-    new_val: doc
-  }))
+  const resSpec = documents.reduce((spec, doc) => {
+    return mmResChangesSpecPush(spec, {
+      new_val: doc,
+      old_val: null,
+      generated_key: documentIsPrimaryKeyPredefined
+        ? null : doc[primaryKey]
+    })    
+  }, mmResChangesFieldCreate({ changes: [] }))
 
   db = mmDbStateTableCursorsPushChanges(
-    db, dbName, qst.tablename, changes, mmResChangeTypeADD)
+    db, dbName, qst.tablename, resSpec.changes, mmResChangeTypeADD)
 
-  qst.target = mmResChangesFieldCreate({
-    ...(documentIsPrimaryKeyPredefined || {
-      generated_keys: documents.map(doc => doc[primaryKey])
-    }),
-    inserted: documents.length,
-    changes: options.returnChanges === true ? changes : undefined
-  })
+  qst.target = mmResChangesSpecFinal(resSpec, options)
 
   return qst
 }
@@ -637,45 +637,30 @@ q.insert = (db, qst, args) => {
 q.update = (db, qst, args) => {
   const queryTarget = qst.target
   const queryTable = qst.tablelist
-  const updateProps = spend(db, qst, args[0])
+  const updateProps = spend(db, qst, args[0], [qst.target])
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
   const options = args[1] || {}
-
-  const updateTarget = targetDoc => {
-    const [oldDoc = null] = mmTableDocsGet(queryTable, [targetDoc[primaryKey]], primaryKey)
+  const resSpec = asList(queryTarget).reduce((spec, targetDoc) => {
+    const oldDoc = mmTableDocGet(queryTable, targetDoc, primaryKey)
     const newDoc = updateProps === null
-      ? null
+      ? oldDoc
       : oldDoc && Object.assign({}, oldDoc, updateProps || {})
 
     if (oldDoc && newDoc) {
       mmTableDocsSet(queryTable, [newDoc], primaryKey)
     }
 
-    return [newDoc, oldDoc]
-  }
-
-  const targetList = asList(queryTarget)
-  const changesDocs = targetList.reduce((changes, targetDoc) => {
-    const [newDoc, oldDoc] = updateTarget(targetDoc)
-
-    if (newDoc) {
-      changes.push({
-        new_val: newDoc,
-        old_val: oldDoc
-      })
-    }
-
-    return changes
-  }, [])
+    return mmResChangesSpecPush(spec, {
+      new_val: newDoc,
+      old_val: oldDoc
+    })
+  }, mmResChangesFieldCreate({ changes: [] }))
 
   db = mmDbStateTableCursorsPushChanges(
-    db, dbName, qst.tablename, changesDocs)
+    db, dbName, qst.tablename, resSpec.changes)
 
-  qst.target = mmResChangesCreate(changesDocs, {
-    unchanged: targetList.length - changesDocs.length,
-    changes: options.returnChanges === true ? changesDocs : undefined
-  })
+  qst.target = mmResChangesSpecFinal(resSpec, options)
 
   return qst
 }
@@ -684,7 +669,7 @@ q.get = (db, qst, args) => {
   const primaryKeyValue = spend(db, qst, args[0])
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const primaryKey = mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
-  const tableDoc = mmTableDocsGet(qst.target, [primaryKeyValue], primaryKey)[0]
+  const tableDoc = mmTableDocGet(qst.target, primaryKeyValue, primaryKey)
 
   if (args.length === 0) {
     throw mmErrArgumentsNumber('get', 1, 0)
@@ -763,42 +748,26 @@ q.replace = (db, qst, args) => {
     throw mmErrArgumentsNumber('replace', 1, args.length, true)
   }
 
-  const updateTarget = targetDoc => {
+  const resSpec = asList(queryTarget).reduce((spec, targetDoc) => {
     const replacement = spend(db, qst, args[0], [targetDoc])
-    const [oldDoc = null] = (targetDoc &&
-      mmTableDocsGet(queryTable, [targetDoc[primaryKey]], primaryKey)) || []
-
-    const newDoc = replacement === null
-      ? null
-      : replacement
-    if (newDoc)
-      mmTableDocsSet(queryTable, [newDoc], primaryKey)
+    const oldDoc = mmTableDocGet(queryTable, targetDoc, primaryKey)
+    const newDoc = replacement === null ? null : replacement
 
     if (oldDoc && newDoc === null)
       mmTableDocRm(queryTable, oldDoc, primaryKey)
+    else if (newDoc)
+      mmTableDocsSet(queryTable, [newDoc], primaryKey)
 
-    return [newDoc, oldDoc]
-  }
-
-  const targetList = asList(queryTarget)
-  const changesDocs = targetList.reduce((changes, targetDoc) => {
-    const [newDoc, oldDoc] = updateTarget(targetDoc)
-
-    changes.push({
+    return mmResChangesSpecPush(spec, {
       new_val: newDoc,
       old_val: oldDoc
     })
-
-    return changes
-  }, [])
+  }, mmResChangesFieldCreate({ changes: [] }))
 
   db = mmDbStateTableCursorsPushChanges(
-    db, dbName, qst.tablename, changesDocs)
+    db, dbName, qst.tablename, resSpec.changes)
 
-  qst.target = mmResChangesCreate(changesDocs, {
-    changes: config.returnChanges === true
-      ? changesDocs : undefined
-  })
+  qst.target = mmResChangesSpecFinal(resSpec, config)
 
   return qst
 }
@@ -956,26 +925,23 @@ q.delete = (db, qst, args) => {
       invalidConfigKey, queryConfig[invalidConfigKey])
   }
 
-  const changesDocs = targetList.reduce((changes, targetDoc) => {
+  const resSpec = targetList.reduce((spec, targetDoc) => {
     if (targetDoc) {
-      changes.push({
+      spec = mmResChangesSpecPush(spec, {
         new_val: null,
-        old_val: targetDoc
+        old_val: targetDoc        
       })
     }
 
-    return changes
-  }, [])
+    return spec
+  }, mmResChangesFieldCreate({ changes: [] }))
 
   mmTableSet(queryTable, tableFiltered)
 
   db = mmDbStateTableCursorsPushChanges(
-    db, dbName, qst.tablename, changesDocs)
+    db, dbName, qst.tablename, resSpec.changes)
 
-  qst.target = mmResChangesFieldCreate({
-    deleted: changesDocs.length,
-    changes: options.returnChanges === true ? changesDocs : undefined
-  })
+  qst.target = mmResChangesSpecFinal(resSpec, options)
 
   return qst
 }
@@ -1141,8 +1107,8 @@ q.eqJoin = (db, qst, args) => {
     ]
   })
   
-  const rightFieldKey = (queryConfig.index)
-        || (rightFieldConfig && rightFieldConfig.primary_key)
+  const rightFieldKey = queryConfig.index
+    || (rightFieldConfig && rightFieldConfig.primary_key)
   const invalidConfigKey = Object.keys(queryConfig)
     .find(k => !isValidConfigKeyRe.test(k))
 
@@ -1597,12 +1563,14 @@ q.map = (db, qst, args) => {
 q.without = (db, qst, args) => {
   const queryTarget = qst.target
 
-  const withoutFromDoc = (doc, withoutlist) => withoutlist
-    .reduce((prev, arg) => {
-      delete prev[arg]
+  const withoutFromDoc = (doc, withoutlist) => Object.keys(doc)
+    .reduce((newdoc, key) => {
+      if (!withoutlist.includes(key))
+        newdoc[key] = doc[key]
 
-      return prev
-    }, doc)
+      return newdoc
+    }, {})
+
   const withoutFromDocList = (doclist, withoutlist) => doclist
     .map(doc => withoutFromDoc(doc, withoutlist))
 
@@ -1708,12 +1676,11 @@ q.distinct = (db, qst, args) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
 
   if (Array.isArray(qst.target)
-        && qst.tablename
-
-        // skip if target is filtered, concatenated or manipulated in some way
-        && !/string|boolean|number/.test(typeof qst.target[0])) {
+    && qst.tablename
+    // skip if target is filtered, concatenated or manipulated in some way
+      && !isBoolNumStrRe.test(typeof qst.target[0])) {
     const primaryKey = queryOptions.index
-            || mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
+      || mmDbStateTableGetPrimaryKey(db, dbName, qst.tablename)
 
     const keys = {}
     qst.target = qst.target.reduce((disti, row) => {

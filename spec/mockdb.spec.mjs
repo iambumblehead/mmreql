@@ -1850,7 +1850,7 @@ test('supports .update()', async t => {
 test('supports .during()', async t => {
   const now = Date.now()
   const expiredDate = new Date(now - (1000 * 60 * 60 * 24))
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['RoomCodes', {
       id: 'expired',
       time_expire: expiredDate
@@ -1875,6 +1875,124 @@ test('supports .during()', async t => {
     id: 'expired',
     time_expire: expiredDate
   }])
+})
+
+test('supports .replace(doc => doc), or various null', async t => {
+  const { r } = rethinkdbMocked([
+    ['Baseball',
+      { id: 123, name: 'Mark McGuire' }]
+  ])
+
+  const resSameDoc = await r.table('Baseball').get(123)
+    .replace(doc => doc, { returnChanges: true }).run()
+
+  t.deepEqual(resSameDoc, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 1
+  })
+
+  const resSameNull = await r.table('Baseball').get('unknown')
+    .replace(doc => doc, { returnChanges: true }).run()
+
+  t.deepEqual(resSameNull, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 1,
+    unchanged: 0
+  })
+
+  const resNull = await r.table('Baseball').get(123)
+    .replace(() => null, { returnChanges: true }).run()
+
+  t.deepEqual(resNull, {
+    changes: [ { new_val: null, old_val: { id: 123, name: 'Mark McGuire' } } ],
+    deleted: 1,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 0
+  })
+
+  const resNullNull = await r.table('Baseball').get('notfound')
+    .replace(() => null, { returnChanges: true }).run()
+
+  t.deepEqual(resNullNull, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 1,
+    unchanged: 0
+  })
+})
+
+test('supports .update(doc => doc), or various null', async t => {
+  const { r } = rethinkdbMocked([
+    ['Baseball',
+      { id: 123, name: 'Mark McGuire' }]
+  ])
+
+  const resSameDoc = await r.table('Baseball').get(123)
+    .update(doc => doc, { returnChanges: true }).run()
+
+  t.deepEqual(resSameDoc, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 1
+  })
+
+  const resSameNull = await r.table('Baseball').get('unknown')
+    .update(doc => doc, { returnChanges: true }).run()
+
+  t.deepEqual(resSameNull, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 1,
+    unchanged: 0
+  })
+
+  const resNull = await r.table('Baseball').get(123)
+    .update(() => null, { returnChanges: true }).run()
+
+  t.deepEqual(resNull, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 1
+  })
+
+  const resNullNull = await r.table('Baseball').get('notfound')
+    .replace(() => { foo: true }, { returnChanges: true }).run()
+
+  t.deepEqual(resNullNull, {
+    changes: [],
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 1,
+    unchanged: 0
+  })
 })
 
 test('supports .during(), correctly handles empty results', async t => {

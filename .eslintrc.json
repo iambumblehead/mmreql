@@ -69,7 +69,12 @@
       "error",
       {
         "ignoreDestructuring": true,
-        "properties": "never"
+        "properties": "never",
+        "allow": [
+          "new_val",
+          "old_val",
+          "generated_key"
+        ]
       }
     ],
     "no-param-reassign": "off",
