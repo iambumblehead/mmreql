@@ -774,6 +774,28 @@ test('`update` null should leave the target document unchanged', async t => {
     .update(null)
     .run()
 
-  t.is(result.unchanged, 1)
+  t.deepEqual(result, {
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 1
+  })
+
+  const resultNotFound = await r
+    .table('Rooms')
+    .get('roomAId-1234-notfound')
+    .update(null)
+    .run()
+
+  t.deepEqual(resultNotFound, {
+    deleted: 0,
+    errors: 0,
+    inserted: 0,
+    replaced: 0,
+    skipped: 1,
+    unchanged: 0
+  })
 })
 

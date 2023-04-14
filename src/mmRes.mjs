@@ -1,7 +1,19 @@
+import assert from 'node:assert/strict';
+
 import {
   mmDbStateDbConfigGet,
   mmDbStateTableConfigGet
 } from './mmDbState.mjs'
+
+const isDeepEqual = (a, b, isEqual = false) => {
+  try {
+    isEqual = (assert.deepStrictEqual(a, b), true)
+  } catch(e) {
+    isEqual = false
+  }
+
+  return isEqual
+}
 
 const mmResChangeTypeADD = 'add'
 const mmResChangeTypeREMOVE = 'remove'
@@ -10,48 +22,78 @@ const mmResChangeTypeINITIAL = 'initial'
 const mmResChangeTypeUNINITIAL = 'uninitial'
 const mmResChangeTypeSTATE = 'state'
 
+const generated_keys = 'generated_keys'
+const deleted = 'deleted'
+const inserted = 'inserted'
+const replaced = 'replaced'
+const unchanged = 'unchanged'
+const skipped = 'skipped'
+const changes = 'changes'
+const errors = 'errors'
+
 // rethinkdb response values are never 'undefined'
 // remove 'undefined' definitions from object
-const mockdbFilterUndefined = obj => Object.keys(obj)
+const mmResFilterUndefined = obj => Object.keys(obj)
   .reduce((filtered, key) => (
     typeof obj[key] !== 'undefined'
       ? { [key]: obj[key], ...filtered }
       : filtered
   ), {})
 
-const mmResChangesFieldCreate = opts => mockdbFilterUndefined({
-  deleted: 0,
-  errors: 0,
-  inserted: 0,
-  replaced: 0,
-  skipped: 0,
-  unchanged: 0,
+const mmResChangesSpecFinal = (obj, opts) => {
+  if (Array.isArray(obj.changes)) {
+    obj.changes = opts && opts.returnChanges === true
+      ? obj.changes
+      : undefined
+  }
+
+  return mmResFilterUndefined(obj)
+}
+
+const mmResChangesFieldCreate = opts => mmResFilterUndefined({
+  [deleted]: 0,
+  [errors]: 0,
+  [inserted]: 0,
+  [replaced]: 0,
+  [skipped]: 0,
+  [unchanged]: 0,
   ...opts
 })
 
-// Some operations, such as replace, might apply multiple operations
-// such as 'deleted', 'inserted' and 'replaced' depending upon how they
-// are called. This tries to create values for these fields programatically
-// when given the 'changes' object
-const mmResChangesCreate = (changes, opts) => mmResChangesFieldCreate(
-  changes.reduce((prev, change) => {
-    if (change.new_val && change.old_val)
-      prev.replaced += 1
-    else if (!change.new_val)
-      prev.deleted += 1
-    else if (!change.old_val)
-      prev.inserted += 1
+const mmResChangesSpecPush = (spec, pushspec) => {
+  const { new_val, old_val, generated_key } = pushspec
+  
+  spec[changes] = Array.isArray(spec[changes])
+    ? spec[changes]
+    : []
 
-    return prev
-  }, {
-    deleted: 0,
-    inserted: 0,
-    replaced: 0,
-    ...opts
-  })
-)
+  if (generated_key) {
+    spec[generated_keys] = (Array.isArray(spec[generated_keys])
+      ? spec[generated_keys]
+      : []).concat([generated_key])
+  }
+  
+  if (new_val && old_val) {
+    if (isDeepEqual(new_val, old_val)) {
+      spec[unchanged] += 1
+    } else {
+      spec[replaced] += 1
+      spec[changes].push({ new_val, old_val })
+    }
+  } else if (new_val && old_val === null) {
+    spec[inserted] += 1
+    spec[changes].push({ new_val, old_val })
+  } else if (old_val && new_val === null) {
+    spec[deleted] += 1
+    spec[changes].push({ new_val, old_val })
+  } else {
+    spec[skipped] += 1
+  }
 
-const mmResTableStatus = opts => mockdbFilterUndefined({
+  return spec
+}
+
+const mmResTableStatus = opts => mmResFilterUndefined({
   db: opts.db || null,
   id: opts.id || null,
   name: opts.name ||'tablename',
@@ -72,7 +114,7 @@ const mmResTableInfo = (dbst, dbName, tableName) => {
   const tableConfig = mmDbStateTableConfigGet(dbst, dbName, tableName)
   const dbConfig = mmDbStateDbConfigGet(dbst, dbName)
 
-  return mockdbFilterUndefined({
+  return mmResFilterUndefined({
     db: {
       ...dbConfig,
       type: 'DB'
@@ -87,6 +129,7 @@ const mmResTableInfo = (dbst, dbName, tableName) => {
 }
 
 export {
+  mmResFilterUndefined,
   mmResChangeTypeADD,
   mmResChangeTypeREMOVE,
   mmResChangeTypeCHANGE,
@@ -94,8 +137,9 @@ export {
   mmResChangeTypeUNINITIAL,
   mmResChangeTypeSTATE,
 
+  mmResChangesSpecFinal,
+  mmResChangesSpecPush,
   mmResChangesFieldCreate,
-  mmResChangesCreate,
   mmResTableStatus,
   mmResTableInfo
 }

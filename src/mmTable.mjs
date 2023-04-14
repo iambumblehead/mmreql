@@ -4,7 +4,21 @@ import { mmEnumIsChainShallow } from './mmEnum.mjs'
 const mmTableDocIsPrimaryKey = (doc, primaryKey) => Boolean(
   doc && /number|string/.test(typeof doc[primaryKey]))
 
-const mmTableDocsGet = (table, ids = [], primaryKey = 'id') => {
+const mmTableIdOrDocAsPrimaryKey = (idOrDoc, primaryKey) => (
+  /number|string/.test(typeof idOrDoc)
+    ? idOrDoc
+    : idOrDoc && idOrDoc[primaryKey])
+
+const mmTableDocGet = (table, idOrDoc, primaryKey) => {
+  const id = mmTableIdOrDocAsPrimaryKey(idOrDoc, primaryKey)
+  
+  return table.find(doc => id === doc[primaryKey]) || null
+}
+
+const mmTableDocsGet = (table, idOrDocs = [], primaryKey = 'id') => {
+  const ids = /number|string/.test(typeof idOrDocs[0])
+    ? idOrDocs
+    : idOrDocs.map(i => i && i[primaryKey])
   // eslint-disable-next-line security/detect-non-literal-regexp
   const idsRe = new RegExp(`^(${ids.join('|')})$`)
 
@@ -94,6 +108,7 @@ const mmTableDocHasIndexValueFn = (tableIndexTuple, indexValues, dbState) => {
 }
 
 export {
+  mmTableDocGet,
   mmTableDocsGet,
   mmTableDocsSet,
   mmTableDocRm,
