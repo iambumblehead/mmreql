@@ -121,9 +121,7 @@ test('branch(), simple', async t => {
 })
 
 test('branch(), complex', async t => {
-  const { r } = rethinkdbMocked({
-    clearQueryLevelNum: 1
-  }, [
+  const { r } = rethinkdbMocked([
     ['marvel',
       { name: 'Iron Man', victories: 214 },
       { name: 'Jubilee', victories: 49 },
@@ -565,7 +563,7 @@ test('provides secondary index methods and lookups, numeric', async t => {
 })
 
 test('provides compound index methods and lookups', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['UserSocial', {
       id: 'userSocialId-1234',
       numeric_id: 5848,
@@ -660,6 +658,54 @@ test('.get(), uses table-pre-configured primaryKey', async t => {
     numeric_id: 5848,
     name_screenname: 'screenname'
   })
+})
+
+test('.get(), null situations', async t => {
+  const { r } = rethinkdbMocked([
+    { db: 'mydb' },
+    ['User',
+      { id: 'userId-1234', name: 'fred' },
+      { id: 'userId-5678', name: 'jane' }
+    ]
+  ])
+
+  t.is(await r.db('mydb').table('User').get('noid').run(), null)
+
+  t.deepEqual(await r.db('mydb').table('User').get('noid1')
+    .replace(doc => (
+      r.branch(doc.eq(null), { id: 'noid1', nullstatus: true }, doc)
+    ), { returnChanges: true }).run(), {
+      changes: [{
+        new_val: { id: 'noid1', nullstatus: true },
+        old_val: null
+      }],
+      deleted: 0,
+      errors: 0,
+      inserted: 1,
+      replaced: 0,
+      skipped: 0,
+      unchanged: 0
+    })
+
+  t.deepEqual(await r.db('mydb').table('User').get('noid2')
+    .replace(doc => (
+      r.branch(doc.eq(null), { id: 'differentid', nullstatus: true }, doc)
+    )).run(), {
+      deleted: 0,
+      errors: 1,
+      first_error: 'Primary key `id` cannot be changed',
+      // mock error is simplified, actual full error looks like below...
+      // ```
+      // 'Primary key `id` cannot be changed (null -> {\n' +
+      //   '\t"id":\t23,\n' +
+      //   '\t"nullstatus":\ttrue\n' +
+      //   '})'
+      // ```
+      inserted: 0,
+      replaced: 0,
+      skipped: 0,
+      unchanged: 0
+    })
 })
 
 test('tableCreate should evaluate reql-defined table name', async t => {
@@ -884,7 +930,7 @@ test('supports .replace() with subquery, list', async t => {
 })
 
 test('supports reusing-of base query chains to construct different chains', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 0 })
+  const { r } = rethinkdbMocked()
 
   const doc = r.expr({ id: 1, numeric_id: 8585 })
   const query1 = await doc.hasFields('name_screenname').not().run()
@@ -901,7 +947,7 @@ test('supports reusing-of base query chains to construct different chains', asyn
 })
 
 test('supports .replace() with subquery, r.branch and list', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 0 }, [
+  const { r } = rethinkdbMocked([
     ['UserSocial', {
       id: 1,
       numeric_id: 5848
@@ -1313,7 +1359,7 @@ test('supports simple group() ungroup() official example', async t => {
 })
 
 test('supports .ungroup() complex query', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['games',
       { id: 2, player: 'Bob', points: 15, type: 'ranked' },
       { id: 5, player: 'Alice', points: 7, type: 'free' },
@@ -1340,7 +1386,7 @@ test('supports .ungroup() complex query', async t => {
 })
 
 test('supports .eqJoin()', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['players',
       { id: 1, player: 'George', gameId: 1 },
       { id: 2, player: 'Agatha', gameId: 3 },
@@ -2348,7 +2394,7 @@ test('.insert(, {}) returns error if inserted document is found', async t => {
     inserted: 0,
     errors: 1,
     deleted: 0,
-    firstError: mmErrDuplicatePrimaryKey(existingDoc, conflictDoc).message
+    first_error: mmErrDuplicatePrimaryKey(existingDoc, conflictDoc).message
   })
 })
 
@@ -3264,7 +3310,7 @@ test('dbCreate should use r expressions', async t => {
 })
 
 test('handles subquery for single eqJoin query', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['players',
       { id: 1, player: 'George', game: { id: 1 } },
       { id: 2, player: 'Agatha', game: { id: 3 } },
@@ -3299,7 +3345,7 @@ test('handles subquery for single eqJoin query', async t => {
 })
 
 test('handles list variation of .without query on eqJoin left and right', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['players',
       { id: 1, player: 'George', favorites: [3, 2], gameId: 1 },
       { id: 2, player: 'Agatha', favorites: [1, 2], gameId: 3 },
@@ -3333,7 +3379,7 @@ test('handles list variation of .without query on eqJoin left and right', async 
 })
 
 test('eqJoin can use nested sub query as first param', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['Users',
       { id: 'userId-1234', name: 'fred' },
       { id: 'userId-5678', name: 'jane' }
@@ -3375,7 +3421,7 @@ test('eqJoin can use nested sub query as first param', async t => {
 })
 
 test('.eqJoin()( "right" ) can be used to return eqJoin destination table', async t => {
-  const { r } = rethinkdbMocked({ clearQueryLevelNum: 1 }, [
+  const { r } = rethinkdbMocked([
     ['Users',
       { id: 'userId-1234', name: 'fred' },
       { id: 'userId-5678', name: 'jane' }

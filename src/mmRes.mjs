@@ -60,6 +60,13 @@ const mmResChangesFieldCreate = opts => mmResFilterUndefined({
   ...opts
 })
 
+const mmResChangesErrorPush = (spec, errorInst) => {
+  spec[errors] += 1
+  spec.first_error = spec.first_error || errorInst.message
+
+  return spec
+}
+
 const mmResChangesSpecPush = (spec, pushspec) => {
   const { new_val, old_val, generated_key } = pushspec
   
@@ -137,6 +144,7 @@ export {
   mmResChangeTypeUNINITIAL,
   mmResChangeTypeSTATE,
 
+  mmResChangesErrorPush,
   mmResChangesSpecFinal,
   mmResChangesSpecPush,
   mmResChangesFieldCreate,
