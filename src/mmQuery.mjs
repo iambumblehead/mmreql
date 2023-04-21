@@ -39,6 +39,7 @@ import {
 import {
   mmResChangeTypeADD,
   mmResChangeTypeINITIAL,
+  mmResChangesErrorPush,
   mmResChangesSpecFinal,
   mmResChangesFieldCreate,
   mmResChangesSpecPush,
@@ -57,6 +58,7 @@ import {
   mmErrTableDoesNotExist,
   mmErrSecondArgumentOfQueryMustBeObject,
   mmErrPrimaryKeyWrongType,
+  mmErrPrimaryKeyCannotBeChanged,
   mmErrNotATIMEpsudotype,
   mmErrCannotUseNestedRow,
   mmErrNoAttributeInObject,
@@ -602,13 +604,11 @@ q.insert = (db, qst, args) => {
 
       return qst
     } else {
-      qst.target = mmResChangesFieldCreate({
-        errors: 1,
-        firstError: mmErrDuplicatePrimaryKey(
+      qst.target = mmResChangesErrorPush(
+        mmResChangesFieldCreate(),
+        mmErrDuplicatePrimaryKey(
           existingDocs[0],
-          documents.find(doc => doc[primaryKey] === existingDocs[0][primaryKey])
-        ).message
-      })
+          documents.find(doc => doc[primaryKey] === existingDocs[0][primaryKey])))
     }
         
     return qst
@@ -752,6 +752,12 @@ q.replace = (db, qst, args) => {
     const replacement = spend(db, qst, args[0], [targetDoc])
     const oldDoc = mmTableDocGet(queryTable, targetDoc, primaryKey)
     const newDoc = replacement === null ? null : replacement
+
+    if (oldDoc === null
+      && newDoc && ('primaryKeyValue' in qst)
+      && newDoc[primaryKey] !== qst.primaryKeyValue) {
+      return mmResChangesErrorPush(spec, mmErrPrimaryKeyCannotBeChanged(primaryKey))
+    }
 
     if (oldDoc && newDoc === null)
       mmTableDocRm(queryTable, oldDoc, primaryKey)

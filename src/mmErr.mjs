@@ -43,6 +43,10 @@ const mmErrPrimaryKeyWrongType = primaryKey => new Error(
   'Primary keys must be either a number, string, bool, pseudotype or array (got type :type)'
     .replace(/:type/, String(typeof primaryKey).toUpperCase()))
 
+const mmErrPrimaryKeyCannotBeChanged = primaryKeyVal => new Error(
+  'Primary key `:primaryKeyVal` cannot be changed'
+    .replace(/:primaryKeyVal/, primaryKeyVal))
+
 const mmErrNotATIMEpsudotype = () => new Error(
   'Not a TIME pseudotype: `null`')
 
@@ -78,6 +82,7 @@ export {
   mmErrTableDoesNotExist,
   mmErrSecondArgumentOfQueryMustBeObject,
   mmErrPrimaryKeyWrongType,
+  mmErrPrimaryKeyCannotBeChanged,
   mmErrNotATIMEpsudotype,
   mmErrCannotUseNestedRow,
   mmErrCannotReduceOverEmptyStream,
