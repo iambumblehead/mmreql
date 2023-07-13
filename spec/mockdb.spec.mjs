@@ -36,6 +36,25 @@ test('supports 0 and -0 in arithmetic queries', async t => {
   t.deepEqual(result, [5, 4, 3, 2, 1, -0, 1, 2, 3, 4])
 })
 
+test('supports flexible row function signatures', async t => {
+  const { r } = rethinkdbMocked([
+    ['streetfighter',
+      { id: 1, name: 'ryu', strength: 6 },
+      { id: 2, name: 'balrog', strength: 5 },
+      { id: 3, name: 'chun-li', strength: 7 }]
+  ])
+
+  t.true(await r
+    .table('streetfighter')
+    .filter(function (row) { return row('name').eq('ryu') })
+    .count().eq(1).run())
+
+  t.true(await r
+    .table('streetfighter')
+    .filter(function(row){ return row('name').eq('ryu') })
+    .count().eq(1).run())
+})
+
 test('supports nested list transformation', async t => {
   const { r } = rethinkdbMocked()
   const count = 'count'
