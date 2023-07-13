@@ -12,18 +12,21 @@ const isBoolNumUndefRe = /boolean|number|undefined/
 //   [ "table =>", "table " ]
 //
 // ex, "function (hello, world) { return hello; }"
-//   [ "function (hello, world", "hello, table" ]
+//   [ "function (hello, world", "hello, world" ]
 //
 // ex, "(row1, row2) => (",
 //   [ "(row1, row2) =>", "row1, row2" ]
 const fnStrEs5Re = /^function/
-const fnStrEs5ArgsRe = /^function \(([^)]*)/
+const fnStrEs5ArgsRe = /^function[^(]*\(([^)]*)/
 const fnStrEs6ArgsRe = /\(?([^)]*)\)?\s*\=\>/
-const fnStrParseArgs = fnStr => String(fnStr)
-  .match(fnStrEs5Re.test(fnStr)
-    ? fnStrEs5ArgsRe
-    : fnStrEs6ArgsRe
-  )[1].trim().split(/,\s*/)
+const fnStrCreateArgs = fnStr => [
+  fnStr, Array(fnStr.length).map((_, i) => String(i)).join(', ')]
+const fnStrParseArgs = fnStr => (
+  String(fnStr)
+    .match(fnStrEs5Re.test(fnStr)
+      ? fnStrEs5ArgsRe
+      : fnStrEs6ArgsRe
+    ) || fnStrCreateArgs(fnStr))[1].trim().split(/,\s*/)
 
 // gennerates spec from chain. when chain includes row functions,
 // applies function to row-chain to extract row-spec from row-chain
