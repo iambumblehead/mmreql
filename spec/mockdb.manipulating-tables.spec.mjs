@@ -101,6 +101,13 @@ test('`tableCreate` should create a table -- primaryKey', async t => {
     primary_key: 'foo',
     type: 'TABLE'
   })
+
+  t.true(await r
+    .db('default')
+    .table('thenewtable')
+    .info()('primary_key')
+    .eq('foo')
+    .run())
 })
 
 test('`tableCreate` should throw if table exists', async t => {
