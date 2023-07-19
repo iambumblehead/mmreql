@@ -420,6 +420,10 @@ q.info = (db, qst) => {
   return qst
 }
 
+q.info.fn = (db, qst, args) => {
+  return q.getField(db, qst, args)
+}
+
 q.tableList = (db, qst) => {
   const dbName = mockdbReqlQueryOrStateDbName(qst, db)
   const tables = mmDbStateDbGet(db, dbName)
