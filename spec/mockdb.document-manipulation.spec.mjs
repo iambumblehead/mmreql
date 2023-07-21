@@ -187,3 +187,9 @@ test('`merge` should throw if no argument has been passed', async t => {
   })
 })
 
+test.only('`object` should work', async t => {
+  const { r } = rethinkdbMocked()
+  const result = await r.object('a', 1, r.expr('2'), 'foo').run()
+
+  t.deepEqual(result, { a: 1, '2': 'foo' })
+})

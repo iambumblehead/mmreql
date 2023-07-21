@@ -1007,6 +1007,20 @@ q.getField = (db, qst, args) => {
   return qst
 }
 
+q.object = (db, qst, args) => {
+  const reducetuples = (accum, list) => {
+    if (list.length < 2) return accum
+    
+    accum[list[0]] = list[1]
+
+    return reducetuples(accum, list.slice(2))
+  }
+
+  qst.target = reducetuples({}, spend(db, qst, args))
+
+  return qst
+}
+
 q.filter = (db, qst, args) => {
   if (qst.target instanceof Readable
     && 'changesTarget' in qst) {
