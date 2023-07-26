@@ -983,6 +983,12 @@ q.contains = (db, qst, args) => {
   return qst
 }
 
+q.error = (db, qst, args) => {
+  const [error] = spend(db, qst, args)
+
+  throw new Error(error)
+}
+
 // Get a single field from an object. If called on a sequence, gets that field
 // from every object in the sequence, skipping objects that lack it.
 //
