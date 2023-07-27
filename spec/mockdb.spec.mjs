@@ -2981,6 +2981,27 @@ test('supports .distinct()', async t => {
   t.deepEqual(res, ['squirtle', 'fiery', 'charzar', 'jiggly puff'])
 })
 
+test('supports .distinct(), returns documents as-is', async t => {
+  const { r } = rethinkdbMocked([
+    ['marvel',
+      { id: 'wolverine', defeatedMonsters: ['squirtle', 'fiery'] },
+      { id: 'thor', defeatedMonsters: ['charzar', 'fiery', 'squirtle'] },
+      { id: 'xavier', defeatedMonsters: ['jiggly puff'] }],
+    ['emptytable']
+  ])
+
+  const res = await r
+    .table('marvel')
+    .distinct()
+    .run()
+
+  t.deepEqual(res, [
+    { id: 'wolverine', defeatedMonsters: ['squirtle', 'fiery'] },
+    { id: 'thor', defeatedMonsters: ['charzar', 'fiery', 'squirtle'] },
+    { id: 'xavier', defeatedMonsters: ['jiggly puff'] }
+  ])
+})
+
 test('supports .union', async t => {
   const { r } = rethinkdbMocked([
     ['streetfighter',

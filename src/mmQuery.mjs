@@ -1560,7 +1560,7 @@ q.expr.fn = (db, qst, args) => {
 }
 
 q.coerceTo = (db, qst, args) => {
-  const [coerceType] = args
+  const coerceType = String(args[0]).toLowerCase()
   let resolved = spend(db, qst, qst.target)
 
   if (coerceType === 'string')
@@ -1718,7 +1718,7 @@ q.distinct = (db, qst, args) => {
 
       if (!keys[value]) {
         keys[value] = true
-        disti.push(value)
+        disti.push(row)
       }
 
       return disti
