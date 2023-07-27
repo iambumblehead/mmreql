@@ -21,7 +21,7 @@ test('`without` should work', async t => {
 test('`without` should throw if no argument has been passed', async t => {
   const { r } = rethinkdbMocked([['Rooms']])
     
-  await t.throwsAsync(async () => (r        
+  await t.throwsAsync(async () => (r
     .table('Rooms')
     .without()
     .run()

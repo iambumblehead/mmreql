@@ -869,6 +869,13 @@ q.during = (db, qst, args) => {
   const startTime = spend(db, qst, start)
   const endTime = spend(db, qst, end)
 
+  if (args.length < 2)
+    throw mmErrArgumentsNumber('during', 2, args.length, true)
+
+  if (args.length > 3)
+    throw new Error(
+      '`during` takes at most 3 arguments, ' + args.length + ' provided.')
+
   qst.target = (
     qst.target.getTime() > startTime.getTime()
       && qst.target.getTime() < endTime.getTime()
@@ -1214,13 +1221,111 @@ q.now = (db, qst) => {
   return qst
 }
 
+q.time = (db, qst, args) => {
+  const timeargs = spend(db, qst, args)
+
+  if (timeargs.length < 4)
+    throw mmErrArgumentsNumber('r.time', 4, args.length, true)
+
+  if (!/^[4|7]$/.test(timeargs.length))
+    throw new Error('Got 5 arguments to TIME (expected 4 or 7)')
+
+  if (typeof timeargs[2] === 'number')
+    timeargs[2] += 1
+
+  if (timeargs[6]) {
+    console.log('[!!!] r.time: zerotimezone not supported')
+    timeargs.splice(6, 1)
+  }
+
+  while (typeof timeargs.slice(-1)[0] !== 'number')
+    timeargs.splice(timeargs.length -1, 1)
+
+  qst.target = new Date(...timeargs)
+  
+  return qst
+}
+
+q.inTimezone = (db, qst, args) => {
+  const timezone = spend(db, qst, args)[0] // ex, '-08:00'
+
+  if (args.length !== 1)
+    throw mmErrArgumentsNumber('inTimezone', 1, args.length)
+
+  const hhmm = timezone.split(':')
+  const time = (+hhmm[0] * 60) + hhmm[1]
+  qst.target = new Date(qst.target)
+  qst.target.getTimezoneOffset = () => time
+
+  // qst.target.timezoneOffset(time)
+  // new Date().timezoneOffset(-180) // +3 UTC
+  //  qst.target = new Date(qst.target.toISOString()
+  //    .replace(/\.\d*Z$/, '') + timezone)
+  
+  return qst
+}
+
+q.timezone = (db, qst) => {
+  const timezoneMinutes = qst.target.getTimezoneOffset()
+
+  // convert minutes to hours
+  const timezoneHours = timezoneMinutes > 0
+    ? Math.floor(timezoneMinutes / 60)
+    : Math.ceil(timezoneMinutes / 60)
+  const timezoneHoursMin = timezoneMinutes - timezoneHours * 60
+  const timezonePre =timezoneMinutes > 0 ? '-' : ''
+
+  const timezoneStr = timezonePre + [
+    String('0' + timezoneHours).slice(-2),
+    String('0' + timezoneHoursMin).slice(-2)
+  ].join(':')
+
+  qst.target = timezoneStr
+
+  return qst
+}
+
+q.ISO8601 = (db, qst, args) => {
+  const isoargs = spend(db, qst, args)
+  const isoopts = queryArgsOptions(isoargs)
+
+  if (isoargs.length > 2)
+    throw new Error('`r.ISO8601` takes at most 2 arguments, 3 provided.')
+  if (typeof isoargs[0] !== 'string')
+    throw mmErrArgumentsNumber('r.ISO8601', 1, args.length)
+  
+  const isostr = isoopts.defaultTimezone
+    ? isoargs[0].replace(/-\d\d:\d\d$/, '') + isoopts.defaultTimezone
+    : isoargs[0]
+
+  qst.target = new Date(isostr)
+  
+  return qst
+}
+
 q.toEpochTime = (db, qst) => {
   qst.target = (new Date(qst.target)).getTime() / 1000
 
   return qst
 }
 
+q.date = (db, qst, args) => {
+  const dateYMD = new Date(qst.target)
+
+  dateYMD.setMilliseconds(0)
+  dateYMD.setSeconds(0)
+  dateYMD.setMinutes(0)
+  dateYMD.setHours(0)
+
+  qst.target = dateYMD
+
+  return qst
+}
+
 q.epochTime = (db, qst, args) => {
+  if (args.length !== 1)
+    throw mmErrArgumentsNumber('r.epochTime', 1, args.length)
+  
   qst.target = new Date(args[0] * 1000)
 
   return qst
@@ -1533,6 +1638,66 @@ q.minutes = (db, qst) => {
   return qst
 }
 
+q.seconds = (db, qst) => {
+  qst.target = new Date(qst.target).getSeconds()
+
+  return qst
+}
+
+q.timeOfDay = (db, qst) => {
+  const day = qst.target
+  
+  qst.target = 0
+    + day.getSeconds()
+    + day.getMinutes() * 60
+    + day.getHours() * 60 * 60
+
+  return qst
+}
+
+q.year = (db, qst) => {
+  qst.target = qst.target.getFullYear()
+
+  return qst
+}
+
+q.month = (db, qst) => {
+  qst.target = qst.target.getMonth() + 1
+
+  return qst
+}
+
+q.day = (db, qst) => {
+  qst.target = qst.target.getDate()
+
+  return qst
+}
+
+q.dayOfYear = (db, qst) => {
+  // from koen peters
+  const now = new Date(qst.target)
+  const start = new Date(now.getFullYear(), 0, 0)
+  const diff = now - start
+  const oneDay = 1000 * 60 * 60 * 24
+  const day = Math.floor(diff / oneDay)
+
+  qst.target = day
+  
+  return qst
+}
+
+q.dayOfWeek = (db, qst) => {
+  qst.target = qst.target.getDay()
+
+  return qst
+}
+
+q.toISO8601 = (db, qst) => {
+  qst.target = qst.target.toISOString()
+
+  return qst
+}
+
 q.uuid = (db, qst) => {
   qst.target = randomUUID()
 
@@ -1802,6 +1967,26 @@ q.asc = (db, qst, args) => {
 
   return qst
 }
+
+q.monday = 1
+q.tuesday = 2
+q.wednesday = 3
+q.thursday = 4
+q.friday = 5
+q.saturday = 6
+q.sunday = 7
+q.january = 1
+q.february = 2
+q.march = 3
+q.april = 4
+q.may = 5
+q.june = 6
+q.july = 7
+q.august = 8
+q.september = 9
+q.october = 10
+q.november = 11
+q.december = 12
 
 q.run = (db, qst) => {
   if (qst.error) {

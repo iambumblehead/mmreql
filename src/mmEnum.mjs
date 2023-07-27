@@ -13,7 +13,7 @@ const mmEnumQueryNamesResolving = [
   'connect', 'connectPool']
 
 const mmEnumQueryNamesFirstTerm = [
-  'desc', 'asc']
+  'desc', 'asc', 'now', 'time', 'epochTime', 'ISO8601']
 
 // eslint-disable-next-line security/detect-non-literal-regexp
 const mmEnumQueryNameIsRESOLVINGRe = new RegExp(
