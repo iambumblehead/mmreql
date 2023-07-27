@@ -32,7 +32,7 @@ test('`now` is not defined after a term', async t => {
 test('`r.time` should return a date -- with date and time', async t => {  
   const { r } = rethinkdbMocked()
 
-  const result1 = await r.time(1986, 11, 3, 12, 0, 0, 'Z').run();
+  const result1 = await r.time(1986, 11, 3, 12, 0, 0, 'Z').run()
   t.is(result1 instanceof Date, true)
 
   const result2 = await r
@@ -151,6 +151,7 @@ test('`ISO8601` is not defined after a term', async t => {
   })
 })
 
+// eslint-disable-next-line ava/no-skip-test
 test.skip('`inTimezone` should work', async t => {
   const { r } = rethinkdbMocked()
 

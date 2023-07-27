@@ -1309,7 +1309,7 @@ q.toEpochTime = (db, qst) => {
   return qst
 }
 
-q.date = (db, qst, args) => {
+q.date = (db, qst) => {
   const dateYMD = new Date(qst.target)
 
   dateYMD.setMilliseconds(0)

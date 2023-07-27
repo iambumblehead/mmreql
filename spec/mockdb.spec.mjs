@@ -46,12 +46,12 @@ test('supports flexible row function signatures', async t => {
 
   t.true(await r
     .table('streetfighter')
-    .filter(function (row) { return row('name').eq('ryu') })
+    .filter(row => row('name').eq('ryu'))
     .count().eq(1).run())
 
   t.true(await r
     .table('streetfighter')
-    .filter(function(row){ return row('name').eq('ryu') })
+    .filter(row => row('name').eq('ryu'))
     .count().eq(1).run())
 })
 
@@ -690,41 +690,45 @@ test('.get(), null situations', async t => {
 
   t.is(await r.db('mydb').table('User').get('noid').run(), null)
 
-  t.deepEqual(await r.db('mydb').table('User').get('noid1')
-    .replace(doc => (
-      r.branch(doc.eq(null), { id: 'noid1', nullstatus: true }, doc)
-    ), { returnChanges: true }).run(), {
-      changes: [{
-        new_val: { id: 'noid1', nullstatus: true },
-        old_val: null
-      }],
-      deleted: 0,
-      errors: 0,
-      inserted: 1,
-      replaced: 0,
-      skipped: 0,
-      unchanged: 0
-    })
+  t.deepEqual((
+    await r.db('mydb').table('User').get('noid1')
+      .replace(doc => (
+        r.branch(doc.eq(null), { id: 'noid1', nullstatus: true }, doc)
+      ), { returnChanges: true }).run()
+  ), {
+    changes: [{
+      new_val: { id: 'noid1', nullstatus: true },
+      old_val: null
+    }],
+    deleted: 0,
+    errors: 0,
+    inserted: 1,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 0
+  })
 
-  t.deepEqual(await r.db('mydb').table('User').get('noid2')
-    .replace(doc => (
-      r.branch(doc.eq(null), { id: 'differentid', nullstatus: true }, doc)
-    )).run(), {
-      deleted: 0,
-      errors: 1,
-      first_error: 'Primary key `id` cannot be changed',
-      // mock error is simplified, actual full error looks like below...
-      // ```
-      // 'Primary key `id` cannot be changed (null -> {\n' +
-      //   '\t"id":\t23,\n' +
-      //   '\t"nullstatus":\ttrue\n' +
-      //   '})'
-      // ```
-      inserted: 0,
-      replaced: 0,
-      skipped: 0,
-      unchanged: 0
-    })
+  t.deepEqual((
+    await r.db('mydb').table('User').get('noid2')
+      .replace(doc => (
+        r.branch(doc.eq(null), { id: 'differentid', nullstatus: true }, doc)
+      )).run()
+  ), {
+    deleted: 0,
+    errors: 1,
+    first_error: 'Primary key `id` cannot be changed',
+    // mock error is simplified, actual full error looks like below...
+    // ```
+    // 'Primary key `id` cannot be changed (null -> {\n' +
+    //   '\t"id":\t23,\n' +
+    //   '\t"nullstatus":\ttrue\n' +
+    //   '})'
+    // ```
+    inserted: 0,
+    replaced: 0,
+    skipped: 0,
+    unchanged: 0
+  })
 })
 
 test('tableCreate should evaluate reql-defined table name', async t => {
@@ -1978,7 +1982,7 @@ test('supports .replace(doc => doc), or various null', async t => {
     .replace(() => null, { returnChanges: true }).run()
 
   t.deepEqual(resNull, {
-    changes: [ { new_val: null, old_val: { id: 123, name: 'Mark McGuire' } } ],
+    changes: [{ new_val: null, old_val: { id: 123, name: 'Mark McGuire' } }],
     deleted: 1,
     errors: 0,
     inserted: 0,
@@ -2047,7 +2051,7 @@ test('supports .update(doc => doc), or various null', async t => {
   })
 
   const resNullNull = await r.table('Baseball').get('notfound')
-    .replace(() => { foo: true }, { returnChanges: true }).run()
+    .replace(() => {}, { returnChanges: true }).run()
 
   t.deepEqual(resNullNull, {
     changes: [],
