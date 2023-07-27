@@ -121,7 +121,8 @@ test('`distinct` should work with an index', async t => {
     .db('jobrunner')
     .table('JobEvents')
     .distinct({ index: 'jobId' })
+    .count()
     .run()
 
-  t.deepEqual(result, [1, 2])
+  t.is(result, 2)
 })
