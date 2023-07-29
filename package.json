@@ -1,6 +1,6 @@
 {
   "name": "mmreql",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "license": "ISC",
   "readmeFilename": "README.md",
   "author": "chris <chris@bumblehead.com>",
@@ -27,6 +27,12 @@
     "lint-fix": "eslint --ext=.js,.mjs --fix .",
     "build-dist": "babel src --out-dir dist --source-maps inline --copy-files --presets=@babel/env"
   },
+  "keywords": [
+    "rethinkdb",
+    "rethinkdb-ts",
+    "reql",
+    "mock"
+  ],
   "devDependencies": {
     "@babel/cli": "^7.21.0",
     "@babel/core": "^7.21.0",
