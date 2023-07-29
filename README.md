@@ -1,9 +1,14 @@
-# template-js-rethinkdb-mocked
+# mmreql
 
-![rethinkdb](rethinkdb-1500x500.jpg)
+<h3 align="center"><img src="https://i.imgur.com/yG2T2o4.jpg" alt="logo" height="100px"></h3>
+<p align="center"><code>mmreql</code> provides a mock rethinkdb-ts for tests and offline development</p>
 
-[![pipeline status](https://code.venom360.com/platform/template-js-rethinkdb-mocked/badges/main/pipeline.svg)](https://code.venom360.com/platform/template-js-rethinkdb-mocked/commits/main)
-[![coverage report](https://code.venom360.com/platform/template-js-rethinkdb-mocked/badges/main/coverage.svg)](https://code.venom360.com/platform/template-js-rethinkdb-mocked/commits/main)
+<p align="center">
+<a href="https://www.npmjs.com/package/mmreql"><img src="https://img.shields.io/npm/v/mmreql"></a>
+<a href="https://github.com/iambumblehead/mmreql/workflows"><img src="https://github.com/iambumblehead/mmreql/workflows/test/badge.svg"></a>
+<a href="./LICENSE.md"><img src="https://img.shields.io/badge/license-ISC-blue.svg"></a>
+</p>
+
 
 ```javascript
 import rethinkMocked from 'template-js-rethinkdb-mocked';
