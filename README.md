@@ -27,6 +27,8 @@ const { r } = rethinkdbMocked([
   }]
 ])
 
+await r.table('Memberships').indexCreate('user_id').run()
+
 console.log(await r
  .table('Memberships')
  .getAll('userId-1234', { index: 'user_id' })
@@ -37,14 +39,16 @@ console.log(await r
 
 A mock-[rethinkdb-ts][3] database package for javascript environments
  * support for complex and nested queries,
+ * support for creating, updating, deleting and specifying many databases,
  * support for [changefeeds,][1]
- * mock database can be initialized with plain json data,
+ * optionally initialized with plain object-literal data,
  * copies and re-uses tests [from rethinkdb-ts,][2]
  * zero dependencies
 
-This mock database was developed around various services to cover a wide range use-cases. See the unit-tests for more detailed examples. Feel free to open an issue or send an email for any other questions.
+This mock database was developed around various services to cover a wide range of use-cases. See [unit-tests][4] for more detailed examples. Feel free to open an issue or send an email for any other questions.
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js
 [1]: https://rethinkdb.com/docs/changefeeds/javascript/
 [2]: https://github.com/rethinkdb/rethinkdb-ts/blob/main/test/manipulating-tables.ts
 [3]: https://github.com/rethinkdb/rethinkdb-ts
+[4]: ./spec/
