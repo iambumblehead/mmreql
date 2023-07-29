@@ -1,5 +1,3 @@
-# mmreql
-
 <h3 align="center"><img src="https://i.imgur.com/yG2T2o4.jpg" alt="logo" height="200px"></h3>
 <p align="center"><code>mmreql</code> provides a mock rethinkdb-ts for tests and offline development</p>
 
@@ -13,7 +11,7 @@
 ```javascript
 import mmreql from 'mmreql'
 
-const { r } = rethinkdbMocked([
+const { r } = mmreql([
   ['Users',
     { id: 'userId-1234', name: 'fred' },
     { id: 'userId-5678', name: 'jane' }],
@@ -43,6 +41,7 @@ A mock-[rethinkdb-ts][3] database package for javascript environments
  * support for [changefeeds,][1]
  * optionally initialized with plain object-literal data,
  * copies and re-uses tests [from rethinkdb-ts,][2]
+ * supports atomic row update and replace queries,
  * zero dependencies
 
 This mock database was developed around various services to cover a wide range of use-cases. See [unit-tests][4] for more detailed examples. Feel free to open an issue or send an email for any other questions.
