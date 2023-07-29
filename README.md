@@ -1,6 +1,6 @@
 # mmreql
 
-<h3 align="center"><img src="https://i.imgur.com/yG2T2o4.jpg" alt="logo" height="100px"></h3>
+<h3 align="center"><img src="https://i.imgur.com/yG2T2o4.jpg" alt="logo" height="200px"></h3>
 <p align="center"><code>mmreql</code> provides a mock rethinkdb-ts for tests and offline development</p>
 
 <p align="center">
@@ -11,52 +11,40 @@
 
 
 ```javascript
-import rethinkMocked from 'template-js-rethinkdb-mocked';
+import mmreql from 'mmreql'
 
 const { r } = rethinkdbMocked([
-  ['Applications', {
-    id: 'appid-1234',
-    name: 'app name',
-    description: 'app description'
-  }],
-  ['Users', {
-    id: 'userid-fred-1234',
-    name: 'fred'
-  }, {
-    id: 'userid-jane-1234',
-    name: 'jane'
+  ['Users',
+    { id: 'userId-1234', name: 'fred' },
+    { id: 'userId-5678', name: 'jane' }],
+  ['Rooms', [{ primaryKey: 'room_id' }],
+    { room_id: 'roomId-1234', name: 'the room' }],
+  ['Memberships', {
+    user_id: 'userId-1234',
+    room_membership_type: 'INVITE',
+    user_sender_id: 'userId-5678',
+    room_id: 'roomId-1234'
   }]
-]);
+])
 
-const appDoc = await r.table( 'Applications' ).get( 'appid-1234' ).run();
-
-console.log(appDoc);
-// {
-//   id: 'appid-1234',
-//   name: 'app name',
-//   description: 'app description'
-// }
+console.log(await r
+ .table('Memberships')
+ .getAll('userId-1234', { index: 'user_id' })
+ .eqJoin('room_id', r.table('Rooms'))('right')
+ .run())
+// { room_id: 'roomId-1234', name: 'the room' }
 ```
 
-**v0.1.2** provides near-drop-in replacement for 'thinkyMock' and 'rethinkMock' files found in venom-api and the template application.
+A mock-[rethinkdb-ts][3] database package for javascript environments
+ * support for complex and nested queries,
+ * support for [changefeeds,][1]
+ * mock database can be initialized with plain json data,
+ * copies and re-uses tests [from rethinkdb-ts,][2]
+ * zero dependencies
 
-**v0.2.0** removes boilerplate required by v0.1.2 and adds unit-tests and support for more queries.
-
-**v0.4.0** uses one logic for all query chains and removes duplicated branches of logic. adds support and unit tests for all query patterns. removes unused, over-complicated Thinky ORM code.
-
-**v0.4.3** adds initial support for [changefeed cursors.][1]
-
-**v0.6.0** adds support for multiple databases. adds table and database configuration queries. Copies and re-uses tests [from rethinkdb-ts.][2]
-
-**v0.8.0** adds support for complex insert queries. documents can be inserted, replaced and modified at the same time through a single atomic query. improves support for tables with custom primary_keys. ex, 'user_id' as in the document `{ user_id: 'cyclingHal4482', presence: 'ONLINE' }`
- 
-**v0.9.5** adds support for advanced `getAll()` queries, `getAll().getField('name')`, `getAll(r.expr(...)).)`, support for deeply nested row query `r.row('name').eq('xavier').or(r.row('membership').eq('joined'))`, and completed support for configurable primaryKeys.
-
-**v1.0.0** adds completed stream, changefeed and cursor support. adds basic support for 'multi' index. adds support for initializing mulitple databases.
-
-**v1.1.0** adds more error messages that match those from rethinkdb, more support for attribute short hand `r.row('user')('nameattr')`, improved support for sub queries used with `eqJoin` and added more complex `eqJoin` tests. Prevent `merge( ... )` queries from mutating documents stored in table.
-
+This mock database was developed around various services to cover a wide range use-cases. See the unit-tests for more detailed examples. Feel free to open an issue or send an email for any other questions.
 
 [0]: ./spec/template-js-rethinkdb-mocked-thinky.spec.js
 [1]: https://rethinkdb.com/docs/changefeeds/javascript/
 [2]: https://github.com/rethinkdb/rethinkdb-ts/blob/main/test/manipulating-tables.ts
+[3]: https://github.com/rethinkdb/rethinkdb-ts

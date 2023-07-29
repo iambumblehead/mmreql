@@ -1,4 +1,3 @@
-import castas from 'castas'
 import { randomUUID } from 'crypto'
 
 const mmDbStateTableCreateIndexTuple = (name, fields = [], config = {}) => (
@@ -41,16 +40,17 @@ const mmDbStateDbDrop = (state, dbName) => {
 }
 
 const mmDbStateCreate = opts => {
-  const dbConfigList = castas.arr(opts.dbs, [{
+  const dbConfigList = Array.isArray(opts.dbs) ? opts.dbs : [{
     db: opts.db || 'default'
-  }])
+  }]
 
   return dbConfigList.reduce((state, s) => {
     state = mmDbStateDbCreate(state, s.db)
 
     return state
   }, {
-    dbConnections: castas.arr(opts.connections, []),
+    dbConnections: Array.isArray(opts.connections)
+      ? opts.connections : [],
     db: {}
   })
 }
